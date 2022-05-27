@@ -3,16 +3,16 @@
 	"file": "styles.css",
 	"sourceRoot": "/home/runner/work/smana.github.io/smana.github.io",
 	"sources": [
-		"/tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/main.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_variables.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_override.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_fonts.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_base.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_components.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_utils.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_mobile.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_syntax.sass",
-		"../../../../../tmp/hugo_cache/modules/filecache/modules/pkg/mod/github.com/chipzoller/hugo-clarity@v0.0.0-20220519120232-e511e14db7a1/assets/sass/_custom.sass"
+		"themes/hugo-clarity/assets/sass/main.sass",
+		"themes/hugo-clarity/assets/sass/_variables.sass",
+		"themes/hugo-clarity/assets/sass/_override.sass",
+		"themes/hugo-clarity/assets/sass/_fonts.sass",
+		"themes/hugo-clarity/assets/sass/_base.sass",
+		"themes/hugo-clarity/assets/sass/_components.sass",
+		"themes/hugo-clarity/assets/sass/_utils.sass",
+		"themes/hugo-clarity/assets/sass/_mobile.sass",
+		"themes/hugo-clarity/assets/sass/_syntax.sass",
+		"themes/hugo-clarity/assets/sass/_custom.sass"
 	],
 	"sourcesContent": [
 		"@import 'variables';\n@import 'override';\n@import 'fonts';\n@import 'base';\n@import 'components';\n@import 'utils';\n@import 'mobile';\n@import 'syntax';\n@import 'custom';\n",
