@@ -121,4 +121,4 @@ websiteDomain = "blog.ogenki.io" # domain name of your website, most cases same 
 enable = false # To enable matomo analytics change to `true`.
 matomoDomain = "matomo.example.com" # Set to Matomo domain
 matomoSiteID = "1" # Default is set to 1, change this to the siteid being tracked
-websiteDomain = "example.com" # Set the domain name of your website, in most cases same as your base URL this is required.
+websiteDomain = "blog.ogenki.io" # Set the domain name of your website, in most cases same as your base URL this is required.

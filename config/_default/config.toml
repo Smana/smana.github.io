@@ -2,12 +2,13 @@
 # if you set it to "/" share icons won't work properly on production
 baseurl = "https://blog.ogenki.io/" # Include trailing slash
 # title = "Clarity"  # Edit directly from config/_default/languages.toml # alternatively, uncomment this and remove `title` entry from the aforemention file.
-copyright = "Copyright © 2008–2018, Steve Francia and the Hugo Authors; all rights reserved."
+copyright = "Copyright © 2021–2022, Smana https://github.io/Smana"
 # canonifyurls = true
 disqusShortname = ""
 enableEmoji = true
 paginate = 10
-theme = ["github.com/chipzoller/hugo-clarity"]
+#theme = ["github.com/chipzoller/hugo-clarity"]
+theme = "hugo-clarity"
 
 DefaultContentLanguage = "en"
 # [languages]
