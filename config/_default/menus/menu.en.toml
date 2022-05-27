@@ -1,0 +1,44 @@
+[[main]]
+name = "Home"
+url = ""
+weight = -110
+
+[[main]]
+name = "Archives"
+url = "post/rich-content/"
+weight = -109
+
+# Submenus are done this way: parent -> identifier
+[[main]]
+identifier = "Links"
+name = "Links"
+weight = -108
+[[main]]
+name = "LinkedIn"
+parent = "Links"
+url = "https://www.linkedin.com/in/sma%C3%AFne-kahlouch-44374110/"
+[[main]]
+name = "Twitter"
+parent = "Links"
+url = "https://twitter.com/_smana_"
+
+[[main]]
+name = "About"
+url = "about/"
+weight = -107
+
+# social menu links
+
+[[social]]
+name = "github"
+type = "social"
+url = "https://github.com/Smana"
+weight = 1
+[[social]]
+name = "twitter"
+url = "https://twitter.com/_smana_"
+weight = 2
+[[social]]
+name = "linkedin"
+url = "https://www.linkedin.com/in/sma%C3%AFne-kahlouch-44374110/"
+weight = 3

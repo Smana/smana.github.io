@@ -1,0 +1,12 @@
+
+[en]
+LanguageName = "English"
+contentDir = "content/en"
+title = "Ogenki"
+weight = 1
+
+[fr]
+LanguageName = "Français"
+contentDir = "content/fr"
+title = "Ogenki"
+weight = 2
