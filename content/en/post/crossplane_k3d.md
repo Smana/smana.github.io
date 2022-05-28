@@ -4,6 +4,7 @@ title = "My Kubernetes cluster in GKE with Crossplane"
 date = "2022-05-25"
 summary = "Use a local **k3d** cluster in order to manage infrastructure in Google Cloud, create a **GKE** cluster and Velero to backup the **Crossplane**"
 featured = true
+codeMaxLines = 20
 tags = [
     "kubernetes",
     "infrastructure"
@@ -71,7 +72,7 @@ k3d-crossplane-server-0   Ready    control-plane,master   26h   v1.22.7+k3s1
 ### :cloud: Generate the Google Cloud service account
 
 {{% notice warning "Warning" %}}
-Store the downloaded json credentials file in a safe place.
+Store the downloaded `crossplane.json` credentials file in a safe place.
 {{% /notice %}}
 
 Create a service account
@@ -108,7 +109,74 @@ created key [ea2eb9ce2939127xxxxxxxxxx] of type [json] as [crossplane.json] for 
 
 ### :construction: Deploy and configure Crossplane
 
-Deploy [**Crossplane**](https://crossplane.io/) and configure the `provider-gcp`
+Now that we have a credentials file for Google Cloud, we can deploy the [**Crossplane**](https://crossplane.io/) operator and configure the `provider-gcp` provider.
+
+{{% notice info "Note" %}}
+This is a standard "note" style.
+Most of the following steps are issued from the [official documentation](https://crossplane.io/docs/v1.8/getting-started/install-configure.html)
+{{% /notice %}}
+
+
+We'll first use Helm in order to install the **operator**
+```console
+helm repo add crossplane-master https://charts.crossplane.io/master/
+"crossplane-master" has been added to your repositories
+
+helm repo update
+...Successfully got an update from the "crossplane-master" chart repository
+
+helm install crossplane --namespace crossplane-system crossplane-stable/crossplane --create-namespace
+
+NAME: crossplane
+LAST DEPLOYED: Mon Jun  6 22:00:02 2022
+NAMESPACE: crossplane-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+Release: crossplane
+...
+```
+
+Check that the operator is running properly
+
+```console
+kubectl get po -n crossplane-system
+NAME                                       READY   STATUS    RESTARTS   AGE
+crossplane-rbac-manager-54d96cd559-222hc   1/1     Running   0          3m37s
+crossplane-688c575476-lgklq                1/1     Running   0          3m37s
+```
+
+Now we'll configure Crossplane so that it will be able to create and manage GCP resources. This is done by configuring the **provider** `provider-gcp` as follows.
+
+Create the Kubernetes secret that holds the GCP credentials file created [above](#cloud-generate-the-google-cloud-service-account)
+
+```console
+kubectl create secret generic gcp-creds -n crossplane-system --from-file=creds=./crossplane.json
+secret/gcp-creds created
+```
+
+Then we need to create a resource named `ProviderConfig` and reference the newly created secret
+
+```yaml
+apiVersion: gcp.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  projectID: ${PROJECT_ID}
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: crossplane-system
+      name: gcp-creds
+      key: creds
+```
+
+```console
+kubectl apply -f providerconfig.yaml -n crossplane-system
+
+```
 
 <br>
 
