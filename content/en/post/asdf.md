@@ -7,11 +7,11 @@ tags = [
     "tooling",
     "local"
 ]
-#thumbnail= "images/crossplane_k3d.jpg"
+thumbnail= "images/console.png"
 +++
 
 
-In order to install binaries and to be able to switch from a version to another I usually use [**asdf**](https://asdf-vm.com/).
+In order to install binaries and to be able to switch from a version to another I like to use [**asdf**](https://asdf-vm.com/).
 
 Let's install k3d
 

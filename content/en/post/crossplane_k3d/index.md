@@ -5,11 +5,12 @@ date = "2022-05-25"
 summary = "Use a local **k3d** cluster in order to manage infrastructure in Google Cloud, create a **GKE** cluster and Velero to backup the **Crossplane**"
 featured = true
 codeMaxLines = 20
+usePageBundles = true
 tags = [
     "kubernetes",
     "infrastructure"
 ]
-thumbnail= "images/crossplane_k3d.jpg"
+thumbnail= "crossplane_k3d.jpg"
 +++
 
 The target of this documentation is to be able to manage infrastructure using **Crossplane**.
@@ -112,7 +113,6 @@ created key [ea2eb9ce2939127xxxxxxxxxx] of type [json] as [crossplane.json] for 
 Now that we have a credentials file for Google Cloud, we can deploy the [**Crossplane**](https://crossplane.io/) operator and configure the `provider-gcp` provider.
 
 {{% notice info "Note" %}}
-This is a standard "note" style.
 Most of the following steps are issued from the [official documentation](https://crossplane.io/docs/v1.8/getting-started/install-configure.html)
 {{% /notice %}}
 
@@ -125,7 +125,8 @@ helm repo add crossplane-master https://charts.crossplane.io/master/
 helm repo update
 ...Successfully got an update from the "crossplane-master" chart repository
 
-helm install crossplane --namespace crossplane-system crossplane-stable/crossplane --create-namespace
+helm install crossplane --namespace crossplane-system --create-namespace \
+--version 1.18.1 crossplane-stable/crossplane
 
 NAME: crossplane
 LAST DEPLOYED: Mon Jun  6 22:00:02 2022
@@ -138,7 +139,7 @@ Release: crossplane
 ...
 ```
 
-Check that the operator is running properly
+Check that the operator is running properly.
 
 ```console
 kubectl get po -n crossplane-system
@@ -149,6 +150,25 @@ crossplane-688c575476-lgklq                1/1     Running   0          3m37s
 
 Now we'll configure Crossplane so that it will be able to create and manage GCP resources. This is done by configuring the **provider** `provider-gcp` as follows.
 
+<span style="color:green">provider.yaml</span>
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: crossplane-provider-gcp
+spec:
+  package: crossplane/provider-gcp:v0.21.0
+```
+
+```console
+kubectl apply -f provider.yaml
+provider.pkg.crossplane.io/crossplane-provider-gcp created
+
+kubectl get providers
+NAME                      INSTALLED   HEALTHY   PACKAGE                           AGE
+crossplane-provider-gcp   True        True      crossplane/provider-gcp:v0.21.0   10s
+```
+
 Create the Kubernetes secret that holds the GCP credentials file created [above](#cloud-generate-the-google-cloud-service-account)
 
 ```console
@@ -156,8 +176,9 @@ kubectl create secret generic gcp-creds -n crossplane-system --from-file=creds=.
 secret/gcp-creds created
 ```
 
-Then we need to create a resource named `ProviderConfig` and reference the newly created secret
+Then we need to create a resource named `ProviderConfig` and reference the newly created secret.
 
+<span style="color:green">provider-config.yaml</span>
 ```yaml
 apiVersion: gcp.crossplane.io/v1beta1
 kind: ProviderConfig
@@ -174,8 +195,70 @@ spec:
 ```
 
 ```console
-kubectl apply -f providerconfig.yaml -n crossplane-system
+kubectl apply -f provider-config.yaml
+providerconfig.gcp.crossplane.io/default created
+```
 
+[crd](https://doc.crds.dev/github.com/crossplane/provider-gcp)
+
+
+```yaml
+apiVersion: container.gcp.crossplane.io/v1beta2
+kind: Cluster
+metadata:
+  name: example-cluster
+spec:
+  forProvider:
+    initialClusterVersion: "1.23"
+    location: europe-west1
+    autoscaling:
+      autoprovisioningNodePoolDefaults:
+        serviceAccount: sa-test
+    networkConfig:
+      enableIntraNodeVisibility: true
+    loggingService: logging.googleapis.com/kubernetes
+    monitoringService: monitoring.googleapis.com/kubernetes
+    addonsConfig:
+      gcePersistentDiskCsiDriverConfig:
+        enabled: true
+    network: "default"
+  writeConnectionSecretToRef:
+    namespace: default
+    name: gke-conn
+---
+apiVersion: container.gcp.crossplane.io/v1beta1
+kind: NodePool
+metadata:
+  name: crossplane-np
+spec:
+  forProvider:
+    autoscaling:
+      autoprovisioned: false
+      enabled: true
+      maxNodeCount: 5
+      minNodeCount: 3
+    clusterRef:
+      name: example-cluster
+    config:
+      serviceAccount: sa-test
+      machineType: n1-standard-1
+      sandboxConfig:
+        type: gvisor
+      diskSizeGb: 120
+      diskType: pd-ssd
+      imageType: cos_containerd
+      labels:
+        test-label: crossplane-created
+      oauthScopes:
+      - "https://www.googleapis.com/auth/devstorage.read_only"
+      - "https://www.googleapis.com/auth/logging.write"
+      - "https://www.googleapis.com/auth/monitoring"
+      - "https://www.googleapis.com/auth/servicecontrol"
+      - "https://www.googleapis.com/auth/service.management.readonly"
+      - "https://www.googleapis.com/auth/trace.append"
+    initialNodeCount: 3
+    locations:
+      - "europe-west1-b"
 ```
 
 <br>

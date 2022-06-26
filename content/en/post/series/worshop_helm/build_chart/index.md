@@ -1,7 +1,26 @@
+---
+title: 'Helm workshop: Build your first chart'
+description: 'Learn how to build a chart from scratch'
+summary: "Learn how to build a chart from scratch"
+date: "2021-06-05"
+aliases:
+  - workshop-helm
+author: 'Smana'
+usePageBundles: true
 
-# Build your first chart
+thumbnail: 'https://cncf-branding.netlify.app/img/projects/helm/horizontal/black/helm-horizontal-black.png'
 
-## Create a simple webserver chart (nginx)
+categories:
+  - devxp
+tags:
+  - Helm
+  - Kubernetes
+
+series:
+  - Workshop Helm
+---
+
+## Create a simple webserver chart
 
 In order to get familiar with a typical chart we will create a simple webserver chart.
 

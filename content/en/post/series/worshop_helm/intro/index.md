@@ -1,32 +1,31 @@
 ---
-title: 'Helm workshop'
-description: 'Page bundles are an optional way to organize content within Hugo.'
-summary: "Page bundles are an optional way to organize page resources within Hugo. You can opt-in to using page bundles in Hugo Clarity with `usePageBundles` in your site configuration --- or in a page's front matter." # For the post in lists.
-date: '2022-05-28'
+title: 'Helm workshop: Introduction'
+description: 'Learn the basis of Helm through a series of workshops'
+summary: |
+  This is  a series of workshops dedicated to Helm, the famous Kubernetes package manager.
+  We'll start by preparing your local environment
+date: "2021-06-01"
 aliases:
-  - hugo-page-bundles
-author: 'Hugo Authors'
+  - workshop-helm
+author: 'Smana'
 usePageBundles: true
 
-featureImage: 'https://images.unsplash.com/photo-1447069387593-a5de0862481e?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1169&q=80' # Top image on post.
-# featureImageAlt: 'Description of image' # Alternative text for featured image.
-# featureImageCap: 'This is the featured image.' # Caption (optional).
-# thumbnail: 'thumbnail.jpg' # Image in lists of posts.
-# shareImage: 'share.jpg' # For SEO and social media snippets.
+thumbnail: 'https://cncf-branding.netlify.app/img/projects/helm/horizontal/black/helm-horizontal-black.png'
 
 categories:
-  - syntax
+  - devxp
 tags:
   - Helm
   - Kubernetes
+
 series:
-  - Worshop
+  - Workshop Helm
 ---
 
 ## Requirements
 
 * docker
-* [k3d](https://k3d.io/) >3.x.x
+* [k3d](https://k3d.io/) >5.x.x
 * [helm](https://helm.sh/docs/intro/install/) >3.x.x
 * [helmfile](https://github.com/roboll/helmfile)
 
@@ -78,6 +77,7 @@ There are multiple options for that, here are the ones that are generally used.
 *   Chartmuseum is the official solution. This is a pretty simple webserver that exposes a Rest API.
 *   Harbor. Its main purpose is to store images (containers), but it offers many other features such as vulnerability scanning, images signing and integrates chartmuseum.
 *   Artifactory can be used to stored Helm charts too
+*   An [OCI](https://opencontainers.org/) store (container registry).
 
 Pushing the charts into a central location requires to manage the versions of the charts. Any changes should trigger a version bump in the Chart.yaml file.
 
