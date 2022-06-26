@@ -1,4 +1,24 @@
-# Application lifecycle
+---
+title: 'Helm workshop: Lifecycle operations'
+description: 'Command lines to manage applications deployed with Helm'
+summary: "Command lines to manage applications deployed with Helm"
+date: "2021-06-04"
+aliases:
+  - workshop-helm
+author: 'Smana'
+usePageBundles: true
+
+thumbnail: 'https://cncf-branding.netlify.app/img/projects/helm/horizontal/black/helm-horizontal-black.png'
+
+categories:
+  - devxp
+tags:
+  - Helm
+  - Kubernetes
+
+series:
+  - Workshop Helm
+---
 
 Apply a change, anything. For example we will add a label `stage: dev`. Edit the file templates/_helpers.tpl
 

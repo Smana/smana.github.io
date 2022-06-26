@@ -1,4 +1,25 @@
-# Environment and ecosystem
+---
+title: 'Helm workshop: Ecosystem'
+description: 'Tools and plugins around Helm'
+summary: |
+  A few useful Helm plugins and tools to extend Helm's features
+date: "2021-06-03"
+aliases:
+  - workshop-helm
+author: 'Smana'
+usePageBundles: true
+
+thumbnail: 'https://cncf-branding.netlify.app/img/projects/helm/horizontal/black/helm-horizontal-black.png'
+
+categories:
+  - devxp
+tags:
+  - Helm
+  - Kubernetes
+
+series:
+  - Workshop Helm
+---
 
 Helm’s configuration is stored in the environment variable `$HELM_CONFIG_HOME` , by default `$HOME/.config/helm`
 

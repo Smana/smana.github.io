@@ -1,16 +1,37 @@
-# Playing with third party charts
+---
+title: 'Helm workshop: Third party charts'
+description: 'Use charts provided by communities and vendors'
+summary: |
+  Most often you won't have to build your own chart from scratch. There are plenty of them available for different software. Learn how to make use of them.
+date: "2021-06-02"
+aliases:
+  - workshop-helm
+author: 'Smana'
+usePageBundles: true
+
+thumbnail: 'https://cncf-branding.netlify.app/img/projects/helm/horizontal/black/helm-horizontal-black.png'
+
+categories:
+  - devxp
+tags:
+  - Helm
+  - Kubernetes
+
+series:
+  - Workshop Helm
+---
 
 ## Looking for a chart
 
 Helm works with what is called a “**chart**”. A chart is basically a package of yaml resources that support a **templating language**.
 
-Before building our own chart we should always have a look of what is available in the community. Often there’s a chart that fits your needs.
+Before building our own chart we should always have a look of what is available in the community. There are often charts that fits our needs.
 
 These charts can be installed from different sources: a Helm chart repository, a local archive or chart directory.
 
-![helm_sources](images/helm_sources.png)
+![helm_sources](helm_sources.png)
 
-First of all, let’s say that we want to install a Wordpress instance on an empty infrastructure.
+First of all, let’s say that we want to install a `Wordpress` instance on an empty infrastructure.
 
 We’ll need to provision a database as well as the Wordpress application.
 
@@ -22,7 +43,7 @@ If you just installed Helm, your repositories list should be empty
 $ helm repo list
 ```
 
-We’re going to check what are the wordpress charts available in the **[artifacthub](https://artifacthub.io/).**
+We’re going to check what are the Wordpress charts available in the **[artifacthub](https://artifacthub.io/).**
 
 You can either browse from the web page or use the command
 
@@ -39,7 +60,7 @@ Using the Hub there are a few things that can help to choose the best option.
 
 First of all the number of **stars** obviously and whether the artifact comes from a **verified** publisher or **signed** by the maintainer.
 
-![verified](images/hub_artifact_verified.png) ![signed](images/hub_artifact_signed.png)
+![verified](hub_artifact_verified.png) ![signed](hub_artifact_signed.png)
 
 We’ll get the one provided by Bitnami. In the [chart page](https://artifacthub.io/packages/helm/bitnami/wordpress) you’ll be guided with the commands to add Bitnami’s repository.
 
@@ -64,7 +85,7 @@ bitnami/cassandra                       7.3.2           3.11.10         Apache C
 
 ## Inspect the chart
 
-OK let’s get back to what we want to achieve: Installing a wordpress instance.
+OK let’s get back to what we want to achieve: Installing a Wordpress instance.
 
 Now that we identified the chart, we’re going to check what it actually does. You should always **check** what will be installed.
 
@@ -237,7 +258,7 @@ $ kubectl port-forward svc/foo-blog-wordpress 9090:80
 
 Then open a browser using the URL [http://localhost:9090/admin](http://localhost:8080/admin), you’ll be prompted to fill in the credentials you defined above. (wordpressPassword)
 
-![wordpress_login](images/wordpress.png)
+![wordpress_login](wordpress.png)
 
 We’ll check the database credentials too as follows
 
@@ -307,7 +328,7 @@ Then open a browser using the URL [http://localhost:9090/admin](http://localhost
 
 You should browse a few minutes over all the dashboards available. There is pretty useful info.
 
-![prometheus](images/prometheus.png)
+![prometheus](prometheus.png)
 
 You can then have a look to the resources that have been applied with a single command line as follows
 
