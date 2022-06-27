@@ -1,25 +1,13 @@
 +++
-title = "About"
-description = "Hugo, the world's fastest framework for building websites"
-date = "2019-02-28"
-aliases = ["about-us", "about-hugo", "contact"]
-author = "Hugo Authors"
+title = "What is `CDKS` (Cloud and Devops Knowledge Sharing)?"
+summary = "What's behind this blog post and what is the next target?"
+date = "2022-06-20"
+author = "Smana"
 +++
 
-Written in Go, Hugo is an open source static site generator available under the [Apache Licence 2.0.](https://github.com/gohugoio/hugo/blob/master/LICENSE) Hugo supports TOML, YAML and JSON data file types, Markdown and HTML content files and uses shortcodes to add rich content. Other notable features are taxonomies, multilingual mode, image processing, custom output formats, HTML/CSS/JS minification and support for Sass SCSS workflows.
-
-Hugo makes use of a variety of open source projects including:
-
-* https://github.com/yuin/goldmark
-* https://github.com/alecthomas/chroma
-* https://github.com/muesli/smartcrop
-* https://github.com/spf13/cobra
-* https://github.com/spf13/viper
-
-Hugo is ideal for blogs, corporate websites, creative portfolios, online magazines, single page applications or even a website with thousands of pages.
-
-Hugo is for people who want to hand code their own website without worrying about setting up complicated runtimes, dependencies and databases.
-
-Websites built with Hugo are extremelly fast, secure and can be deployed anywhere including, AWS, GitHub Pages, Heroku, Netlify and any other hosting provider.
-
-Learn more and contribute on [GitHub](https://github.com/gohugoio).
+I’m currently on my flight back from the Kubecon EU 2022 and plenty of ideas are currently flooding my brain. Actually this has been a long time I’m considering starting my own blog post. My main target here is to play and learn about new technologies and share my experimentations and findings.
+<br>
+<br>
+While I’m writing this I don’t know what will be the topics in a few months but you’ll find here my next target:
+<br>
+:arrow_right: Creating a Kubernetes cluster on a cloud provider for my future experimentations. I chose to use GKE provision through `Crossplane` to begin with. More info [here](crossplane_k3d/index.md).

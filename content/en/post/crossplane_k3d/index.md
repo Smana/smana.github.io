@@ -1,6 +1,6 @@
 +++
 author = "Smaine Kahlouch"
-title = "My Kubernetes cluster in GKE with Crossplane"
+title = "My Kubernetes cluster in GKE with `Crossplane`"
 date = "2022-05-25"
 summary = "Use a local **k3d** cluster in order to manage infrastructure in Google Cloud, create a **GKE** cluster and Velero to backup the **Crossplane**"
 featured = true
