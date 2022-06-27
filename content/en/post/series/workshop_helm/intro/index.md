@@ -1,10 +1,11 @@
 ---
-title: 'Helm workshop: Introduction'
+title: 'Helm workshop'
 description: 'Learn the basis of Helm through a series of workshops'
 summary: |
   This is  a series of workshops dedicated to Helm, the famous Kubernetes package manager.
   We'll start by preparing your local environment
 date: "2021-06-01"
+featured: true
 aliases:
   - workshop-helm
 author: 'Smana'
@@ -59,11 +60,11 @@ $ kubectl config current-context
 k3d-helm-workshop
 ```
 
-* **[Playing with third party charts](01_third_party.md)**
-* **[Environment and ecosystem](02_ecosystem.md)**
-* **[Build your first chart](03_build_chart.md)**
-* **[Application lifecycle](04_lifecycle.md)**
-* **[Templating challenge](05_templating_practice.md)**
+* **[Playing with third party charts](/post/series/workshop_helm/third_party/)**
+* **[Environment and ecosystem](/post/series/workshop_helm/ecosystem/)**
+* **[Build your first chart](/post/series/workshop_helm/build_chart/)**
+* **[Application lifecycle](/post/series/workshop_helm/lifecycle/)**
+* **[Templating challenge](/post/series/workshop_helm/templating/)**
 
 ### Other considerations
 

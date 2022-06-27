@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "Manage tools versions with `asdf`"
-date = "2022-05-26"
+date = "2022-05-24"
 summary = "install and change between different versions of our usual tools (kubectl, terraform...)"
 tags = [
     "tooling",
