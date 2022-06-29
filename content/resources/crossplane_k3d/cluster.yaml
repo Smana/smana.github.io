@@ -1,0 +1,28 @@
+apiVersion: container.gcp.crossplane.io/v1beta2
+kind: Cluster
+metadata:
+  name: dev-cluster
+spec:
+  forProvider:
+    description: "Kubernetes cluster for experimentations and POCs"
+    initialClusterVersion: "1.23"
+    releaseChannel:
+      channel: "RAPID"
+    location: europe-west9-a
+    addonsConfig:
+      gcePersistentDiskCsiDriverConfig:
+        enabled: true
+      networkPolicyConfig:
+        disabled: false
+    networkRef:
+      name: dev-network
+    ipAllocationPolicy:
+      createSubnetwork: true
+      useIpAliases: true
+    defaultMaxPodsConstraint:
+      maxPodsPerNode: 110
+    networkPolicy:
+      enabled: false
+  writeConnectionSecretToRef:
+    namespace: default
+    name: gke-conn

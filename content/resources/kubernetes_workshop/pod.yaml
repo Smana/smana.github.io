@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: web
+  name: web
+spec:
+  containers:
+    - image: nginx
+      name: web
+      resources:
+        limits:
+          cpu: 300m
+          memory: 50Mi

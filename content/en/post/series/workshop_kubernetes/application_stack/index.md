@@ -43,7 +43,7 @@ There are several [options](https://kubernetes.io/docs/concepts/storage/persiste
 Create a persistentVolumeClaim, it will stay pending until a pod consumes it
 
 ```console
-kubectl apply -f manifests/mysql/pvc.yaml
+kubectl apply -f content/resources/kubernetes_workshop/mysql/pvc.yaml
 persistentvolumeclaim/local-path-mysql created
 
 kubectl get pvc
@@ -85,7 +85,7 @@ YOUR_PASSWORD
 We will now create a MySQL deployment. It will be composed of a single replica as we're accessing to a local volume and it is configured to make use of the secret we've created previously.
 
 ```console
-kubectl apply -f manifests/mysql/deployment.yaml
+kubectl apply -f content/resources/kubernetes_workshop/mysql/deployment.yaml
 deployment.apps/wordpress-mysql created
 
 kubectl get po -w
@@ -100,7 +100,7 @@ wordpress-mysql-6c597b98bd-vcm62   1/1     Running             0          13s
 In order to be able to call our MySQL deployment we may want to expose it using a `service`.
 
 ```console
-kubectl apply -f manifests/mysql/svc.yaml
+kubectl apply -f content/resources/kubernetes_workshop/mysql/svc.yaml
 service/wordpress-mysql created
 
 kubectl get svc
@@ -236,14 +236,14 @@ Now we will deploy the wordpress instance with a persistent volume.
 So first of all create a pvc as follows
 
 ```console
-kubectl apply -f manifests/wordpress/pvc.yaml
+kubectl apply -f content/resources/kubernetes_workshop/wordpress/pvc.yaml
 persistentvolumeclaim/wp-pv-claim created
 ```
 
 Then create the deployment. Note that it is configured with our mysql database as backend.
 
 ```console
-kubectl apply -f manifests/wordpress/deployment.yaml
+kubectl apply -f content/resources/kubernetes_workshop/wordpress/deployment.yaml
 deployment.apps/wordpress created
 
 $ kubectl get deploy
@@ -255,10 +255,10 @@ wordpress         1/1     1            1           4s
 Most of the time, when we want to expose an HTTP service to the outside world (outside of the cluster), we would create an [ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
 
 ```console
-kubectl apply -f manifests/wordpress/svc.yaml
+kubectl apply -f content/resources/kubernetes_workshop/wordpress/svc.yaml
 service/wordpress created
 
-kubectl apply -f manifests/wordpress/ingress.yaml
+kubectl apply -f content/resources/kubernetes_workshop/wordpress/ingress.yaml
 ingress.networking.k8s.io/wordpress created
 ```
 
@@ -309,7 +309,7 @@ configmap/helloworld created
 
 Now we're gonna make use of it by changing the wordpress deployment. For this kind of change it is recommended to use an IDE with a Kubernetes plugin that will highlight errors.
 
-Edit the file located here: `manifests/wordpress/deployment.yaml`
+Edit the file located here: `content/resources/kubernetes_workshop/wordpress/deployment.yaml`
 
 ```yaml
 ...
@@ -346,7 +346,7 @@ Edit the file located here: `manifests/wordpress/deployment.yaml`
 Applying this change will trigger a rolling-update
 
 ```console
-$ kubectl apply -f manifests/wordpress/deployment.yaml
+$ kubectl apply -f content/resources/kubernetes_workshop/wordpress/deployment.yaml
 deployment.apps/wordpress configured
 
 $ kubectl get po

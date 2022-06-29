@@ -1,0 +1,42 @@
+apiVersion: container.gcp.crossplane.io/v1beta1
+kind: NodePool
+metadata:
+  name: main-np
+spec:
+  forProvider:
+    initialNodeCount: 1
+    autoscaling:
+      autoprovisioned: false
+      enabled: true
+      maxNodeCount: 4
+      minNodeCount: 1
+    clusterRef:
+      name: dev-cluster
+    config:
+      machineType: n2-standard-2
+      diskSizeGb: 120
+      diskType: pd-standard
+      imageType: cos_containerd
+      preemptible: true
+      labels:
+        environment: dev
+        managed-by: crossplane
+      oauthScopes:
+        - "https://www.googleapis.com/auth/devstorage.read_only"
+        - "https://www.googleapis.com/auth/logging.write"
+        - "https://www.googleapis.com/auth/monitoring"
+        - "https://www.googleapis.com/auth/servicecontrol"
+        - "https://www.googleapis.com/auth/service.management.readonly"
+        - "https://www.googleapis.com/auth/trace.append"
+      metadata:
+        disable-legacy-endpoints: "true"
+      shieldedInstanceConfig:
+        enableIntegrityMonitoring: true
+        enableSecureBoot: true
+    management:
+      autoRepair: true
+      autoUpgrade: true
+    maxPodsConstraint:
+      maxPodsPerNode: 60
+    locations:
+      - "europe-west9-a"

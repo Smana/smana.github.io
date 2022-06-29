@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: web
+  name: web
+spec:
+  containers:
+    - image: nginx
+      name: web
+      volumeMounts:
+        - mountPath: /log
+          name: logs
+    - name: logger
+      image: busybox
+      command:
+        - sh
+        - -c
+        - |
+          while true; do
+            echo $(date +%c) | tee -a /log/out.log
+            sleep 1
+          done
+      volumeMounts:
+        - mountPath: /log
+          name: logs
+  volumes:
+    - name: logs
+      emptyDir:
+        {}

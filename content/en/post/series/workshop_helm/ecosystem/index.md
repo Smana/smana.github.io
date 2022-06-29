@@ -48,20 +48,20 @@ These steps are very basic, you should have a look at the documentation for furt
 Install the **helmdiff** plugin (used by helmfile)
 
 ```console
-$ helm plugin install https://github.com/databus23/helm-diff
+helm plugin install https://github.com/databus23/helm-diff
 ```
 
 We’ll make use of some examples provided by CloudPosse
 
 ```console
-$ git clone git@github.com:cloudposse/helmfiles.git
+git clone git@github.com:cloudposse/helmfiles.git
 cd helmfiles
 ```
 
 Let’s say we want to install the kubernetes dashboard and the [reloader](https://github.com/stakater/Reloader) tool.
 
 ```console
-$ cat > releases/kubernetes-dashboard/dev.yaml <<EOF
+cat > releases/kubernetes-dashboard/dev.yaml <<EOF
 installed: True
 banner: "Workshop cluster"
 EOF
@@ -70,7 +70,7 @@ EOF
 Now we’ll create our main **helmfile.yaml** that describes all the releases we want to install
 
 ```console
-$ cat > helmfile.yaml <<EOF
+cat > helmfile.yaml <<EOF
 helmfiles:
   - path: "releases/kubernetes-dashboard/helmfile.yaml"
     values:
@@ -84,7 +84,7 @@ EOF
 Now we can see what changes will be applied.
 
 ```console
-$ helmfile diff
+helmfile diff
 Adding repo stable https://charts.helm.sh/stable
 "stable" has been added to your repositories
 
@@ -99,7 +99,7 @@ Comparing release=kubernetes-dashboard, chart=stable/kubernetes-dashboard
 The command helm sync will install the releases
 
 ```console
-$ helmfile sync
+helmfile sync
 Adding repo stable https://charts.helm.sh/stable
 "stable" has been added to your repositories
 
@@ -115,7 +115,7 @@ NAME: kubernetes-dashboard
 You can list all the releases managed by the local helmfile.
 
 ```console
-$ helmfile list
+helmfile list
 NAME                    NAMESPACE       ENABLED LABELS
 kubernetes-dashboard    kube-system     true    chart:kubernetes-dashboard,component:monitoring,namespace:kube-system,repo:stable,vendor:kubernetes
 reloader                reloader        true    chart:stakater/reloader,component:reloader,namespace:reloader,repo:stakater,vendor:stakater
@@ -124,10 +124,12 @@ reloader                reloader        true    chart:stakater/reloader,componen
 Delete all the releases
 
 ```console
-$ helmfile delete
+helmfile delete
 Listing releases matching ^reloader$
 reloader        reloader        1               2021-02-16 10:10:35.378800455 +0100 CET deployed        reloader-v0.0.68        v0.0.68
 
 Deleting reloader
 release "reloader" uninstalled
 ```
+
+:arrow_right: [Next: Build a Helm chart](/post/series/workshop_helm/build_chart/)

@@ -31,7 +31,7 @@ stage: "dev"
 Deploy a new revision with the same command we ran previously
 
 ```console
-$ helm upgrade --install web web
+helm upgrade --install web web
 ```
 
 Now we can have a look to the changes we’ve made so far to the release
@@ -48,7 +48,7 @@ REVISION        UPDATED                         STATUS          CHART           
 We can then check what would be the changes if we rollback to the previous revision
 
 ```console
-$ helm diff rollback web 4
+helm diff rollback web 4
 default, web, Deployment (apps) has changed:
   # Source: web/templates/deployment.yaml
   apiVersion: apps/v1
@@ -64,6 +64,8 @@ default, web, Deployment (apps) has changed:
 Now that we’re sure we can safely rollback to the previous revision
 
 ```console
-$ helm rollback web 4
+helm rollback web 4
 Rollback was a success! Happy Helming!
 ```
+
+:arrow_right: [Next: Helm templating challenge](/post/series/workshop_helm/templating/)

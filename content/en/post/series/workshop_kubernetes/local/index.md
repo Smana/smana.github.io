@@ -34,13 +34,13 @@ In order to have an easily provisioned temporary playground we’ll make use of 
 After installing the binary you should enable the completion (bash or **zsh**) as follows (do the same for both kubectl and k3d).
 
 ```console
-$ source <(k3d completion bash)
+source <(k3d completion bash)
 ```
 
 Then create the sandbox cluster named "**workshop**" with an additional worker
 
 ```console
-$ k3d cluster create workshop -p "8081:80@loadbalancer" --agents 1
+k3d cluster create workshop -p "8081:80@loadbalancer" --agents 1
 INFO[0000] Prep: Network
 INFO[0000] Created network 'k3d-workshop' (ce74508d3fe09d8622f1ae83effd412d754dfdb441aa9d550723805f9b528c6b)
 INFO[0000] Created volume 'k3d-workshop-images'
@@ -66,7 +66,7 @@ kubectl cluster-info
 As k3d is made to be used on top of **docker** you can see the status of the running containers. You should have 3 containers, one for the loadbalancing, one for the control-plane and an agent (worker).
 
 ```console
-$ docker ps
+docker ps
 CONTAINER ID   IMAGE                      COMMAND                  CREATED              STATUS              PORTS                             NAMES
 4b5847b265dd   rancher/k3d-proxy:v4.4.6   "/bin/sh -c nginx-pr…"   About a minute ago   Up About a minute   80/tcp, 0.0.0.0:43903->6443/tcp   k3d-workshop-serverlb
 523a025087b3   rancher/k3s:v1.21.1-k3s1   "/bin/entrypoint.sh …"   About a minute ago   Up About a minute                                     k3d-workshop-agent-0
@@ -76,7 +76,7 @@ CONTAINER ID   IMAGE                      COMMAND                  CREATED      
 With `kubectl` you'll see 2 running pods: a control-plane and a worker
 
 ```console
-$ kubectl get nodes
+kubectl get nodes
 NAME                    STATUS   ROLES                  AGE     VERSION
 k3d-workshop-agent-0    Ready    <none>                 2m34s   v1.21.1+k3s1
 k3d-workshop-server-0   Ready    control-plane,master   2m44s   v1.21.1+k3s1
@@ -85,7 +85,7 @@ k3d-workshop-server-0   Ready    control-plane,master   2m44s   v1.21.1+k3s1
 You can also have a look to the default cluster's components that are all located in the namespace `kube-system`
 
 ```console
-$ kubectl get pods -n kube-system
+kubectl get pods -n kube-system
 NAME                                      READY   STATUS      RESTARTS   AGE
 helm-install-traefik-crd-h5j7m            0/1     Completed   0          16h
 helm-install-traefik-8mzhk                0/1     Completed   0          16h
@@ -103,7 +103,7 @@ The main interface to the Kubernetes API is `kubectl`. This CLI is configured wi
 you can have a look at its content wether by having a look at its default location is `~/.kube/config` or running the command
 
 ```console
-$ kubectl config view
+kubectl config view
 apiVersion: v1
 clusters:
 - cluster:
@@ -114,7 +114,7 @@ clusters:
 and you can check if the CLI is properly configured by running
 
 ```console
-$ kubectl cluster-info
+kubectl cluster-info
 Kubernetes control plane is running at https://0.0.0.0:43903
 CoreDNS is running at https://0.0.0.0:43903/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
 Metrics-server is running at https://0.0.0.0:43903/api/v1/namespaces/kube-system/services/https:metrics-server:/proxy
@@ -128,25 +128,25 @@ Here is a basic "hello-world" example:
 Write a dumb script, just ensure its name is prefixed with `kubectl-` and put it in your `PATH`
 
 ```console
-$ cat > kubectl-helloworld<<EOF
+cat > kubectl-helloworld<<EOF
 #!/bin/bash
 echo "Hello world!"
 EOF
 
-$ chmod u+x kubectl-helloworld && sudo mv kubectl-helloworld /usr/local/bin
+chmod u+x kubectl-helloworld && sudo mv kubectl-helloworld /usr/local/bin
 ```
 
 Then it can be used as an argument of kubectl
 
 ```console
-$ kubectl helloworld
+kubectl helloworld
 Hello world!
 ```
 
 Delete our test
 
 ```console
-$ sudo rm /usr/local/bin/kubectl-helloworld
+sudo rm /usr/local/bin/kubectl-helloworld
 ```
 
 You can find more information on how to create a kubectl plugin [here](https://kubernetes.io/docs/tasks/extend-kubectl/kubectl-plugins/)
@@ -156,7 +156,7 @@ In order to benefit from the plugins written by the community there's a tool nam
 Update the local index
 
 ```console
-$ kubectl krew update
+kubectl krew update
 Adding "default" plugin index from https://github.com/kubernetes-sigs/krew-index.git.
 Updated the local copy of plugin index.
 ```
@@ -164,7 +164,7 @@ Updated the local copy of plugin index.
 Browse the available plugins
 
 ```console
-$ kubectl krew search
+kubectl krew search
 NAME                            DESCRIPTION                                         INSTALLED
 access-matrix                   Show an RBAC access matrix for server resources     no
 advise-psp                      Suggests PodSecurityPolicies for cluster.           no
@@ -179,7 +179,7 @@ For the current workshop we'll make use of `ctx` `ns`
 * `ns`: Switch between Kubernetes namespaces (Avoid to specify the namespace for each kubectl commands when working on a given namespace)
 
 ```console
-$ kubectl krew install ctx ns
+kubectl krew install ctx ns
 Updated the local copy of plugin index.
 Installing plugin: ctx
 ...
@@ -188,7 +188,7 @@ Installing plugin: ctx
 Then you'll be able to switch between contexts (clusters) and namespaces.
 
 ```console
-$ kubectl ns
+kubectl ns
 Context "k3d-workshop" modified.
 Active namespace is "kube-system".
 ```

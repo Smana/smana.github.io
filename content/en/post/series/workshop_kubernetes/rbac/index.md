@@ -34,25 +34,25 @@ It is a good practice to configure your pod to make use of a `serviceaccount`. A
 Create a service account
 
 ```console
-$ kubectl create serviceaccount myapp
+kubectl create serviceaccount myapp
 serviceaccount/myapp created
 ```
 
 When a service account is created, a `token` is automatically generated and stored in a secret.
 
 ```console
-$ kubectl describe sa myapp | grep -i token
+kubectl describe sa myapp | grep -i token
 Mountable secrets:   myapp-token-bz2zq
 Tokens:              myapp-token-bz2zq
 
-$ kubectl get secret myapp-token-bz2zq --template={{.data.token}} | base64 -d
+kubectl get secret myapp-token-bz2zq --template={{.data.token}} | base64 -d
 eyJhb...EYxhjI_ckZ74A
 ```
 
 Using a tool to decode the JWT token you should see the following content
 
 ```console
-$ kubectl get secret myapp-token-bz2zq --template={{.data.token}} | base64 -d | jwt decode -
+kubectl get secret myapp-token-bz2zq --template={{.data.token}} | base64 -d | jwt decode -
 
 Token header
 ------------
@@ -77,16 +77,16 @@ Token claims
 We're going to create a deployment that will be configured to used this serviceaccount. In the yaml you'll notice that we defined the `serviceAccountName`.
 
 ```console
-$ kubectl apply -f manifests/rbac/deployment.yaml
+kubectl apply -f content/resources/kubernetes_workshop/rbac/deployment.yaml
 deployment.apps/myapp created
 ```
 
 As we didn't assigned any permissions to this serviceaccount, our application won't be able to call any of the API endpoints
 
 ```console
-$ POD_NAME=$(kubectl get po -l app=myapp -o jsonpath='{.items[0].metadata.name}')
+POD_NAME=$(kubectl get po -l app=myapp -o jsonpath='{.items[0].metadata.name}')
 
-$ kubectl exec ${POD_NAME} -- kubectl auth can-i -n foo --list
+kubectl exec ${POD_NAME} -- kubectl auth can-i -n foo --list
 Resources                                       Non-Resource URLs                     Resource Names   Verbs
 selfsubjectaccessreviews.authorization.k8s.io   []                                    []               [create]
 selfsubjectrulesreviews.authorization.k8s.io    []                                    []               [create]
@@ -117,14 +117,14 @@ In order to allow it to read configmaps in the namespace foo, we're going to cre
 Create the role
 
 ```console
-$ kubectl apply -f manifests/rbac/role.yaml
+kubectl apply -f content/resources/kubernetes_workshop/rbac/role.yaml
 role.rbac.authorization.k8s.io/read-configmaps created
 ```
 
 And assign it to the serviceaccount we've created previously
 
 ```console
-$ kubectl create rolebinding -n foo myapp-configmap --serviceaccount=foo:myapp --role=read-configmaps
+kubectl create rolebinding -n foo myapp-configmap --serviceaccount=foo:myapp --role=read-configmaps
 rolebinding.rbac.authorization.k8s.io/myapp-configmap created
 ```
 
@@ -133,10 +133,10 @@ Note that in the above command the serviceaccount must be specified with the nam
 You don't have to restart the pod to get the permissions enabled.
 
 ```console
-$ kubectl exec ${POD_NAME} -- kubectl auth can-i get configmaps -n foo
+kubectl exec ${POD_NAME} -- kubectl auth can-i get configmaps -n foo
 yes
 
-$ kubectl exec ${POD_NAME} -- kubectl get cm
+kubectl exec ${POD_NAME} -- kubectl get cm
 NAME               DATA   AGE
 kube-root-ca.crt   1      3d20h
 helloworld         2      2d2h
@@ -145,7 +145,7 @@ helloworld         2      2d2h
 This is possible thanks to the token mounted within the container
 
 ```console
-$ kubectl exec -ti ${POD_NAME} -- bash -c 'curl -skH "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://kubernetes.default/api/v1/namespaces/foo/configmaps'
+kubectl exec -ti ${POD_NAME} -- bash -c 'curl -skH "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://kubernetes.default/api/v1/namespaces/foo/configmaps'
 {
   "kind": "ConfigMapList",
   "apiVersion": "v1",
@@ -168,19 +168,19 @@ we need:
 * A **clusterrolebinding** to assign this clusterrole to our application (serviceaccount)
 
 ```console
-$ kubectl apply -f manifests/rbac/clusterrole.yaml
+$ kubectl apply -f content/resources/kubernetes_workshop/rbac/clusterrole.yaml
 clusterrole.rbac.authorization.k8s.io/list-pods created
 ```
 
 ```console
-$ kubectl create clusterrolebinding -n foo myapp-pods --serviceaccount=foo:myapp --clusterrole=list-pods
+kubectl create clusterrolebinding -n foo myapp-pods --serviceaccount=foo:myapp --clusterrole=list-pods
 clusterrolebinding.rbac.authorization.k8s.io/myapp-pods created
 ```
 
 Now lets have a look to the permissions our applications has in the namespace `foo`
 
 ```console
-$ kubectl exec ${POD_NAME} -- kubectl auth can-i -n foo --list
+kubectl exec ${POD_NAME} -- kubectl auth can-i -n foo --list
 Resources                                       Non-Resource URLs                     Resource Names   Verbs
 selfsubjectaccessreviews.authorization.k8s.io   []                                    []               [create]
 selfsubjectrulesreviews.authorization.k8s.io    []                                    []               [create]
