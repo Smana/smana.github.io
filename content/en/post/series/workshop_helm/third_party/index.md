@@ -40,7 +40,7 @@ Let’s look for a wordpress chart !
 If you just installed Helm, your repositories list should be empty
 
 ```console
-$ helm repo list
+helm repo list
 ```
 
 We’re going to check what are the Wordpress charts available in the **[artifacthub](https://artifacthub.io/).**
@@ -48,7 +48,7 @@ We’re going to check what are the Wordpress charts available in the **[artifac
 You can either browse from the web page or use the command
 
 ```console
-$ helm search hub wordpress
+helm search hub wordpress
 URL                                                     CHART VERSION   APP VERSION     DESCRIPTION
 https://artifacthub.io/packages/helm/bitnami/wo...      10.6.4          5.6.1           Web publishing platform for building blogs and ...
 https://artifacthub.io/packages/helm/groundhog2...      0.2.6           5.6.0-apache    A Helm chart for Wordpress on Kubernetes
@@ -65,7 +65,7 @@ First of all the number of **stars** obviously and whether the artifact comes fr
 We’ll get the one provided by Bitnami. In the [chart page](https://artifacthub.io/packages/helm/bitnami/wordpress) you’ll be guided with the commands to add Bitnami’s repository.
 
 ```console
-$ helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo add bitnami https://charts.bitnami.com/bitnami
 "bitnami" has been added to your repositories
 
 helm repo update
@@ -74,7 +74,7 @@ helm repo update
 From now on we can install all the charts published by Bitnami:
 
 ```console
-$ helm search repo bitnami
+helm search repo bitnami
 NAME                                    CHART VERSION   APP VERSION     DESCRIPTION
 bitnami/bitnami-common                  0.0.9           0.0.9           DEPRECATED Chart with custom templates used in ...
 bitnami/airflow                         8.0.3           2.0.1           Apache Airflow is a platform to programmaticall...
@@ -92,9 +92,9 @@ Now that we identified the chart, we’re going to check what it actually does. 
 * you can download the chart on your laptop and have a look to its content
 
 ```console
-$ helm pull --untar bitnami/wordpress
+helm pull --untar bitnami/wordpress
 
-$ tree -L 2  wordpress/
+tree -L 2  wordpress/
 wordpress/
 ├── Chart.lock
 ├── charts
@@ -120,7 +120,7 @@ wordpress/
 * check what are the dependencies pulled by this chart
 
 ```console
-$ helm show chart bitnami/wordpress
+helm show chart bitnami/wordpress
 annotations:
   category: CMS
 apiVersion: v2
@@ -144,7 +144,7 @@ dependencies:
 * Look at the **available values**
 
 ```console
-$ helm show values bitnami/wordpress
+helm show values bitnami/wordpress
 ```
 
 ## Our first release
@@ -190,7 +190,7 @@ Here we go!
 First of all we’ll run it in dry-run mode in order to check the yaml rendering (be careful, the passwords are printed in plain text)
 
 ```console
-$ helm install foo-blog bitnami/wordpress \
+helm install foo-blog bitnami/wordpress \
 -f override-values.yaml \
 --set mariadb.auth.rootPassword=r00tP4ss \
 --set mariadb.auth.password=us3rP4ss \
@@ -205,7 +205,7 @@ Another word you need to know is **Release**.
 If the output looks OK we can install our wordpress, just remove the `--dry-run` parameter
 
 ```console
-$ helm install foo-blog bitnami/wordpress -f override-values.yaml --set mariadb.auth.rootPassword="r00tP4ss" --set mariadb.auth.password="us3rP4ss" --set wordpressPassword="azerty123"
+helm install foo-blog bitnami/wordpress -f override-values.yaml --set mariadb.auth.rootPassword="r00tP4ss" --set mariadb.auth.password="us3rP4ss" --set wordpressPassword="azerty123"
 NAME: foo-blog
 LAST DEPLOYED: Fri Feb 12 16:33:21 2021
 NAMESPACE: default
@@ -242,7 +242,7 @@ When the release has been successfully installed you’ll get the above “**NOT
 But first of all we’re going to check that the pods are actually running
 
 ```console
-$ kubectl get deploy,sts
+kubectl get deploy,sts
 NAME                                    READY   UP-TO-DATE   AVAILABLE   AGE
 deployment.apps/foo-blog-wordpress   2/2     2            2           55m
 
@@ -253,7 +253,7 @@ statefulset.apps/foo-blog-mariadb   1/1     55m
 We didn’t define an ingress for the purpose of the workshop, therefore we’ll use a port-forward
 
 ```console
-$ kubectl port-forward svc/foo-blog-wordpress 9090:80
+kubectl port-forward svc/foo-blog-wordpress 9090:80
 ```
 
 Then open a browser using the URL [http://localhost:9090/admin](http://localhost:8080/admin), you’ll be prompted to fill in the credentials you defined above. (wordpressPassword)
@@ -263,11 +263,11 @@ Then open a browser using the URL [http://localhost:9090/admin](http://localhost
 We’ll check the database credentials too as follows
 
 ```console
-$ MARIADB=$(kubectl get po -l app.kubernetes.io/name=mariadb -o jsonpath='{.items[0].metadata.name}')
+MARIADB=$(kubectl get po -l app.kubernetes.io/name=mariadb -o jsonpath='{.items[0].metadata.name}')
 ```
 
 ```console
-$ kubectl exec -ti ${MARIADB} -- bash -c 'mysql -u foobar -pus3rP4ss'
+kubectl exec -ti ${MARIADB} -- bash -c 'mysql -u foobar -pus3rP4ss'
 Welcome to the MariaDB monitor.  Commands end with ; or \g.
 Your MariaDB connection id is 372
 Server version: 10.5.8-MariaDB Source distribution
@@ -289,7 +289,7 @@ MariaDB [(none)]> SHOW GRANTS;
 Delete the wordpress release
 
 ```console
-$ helm uninstall foo-blog
+helm uninstall foo-blog
 ```
 
 ## Deploy a complete monitoring stack with a single command!
@@ -297,14 +297,14 @@ $ helm uninstall foo-blog
 The purpose of this step is to show that, even if the stack is composed of dozens of manifest, Helm makes things easy.
 
 ```console
-$ helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 "prometheus-community" has been added to your repositories
 
 helm repo update
 ```
 
 ```console
-$ helm install kube-prometheus prometheus-community/kube-prometheus-stack --create-namespace --namespace monitoring
+helm install kube-prometheus prometheus-community/kube-prometheus-stack --create-namespace --namespace monitoring
 NAME: kube-prometheus
 LAST DEPLOYED: Fri Feb 12 18:03:05 2021
 NAMESPACE: monitoring
@@ -318,7 +318,7 @@ kube-prometheus-stack has been installed. Check its status by running:
 Check that all the pods are running and run a port-forward
 
 ```console
-$ kubectl port-forward -n monitoring svc/kube-prometheus-grafana 9090:80
+kubectl port-forward -n monitoring svc/kube-prometheus-grafana 9090:80
 ```
 
 Then open a browser using the URL [http://localhost:9090/admin](http://localhost:9090/admin)
@@ -333,7 +333,7 @@ You should browse a few minutes over all the dashboards available. There is pret
 You can then have a look to the resources that have been applied with a single command line as follows
 
 ```console
-$ helm get manifest -n monitoring kube-prometheus
+helm get manifest -n monitoring kube-prometheus
 ```
 
 Well for a production ready prometheus we would have played a bit with the values but you get the point.
@@ -341,5 +341,7 @@ Well for a production ready prometheus we would have played a bit with the value
 Delete the kube-prometheus stack
 
 ```console
-$ helm uninstall  -n monitoring kube-prometheus
+helm uninstall  -n monitoring kube-prometheus
 ```
+
+:arrow_right: [Next: Helm ecosystem](/post/series/workshop_helm/ecosystem/)

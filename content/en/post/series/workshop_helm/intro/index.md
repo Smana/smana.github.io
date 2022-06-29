@@ -35,13 +35,13 @@ In order to have an easily provisioned temporary playground we’ll make use of 
 After installing the binary you should enable the completion (bash or zsh) as follows (do the same for both helm and k3d).
 
 ```console
-$ source <(k3d completion bash)
+source <(k3d completion bash)
 ```
 
 Then create the sandbox cluster named “**helm-workshop**”
 
 ```console
-$ k3d cluster create helm-workshop
+k3d cluster create helm-workshop
 INFO[0000] Created network 'k3d-helm-workshop'
 INFO[0000] Created volume 'k3d-helm-workshop-images'
 INFO[0001] Creating node 'k3d-helm-workshop-server-0'
@@ -90,12 +90,12 @@ This is not directly related to Helm but this is a general issue on Kubernetes.
 
 There are many options, some of them work great with Helm, some others require managing secrets apart from Helm releases.
 
-In the [ArgoCD documentation](https://argoproj.github.io/argo-cd/operator-manual/secret-management/) they tried to reference all the options available.
+In the [ArgoCD documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/secret-management/) they tried to reference all the options available.
 
 #### Cleanup
 
 Pretty simple we’ll drop the whole k3d cluster
 
 ```console
-$ k3d cluster delete helm-workshop
+k3d cluster delete helm-workshop
 ```

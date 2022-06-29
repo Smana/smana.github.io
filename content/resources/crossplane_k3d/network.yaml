@@ -1,0 +1,13 @@
+apiVersion: compute.gcp.crossplane.io/v1beta1
+kind: Network
+metadata:
+  name: dev-network
+  labels:
+    service: vpc
+    creation: crossplane
+spec:
+  forProvider:
+    autoCreateSubnetworks: false
+    description: "Network used for experimentations and POCs"
+    routingConfig:
+      routingMode: REGIONAL

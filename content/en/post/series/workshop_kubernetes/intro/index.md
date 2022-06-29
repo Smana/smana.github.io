@@ -47,7 +47,7 @@ This repository aims to quickly learn the basics of [Kubernetes](https://kuberne
 Pretty simple we’ll drop the whole k3d cluster
 
 ```console
-$ k3d cluster delete workshop
+k3d cluster delete workshop
 INFO[0000] Deleting cluster 'workshop'
 ...
 INFO[0008] Successfully deleted cluster workshop!

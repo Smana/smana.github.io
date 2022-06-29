@@ -130,13 +130,13 @@ In the chart we’ve already generated there’s a job that checks the webserver
 Check that the release is already installed
 
 ```console
-$ helm list
+helm list
 NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART           APP VERSION
 web     default         1               2021-02-15 15:11:09.036602795 +0100 CET deployed        web-0.1.0       1.16.0
 ```
 
 ```console
-$ helm test web
+helm test web
 NAME: web
 LAST DEPLOYED: Mon Feb 15 15:11:09 2021
 NAMESPACE: default
@@ -183,7 +183,7 @@ Check all the available values for this chart [here](https://artifacthub.io/pack
 Whenever you add a dependency and you’re using a local chart (on your laptop), you must run the following command to **pull** it
 
 ```console
-$ helm dep update web
+helm dep update web
 Hang tight while we grab the latest from your chart repositories...
 ….
 ...Successfully got an update from the "bitnami" chart repository
@@ -200,7 +200,7 @@ After [testing](#testing-the-chart) your changes you can install the release wit
 `helm upgrade --install <release_name> <chart_dir>`
 
 ```console
-$ helm upgrade --install web web
+helm upgrade --install web web
 Release "web" has been upgraded. Happy Helming!
 NAME: web
 LAST DEPLOYED: Mon Feb 15 18:22:23 2021
@@ -212,7 +212,7 @@ REVISION: 2
 You can notice that your webserver has been successfully installed along with a HA Redis cluster
 
 ```console
-$ kubectl get po
+kubectl get po
 NAME                   READY   STATUS      RESTARTS   AGE
 web-74bf5c6c66-fjsmb   1/1     Running     0          3h14m
 web-test-connection    0/1     Completed   0          90m
@@ -240,3 +240,5 @@ Furthermore, even if it has been deprecated, you should clone/fork the original 
 Note that most of the time, if you want to keep the kubernetes manifests readable, you would put most of the code in what we call helpers files. There’s often at least one named **_helpers.tpl.**
 
 **Note**: Even if you can do pretty advanced things with this templating language, you shouldn’t overuse it in order to keep the kubernetes resources readable and the chart maintainable.
+
+:arrow_right: [Next: Application lifecycle using Helm](/post/series/workshop_helm/lifecycle/)

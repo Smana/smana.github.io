@@ -84,7 +84,9 @@ Created service account [crossplane].
 ```
 
 Assign the proper permissions to the service account.
+* Compute Network Admin
 * Kubernetes Engine Admin
+* Service Account User
 
 ```console
 gcloud projects add-iam-policy-binding "${GCP_PROJECT}" --member=serviceAccount:"${SA_EMAIL}" --role=roles/container.admin
@@ -148,6 +150,17 @@ crossplane-rbac-manager-54d96cd559-222hc   1/1     Running   0          3m37s
 crossplane-688c575476-lgklq                1/1     Running   0          3m37s
 ```
 
+{{% notice info clone_repo %}}
+All the files used for the upcoming steps are stored within this blog repository.
+So it is required to clone it as follows and change the current directory:
+
+```console
+git clone https://github.com/Smana/smana.github.io.git
+
+cd smana.github.io/content/resources/crossplane_k3d
+```
+{{% /notice %}}
+
 Now we'll configure Crossplane so that it will be able to create and manage GCP resources. This is done by configuring the **provider** `provider-gcp` as follows.
 
 <span style="color:green">provider.yaml</span>
@@ -199,8 +212,32 @@ kubectl apply -f provider-config.yaml
 providerconfig.gcp.crossplane.io/default created
 ```
 
-[crd](https://doc.crds.dev/github.com/crossplane/provider-gcp)
+According to the serviceaccount permissions we can create resources in GCP. In order to learn about all the available resources and **parameters** we can have a look to the `provider`'s [API reference](https://doc.crds.dev/github.com/crossplane/provider-gcp).
 
+The first resource we'll create is the network that will host our Kubernetes cluster.
+
+<span style="color:green">network.yaml</span>
+```yaml
+apiVersion: compute.gcp.crossplane.io/v1beta1
+kind: Network
+metadata:
+  name: dev-network
+  labels:
+    service: vpc
+    creation: crossplane
+spec:
+  forProvider:
+    autoCreateSubnetworks: false
+    description: "Network used for experimentations and POCs"
+    routingConfig:
+      routingMode: REGIONAL
+```
+
+```console
+kubectl get network
+NAME          READY   SYNCED
+dev-network   True    True
+```
 
 ```yaml
 apiVersion: container.gcp.crossplane.io/v1beta2
