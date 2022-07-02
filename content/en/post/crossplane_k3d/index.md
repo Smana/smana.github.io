@@ -89,12 +89,16 @@ Assign the proper permissions to the service account.
 * Service Account User
 
 ```console
-gcloud projects add-iam-policy-binding "${GCP_PROJECT}" --member=serviceAccount:"${SA_EMAIL}" --role=roles/container.admin
+SA_EMAIL=$(gcloud iam service-accounts list --filter="email ~ ^crossplane" --format='value(email)')
+
+gcloud projects add-iam-policy-binding "${GCP_PROJECT}" --member=serviceAccount:"${SA_EMAIL}" --role=roles/container.admin --role=roles/compute.networkAdmin --role=roles/iam.serviceAccountUser
 Updated IAM policy for project [<project>].
 bindings:
 - members:
-  - serviceAccount:service-xxx@compute-system.iam.gserviceaccount.com
-  role: roles/compute.serviceAgent
+  - serviceAccount:crossplane@<project>.iam.gserviceaccount.com
+  role: roles/compute.networkAdmin
+- members:
+  - serviceAccount:crossplane@<project>.iam.gserviceaccount.com
 ...
 version: 1
 
@@ -103,8 +107,6 @@ version: 1
 Download the service account key (json format)
 
 ```console
-SA_EMAIL=$(gcloud iam service-accounts list --filter="email ~ ^crossplane" --format='value(email)')
-
 gcloud iam service-accounts keys create crossplane.json --iam-account ${SA_EMAIL}
 created key [ea2eb9ce2939127xxxxxxxxxx] of type [json] as [crossplane.json] for [crossplane@<project>.iam.gserviceaccount.com]
 ```
@@ -114,7 +116,7 @@ created key [ea2eb9ce2939127xxxxxxxxxx] of type [json] as [crossplane.json] for 
 
 Now that we have a credentials file for Google Cloud, we can deploy the [**Crossplane**](https://crossplane.io/) operator and configure the `provider-gcp` provider.
 
-{{% notice info "Note" %}}
+{{% notice info "Info" %}}
 Most of the following steps are issued from the [official documentation](https://crossplane.io/docs/v1.8/getting-started/install-configure.html)
 {{% /notice %}}
 
@@ -150,7 +152,7 @@ crossplane-rbac-manager-54d96cd559-222hc   1/1     Running   0          3m37s
 crossplane-688c575476-lgklq                1/1     Running   0          3m37s
 ```
 
-{{% notice info clone_repo %}}
+{{% notice info Info %}}
 All the files used for the upcoming steps are stored within this blog repository.
 So it is required to clone it as follows and change the current directory:
 
@@ -211,8 +213,9 @@ spec:
 kubectl apply -f provider-config.yaml
 providerconfig.gcp.crossplane.io/default created
 ```
-
+{{% notice info Info %}}
 According to the serviceaccount permissions we can create resources in GCP. In order to learn about all the available resources and **parameters** we can have a look to the `provider`'s [API reference](https://doc.crds.dev/github.com/crossplane/provider-gcp).
+{{% /notice %}}
 
 The first resource we'll create is the network that will host our Kubernetes cluster.
 
@@ -238,27 +241,59 @@ kubectl get network
 NAME          READY   SYNCED
 dev-network   True    True
 ```
+You can even get more details by describing this resource
+```console
+kubectl describe network dev-network | grep -A 20 '^Status:'
+Status:
+  At Provider:
+    Creation Timestamp:  2022-06-28T09:45:30.703-07:00
+    Id:                  3005424280727359173
+    Self Link:           https://www.googleapis.com/compute/v1/projects/<project>/global/networks/dev-network
+  Conditions:
+    Last Transition Time:  2022-06-28T16:45:31Z
+    Reason:                Available
+    Status:                True
+    Type:                  Ready
+    Last Transition Time:  2022-06-30T16:36:59Z
+    Reason:                ReconcileSuccess
+    Status:                True
+    Type:                  Synced
+```
 
+<br>
+
+### :rocket: Create a GKE cluster
+
+Everything is ready so that we can create our GKE cluster. Applying the file <span style="color:green">cluster.yaml</span> will create a cluster and attach a node group to it.
+
+<span style="color:green">cluster.yaml</span>
 ```yaml
+---
 apiVersion: container.gcp.crossplane.io/v1beta2
 kind: Cluster
 metadata:
-  name: example-cluster
+  name: dev-cluster
 spec:
   forProvider:
-    initialClusterVersion: "1.23"
-    location: europe-west1
-    autoscaling:
-      autoprovisioningNodePoolDefaults:
-        serviceAccount: sa-test
-    networkConfig:
-      enableIntraNodeVisibility: true
-    loggingService: logging.googleapis.com/kubernetes
-    monitoringService: monitoring.googleapis.com/kubernetes
+    description: "Kubernetes cluster for experimentations and POCs"
+    initialClusterVersion: "1.24"
+    releaseChannel:
+      channel: "RAPID"
+    location: europe-west9-a
     addonsConfig:
       gcePersistentDiskCsiDriverConfig:
         enabled: true
-    network: "default"
+      networkPolicyConfig:
+        disabled: false
+    networkRef:
+      name: dev-network
+    ipAllocationPolicy:
+      createSubnetwork: true
+      useIpAliases: true
+    defaultMaxPodsConstraint:
+      maxPodsPerNode: 110
+    networkPolicy:
+      enabled: false
   writeConnectionSecretToRef:
     namespace: default
     name: gke-conn
@@ -266,41 +301,65 @@ spec:
 apiVersion: container.gcp.crossplane.io/v1beta1
 kind: NodePool
 metadata:
-  name: crossplane-np
+  name: main-np
 spec:
   forProvider:
+    initialNodeCount: 1
     autoscaling:
       autoprovisioned: false
       enabled: true
-      maxNodeCount: 5
-      minNodeCount: 3
+      maxNodeCount: 4
+      minNodeCount: 1
     clusterRef:
-      name: example-cluster
+      name: dev-cluster
     config:
-      serviceAccount: sa-test
-      machineType: n1-standard-1
-      sandboxConfig:
-        type: gvisor
+      machineType: n2-standard-2
       diskSizeGb: 120
-      diskType: pd-ssd
+      diskType: pd-standard
       imageType: cos_containerd
+      preemptible: true
       labels:
-        test-label: crossplane-created
+        environment: dev
+        managed-by: crossplane
       oauthScopes:
-      - "https://www.googleapis.com/auth/devstorage.read_only"
-      - "https://www.googleapis.com/auth/logging.write"
-      - "https://www.googleapis.com/auth/monitoring"
-      - "https://www.googleapis.com/auth/servicecontrol"
-      - "https://www.googleapis.com/auth/service.management.readonly"
-      - "https://www.googleapis.com/auth/trace.append"
-    initialNodeCount: 3
+        - "https://www.googleapis.com/auth/devstorage.read_only"
+        - "https://www.googleapis.com/auth/logging.write"
+        - "https://www.googleapis.com/auth/monitoring"
+        - "https://www.googleapis.com/auth/servicecontrol"
+        - "https://www.googleapis.com/auth/service.management.readonly"
+        - "https://www.googleapis.com/auth/trace.append"
+      metadata:
+        disable-legacy-endpoints: "true"
+      shieldedInstanceConfig:
+        enableIntegrityMonitoring: true
+        enableSecureBoot: true
+    management:
+      autoRepair: true
+      autoUpgrade: true
+    maxPodsConstraint:
+      maxPodsPerNode: 60
     locations:
-      - "europe-west1-b"
+      - "europe-west9-a"
 ```
 
-<br>
+```console
+kubectl apply -f cluster.yaml
+cluster.container.gcp.crossplane.io/dev-cluster created
+```
 
-### :rocket: Create a GKE cluster
+Note that it takes around 5mins for the Kubernetes API to be available. The *STATE* will transition from `PROVISIONING` to `READY` and when a change is being applied the cluster status is `RECONCILING`
+```console
+kubectl get cluster
+NAME          READY   SYNCED   STATE          ENDPOINT   LOCATION         AGE
+dev-cluster   False   True     PROVISIONING              europe-west9-a   60s
+```
+![cluster_being_created](cluster_being_created.png)
+
+```console
+kubectl get cluster
+NAME          READY   SYNCED   STATE         ENDPOINT         LOCATION         AGE
+dev-cluster   True    True     RECONCILING   34.155.116.145   europe-west9-a   6m23s
+```
 
 <br>
 
