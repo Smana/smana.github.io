@@ -2,10 +2,11 @@
 author = "Smaine Kahlouch"
 title = "My Kubernetes cluster in GKE with `Crossplane`"
 date = "2022-05-25"
-summary = "Use a local **k3d** cluster in order to manage infrastructure in Google Cloud, create a **GKE** cluster and Velero to backup the **Crossplane**"
+summary = "Use a local **k3d** cluster in order to create and manage a **GKE** cluster and Velero to backup the **Crossplane** resources"
 featured = true
 codeMaxLines = 20
 usePageBundles = true
+toc = true
 tags = [
     "kubernetes",
     "infrastructure"
@@ -13,16 +14,10 @@ tags = [
 thumbnail= "crossplane_k3d.jpg"
 +++
 
-The target of this documentation is to be able to manage infrastructure using **Crossplane**.
-And we want to backup the resources created so that we will be able to recreate everything from scratch.
+The target of this documentation is to be able to create and manage a GKE cluster using [**Crossplane**](https://crossplane.io/).
+And we want to backup the resources created in order to be able to recreate everything from scratch.
 
-Here are the steps we'll follow in order to get my personal Kubernetes cluster:
-
-- [:whale: Create the local k3d cluster for Crossplane's control plane](#whale-create-the-local-k3d-cluster-for-crossplanes-control-plane)
-- [:cloud: Generate the Google Cloud service account](#cloud-generate-the-google-cloud-service-account)
-- [:construction: Deploy and configure Crossplane](#construction-deploy-and-configure-crossplane)
-- [:rocket: Create a GKE cluster](#rocket-create-a-gke-cluster)
-- [:floppy_disk: Backup the local Kubernetes cluster using Velero](#floppy_disk-backup-the-local-kubernetes-cluster-using-velero)
+Here are the steps we'll follow in order to get a Kubernetes cluster for development and experimentations use cases.
 
 ### :whale: Create the local k3d cluster for Crossplane's control plane
 
@@ -30,7 +25,7 @@ Here are the steps we'll follow in order to get my personal Kubernetes cluster:
 There are several deployment models for Crossplane, we could for instance deploy the control plane on a management cluster on Kubernetes or a control plane per Kubernetes cluster.<br>
 Here I chose a simple method which is fine for a personal use case: A **local Kubernetes instance** in which I'll deploy Crossplane.
 
-Let's install k3d using [asdf](asdf.md).
+Let's install k3d using [asdf](/post/asdf/).
 
 ```console
 asdf plugin-add k3d
@@ -91,7 +86,8 @@ Assign the proper permissions to the service account.
 ```console
 SA_EMAIL=$(gcloud iam service-accounts list --filter="email ~ ^crossplane" --format='value(email)')
 
-gcloud projects add-iam-policy-binding "${GCP_PROJECT}" --member=serviceAccount:"${SA_EMAIL}" --role=roles/container.admin --role=roles/compute.networkAdmin --role=roles/iam.serviceAccountUser
+gcloud projects add-iam-policy-binding "${GCP_PROJECT}" --member=serviceAccount:"${SA_EMAIL}" \
+--role=roles/container.admin --role=roles/compute.networkAdmin --role=roles/iam.serviceAccountUser
 Updated IAM policy for project [<project>].
 bindings:
 - members:
@@ -154,7 +150,7 @@ crossplane-688c575476-lgklq                1/1     Running   0          3m37s
 
 {{% notice info Info %}}
 All the files used for the upcoming steps are stored within this blog repository.
-So it is required to clone it as follows and change the current directory:
+So you should clone and change the current directory:
 
 ```console
 git clone https://github.com/Smana/smana.github.io.git
@@ -200,7 +196,7 @@ kind: ProviderConfig
 metadata:
   name: default
 spec:
-  projectID: ${PROJECT_ID}
+  projectID: ${GCP_PROJECT}
   credentials:
     source: Secret
     secretRef:
@@ -248,7 +244,7 @@ Status:
   At Provider:
     Creation Timestamp:  2022-06-28T09:45:30.703-07:00
     Id:                  3005424280727359173
-    Self Link:           https://www.googleapis.com/compute/v1/projects/<project>/global/networks/dev-network
+    Self Link:           https://www.googleapis.com/compute/v1/projects/${GCP_PROJECT}/global/networks/dev-network
   Conditions:
     Last Transition Time:  2022-06-28T16:45:31Z
     Reason:                Available
@@ -345,22 +341,107 @@ spec:
 ```console
 kubectl apply -f cluster.yaml
 cluster.container.gcp.crossplane.io/dev-cluster created
+nodepool.container.gcp.crossplane.io/main-np created
+
 ```
 
-Note that it takes around 5mins for the Kubernetes API to be available. The *STATE* will transition from `PROVISIONING` to `READY` and when a change is being applied the cluster status is `RECONCILING`
+Note that it takes around 10 minutes for the Kubernetes API and the nodes to be available. The *STATE* will transition from `PROVISIONING` to `RUNNING` and when a change is being applied the cluster status is `RECONCILING`
 ```console
-kubectl get cluster
-NAME          READY   SYNCED   STATE          ENDPOINT   LOCATION         AGE
-dev-cluster   False   True     PROVISIONING              europe-west9-a   60s
+watch 'kubectl get cluster,nodepool'
+NAME                                              READY   SYNCED   STATE          ENDPOINT       LOCATION         AGE
+cluster.container.gcp.crossplane.io/dev-cluster   False   True     PROVISIONING   34.155.122.6   europe-west9-a   3m15s
+
+NAME                                           READY   SYNCED   STATE   CLUSTER-REF   AGE
+nodepool.container.gcp.crossplane.io/main-np   False   False            dev-cluster   3m15s
 ```
 ![cluster_being_created](cluster_being_created.png)
 
+When the cluster's status READY `True` you can download the cluster's credentials.
 ```console
 kubectl get cluster
 NAME          READY   SYNCED   STATE         ENDPOINT         LOCATION         AGE
-dev-cluster   True    True     RECONCILING   34.155.116.145   europe-west9-a   6m23s
+dev-cluster   True    True     RECONCILING   34.42.42.42      europe-west9-a   6m23s
+
+gcloud container clusters get-credentials dev-cluster --zone europe-west9-a --project ${GCP_PROJECT}
+Fetching cluster endpoint and auth data.
+kubeconfig entry generated for dev-cluster.
+```
+
+For better readability you may want to rename the kubectl id for the newly created cluster
+```console
+kubectl config rename-context gke_${GCP_PROJECT}_europe-west9-a_dev-cluster dev-cluster
+Context "gke_${GCP_PROJECT}_europe-west9-a_dev-cluster" renamed to "dev-cluster".
+
+kubectl config get-contexts
+CURRENT   NAME             CLUSTER                                                       AUTHINFO                                                      NAMESPACE
+*         dev-cluster      gke_cloud-native-computing-paris_europe-west9-a_dev-cluster   gke_cloud-native-computing-paris_europe-west9-a_dev-cluster
+          k3d-crossplane   k3d-crossplane                                                admin@k3d-crossplane
+```
+
+That's great :tada: we know have a GKE cluster up and running.
+```console
+kubectl get nodes
+NAME                                    STATUS   ROLES    AGE   VERSION
+gke-dev-cluster-main-np-d0d978f9-5fc0   Ready    <none>   10m   v1.24.1-gke.1400
 ```
 
 <br>
 
 ### :floppy_disk: Backup the local Kubernetes cluster using Velero
+
+:construction_worker: <span style="color:red">**Work in progess for this section**</span>
+
+Let's backup our Crossplane cluster configuration (the local cluster created with k3d). So that we'll be able to provision our infrastructure from scratch whenever we want to experiment a new software/tool.
+That way we won't have to let the cluster running and spending our money unnecessarily.
+
+#### Google Cloud Storage setup and permissions
+
+
+Create a bucket (deletion Orphan)
+
+
+Set IAM permissions
+(TODO: Follow [this doc](https://github.com/vmware-tanzu/velero-plugin-for-gcp#Set-permissions-for-Velero), not that the serviceaccount might be used in a near future to snapshot volumes in GCP so no need to limit the perms here)
+
+#### Run a backup
+
+Install the server components using Helm
+```console
+helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
+"vmware-tanzu" has been added to your repositories
+
+helm repo update
+...
+Update Complete. ⎈Happy Helming!⎈
+```
+
+
+```yaml
+configuration:
+  provider: gcp
+  backupStorageLocation:
+    name: velero-cluster-backup
+    bucket: <gcp-bucket-name>
+    prefix: prod
+    config:
+      kmsKeyId: <my-kms-key>
+      region: <gcp-region>
+  volumeSnapshotLocation:
+    name: aws
+    config:
+      region: ${region}
+  logLevel: debug
+```
+
+We want to be able to run backups on demand, so we'll use the CLI installed as follows
+```console
+asdf plugin-add velero
+
+asdf install velero 1.9.0
+Downloading [velero] from https://github.com/vmware-tanzu/velero/releases/download/v1.9.0/velero-v1.9.0-linux-amd64.tar.gz to /tmp/asdf_JIaRPpWC/velero-v1.9.0-linux-amd64.tar.gz
+Extracting archive
+Copying binary
+```
+
+
+#### Destroy and restore our Crossplane cluster
