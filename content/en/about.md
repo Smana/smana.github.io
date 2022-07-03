@@ -10,4 +10,4 @@ I’m currently on my flight back from the Kubecon EU 2022 and plenty of ideas a
 <br>
 While I’m writing this I don’t know what will be the topics in a few months but you’ll find here my next target:
 <br>
-:arrow_right: Creating a Kubernetes cluster on a cloud provider for my future experimentations. I chose to use GKE provision through `Crossplane` to begin with. More info [here](crossplane_k3d/index.md).
+:arrow_right: Creating a Kubernetes cluster on a cloud provider for my future experimentations. I chose to use GKE provision through `Crossplane` to begin with. More info [here](/post/crossplane_k3d/)

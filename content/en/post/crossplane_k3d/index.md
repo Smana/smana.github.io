@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "My Kubernetes cluster in GKE with `Crossplane`"
-date = "2022-07-03"
+date = "2022-07-02"
 summary = "Use a local **k3d** cluster in order to create and manage a **GKE** cluster"
 featureImage = "crossplane_k3d.png"
 featured = true
@@ -16,6 +16,9 @@ thumbnail= "crossplane_k3d.jpg"
 +++
 
 The target of this documentation is to be able to create and manage a GKE cluster using [**Crossplane**](https://crossplane.io/).
+
+`Crossplane` leverages Kubernetes base principles in order to provision cloud resources and much more: a **declarative** approach with **drift detections** and **reconciliations** using control loops :exploding_head:. In other words, we declare what cloud resources we want and Crossplane ensures that the target state matches the one declared in our git repository.
+
 Here are the steps we'll follow in order to get a Kubernetes cluster for development and experimentations use cases.
 
 ### :whale: Create the local k3d cluster for Crossplane's control plane
