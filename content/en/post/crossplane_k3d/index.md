@@ -1,8 +1,9 @@
 +++
 author = "Smaine Kahlouch"
 title = "My Kubernetes cluster in GKE with `Crossplane`"
-date = "2022-05-25"
-summary = "Use a local **k3d** cluster in order to create and manage a **GKE** cluster and Velero to backup the **Crossplane** resources"
+date = "2022-07-03"
+summary = "Use a local **k3d** cluster in order to create and manage a **GKE** cluster"
+featureImage = "crossplane_k3d.png"
 featured = true
 codeMaxLines = 20
 usePageBundles = true
@@ -15,8 +16,6 @@ thumbnail= "crossplane_k3d.jpg"
 +++
 
 The target of this documentation is to be able to create and manage a GKE cluster using [**Crossplane**](https://crossplane.io/).
-And we want to backup the resources created in order to be able to recreate everything from scratch.
-
 Here are the steps we'll follow in order to get a Kubernetes cluster for development and experimentations use cases.
 
 ### :whale: Create the local k3d cluster for Crossplane's control plane
@@ -79,9 +78,9 @@ Created service account [crossplane].
 ```
 
 Assign the proper permissions to the service account.
-* Compute Network Admin
-* Kubernetes Engine Admin
-* Service Account User
+* *Compute Network Admin*
+* *Kubernetes Engine Admin*
+* *Service Account User*
 
 ```console
 SA_EMAIL=$(gcloud iam service-accounts list --filter="email ~ ^crossplane" --format='value(email)')
@@ -210,7 +209,7 @@ kubectl apply -f provider-config.yaml
 providerconfig.gcp.crossplane.io/default created
 ```
 {{% notice info Info %}}
-According to the serviceaccount permissions we can create resources in GCP. In order to learn about all the available resources and **parameters** we can have a look to the `provider`'s [API reference](https://doc.crds.dev/github.com/crossplane/provider-gcp).
+If the serviceaccount has the proper permissions we can create resources in GCP. In order to learn about all the available resources and **parameters** we can have a look to the `provider`'s [API reference](https://doc.crds.dev/github.com/crossplane/provider-gcp).
 {{% /notice %}}
 
 The first resource we'll create is the network that will host our Kubernetes cluster.
@@ -237,7 +236,7 @@ kubectl get network
 NAME          READY   SYNCED
 dev-network   True    True
 ```
-You can even get more details by describing this resource
+You can even get more details by describing this resource. For instance if **something fails** you would see the message returned by the Cloud provider in the events.
 ```console
 kubectl describe network dev-network | grep -A 20 '^Status:'
 Status:
@@ -356,7 +355,7 @@ nodepool.container.gcp.crossplane.io/main-np   False   False            dev-clus
 ```
 ![cluster_being_created](cluster_being_created.png)
 
-When the cluster's status READY `True` you can download the cluster's credentials.
+When the column READY switches to `True` you can download the cluster's credentials.
 ```console
 kubectl get cluster
 NAME          READY   SYNCED   STATE         ENDPOINT         LOCATION         AGE
@@ -367,7 +366,7 @@ Fetching cluster endpoint and auth data.
 kubeconfig entry generated for dev-cluster.
 ```
 
-For better readability you may want to rename the kubectl id for the newly created cluster
+For better readability you may want to rename the context id for the newly created cluster
 ```console
 kubectl config rename-context gke_${GCP_PROJECT}_europe-west9-a_dev-cluster dev-cluster
 Context "gke_${GCP_PROJECT}_europe-west9-a_dev-cluster" renamed to "dev-cluster".
@@ -378,70 +377,13 @@ CURRENT   NAME             CLUSTER                                              
           k3d-crossplane   k3d-crossplane                                                admin@k3d-crossplane
 ```
 
-That's great :tada: we know have a GKE cluster up and running.
+Check that you can call our brand new GKE API
 ```console
 kubectl get nodes
 NAME                                    STATUS   ROLES    AGE   VERSION
 gke-dev-cluster-main-np-d0d978f9-5fc0   Ready    <none>   10m   v1.24.1-gke.1400
 ```
 
-<br>
+That's great :tada: we know have a GKE cluster up and running.
 
-### :floppy_disk: Backup the local Kubernetes cluster using Velero
-
-:construction_worker: <span style="color:red">**Work in progess for this section**</span>
-
-Let's backup our Crossplane cluster configuration (the local cluster created with k3d). So that we'll be able to provision our infrastructure from scratch whenever we want to experiment a new software/tool.
-That way we won't have to let the cluster running and spending our money unnecessarily.
-
-#### Google Cloud Storage setup and permissions
-
-
-Create a bucket (deletion Orphan)
-
-
-Set IAM permissions
-(TODO: Follow [this doc](https://github.com/vmware-tanzu/velero-plugin-for-gcp#Set-permissions-for-Velero), not that the serviceaccount might be used in a near future to snapshot volumes in GCP so no need to limit the perms here)
-
-#### Run a backup
-
-Install the server components using Helm
-```console
-helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts
-"vmware-tanzu" has been added to your repositories
-
-helm repo update
-...
-Update Complete. ⎈Happy Helming!⎈
-```
-
-
-```yaml
-configuration:
-  provider: gcp
-  backupStorageLocation:
-    name: velero-cluster-backup
-    bucket: <gcp-bucket-name>
-    prefix: prod
-    config:
-      kmsKeyId: <my-kms-key>
-      region: <gcp-region>
-  volumeSnapshotLocation:
-    name: aws
-    config:
-      region: ${region}
-  logLevel: debug
-```
-
-We want to be able to run backups on demand, so we'll use the CLI installed as follows
-```console
-asdf plugin-add velero
-
-asdf install velero 1.9.0
-Downloading [velero] from https://github.com/vmware-tanzu/velero/releases/download/v1.9.0/velero-v1.9.0-linux-amd64.tar.gz to /tmp/asdf_JIaRPpWC/velero-v1.9.0-linux-amd64.tar.gz
-Extracting archive
-Copying binary
-```
-
-
-#### Destroy and restore our Crossplane cluster
+In our next article we'll see how to use a [**GitOps**](https://www.weave.works/technologies/gitops/) engine to run all the above steps.
