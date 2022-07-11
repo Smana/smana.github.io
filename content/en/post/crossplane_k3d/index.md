@@ -27,7 +27,7 @@ Here are the steps we'll follow in order to get a Kubernetes cluster for develop
 There are several deployment models for Crossplane, we could for instance deploy the control plane on a management cluster on Kubernetes or a control plane per Kubernetes cluster.<br>
 Here I chose a simple method which is fine for a personal use case: A **local Kubernetes instance** in which I'll deploy Crossplane.
 
-Let's install k3d using [asdf](/post/asdf/).
+Let's install k3d using [asdf](/post/asdf/asdf).
 
 ```console
 asdf plugin-add k3d
