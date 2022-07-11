@@ -1,6 +1,6 @@
 +++
 author = "Smaine Kahlouch"
-title = "My Kubernetes cluster in GKE with `Crossplane`"
+title = "My Kubernetes cluster (GKE) with `Crossplane`"
 date = "2022-07-02"
 summary = "Use a local **k3d** cluster in order to create and manage a **GKE** cluster"
 featureImage = "crossplane_k3d.png"
