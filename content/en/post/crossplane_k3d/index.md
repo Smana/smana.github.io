@@ -389,4 +389,4 @@ gke-dev-cluster-main-np-d0d978f9-5fc0   Ready    <none>   10m   v1.24.1-gke.1400
 
 That's great :tada: we know have a GKE cluster up and running.
 
-In our next article we'll see how to use a [**GitOps**](https://www.weave.works/technologies/gitops/) engine to run all the above steps.
+In our next article we'll see how to use a [**GitOps**](https://opengitops.dev/) engine to run all the above steps.

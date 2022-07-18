@@ -38,7 +38,7 @@ spec:
     autoscaling:
       autoprovisioned: false
       enabled: true
-      maxNodeCount: 1 # For costs reasons
+      maxNodeCount: 1 # Be careful for costs reasons
       minNodeCount: 1
     clusterRef:
       name: dev-cluster
