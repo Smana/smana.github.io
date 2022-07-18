@@ -32,17 +32,17 @@ There are several GitOps engine options. The most famous ones are [ArgoCD](https
 
 Learn more about **GitOps toolkit** components [here](https://fluxcd.io/docs/components/).
 
-### :bullseye: Our target
+## :bullseye: Our target
 
 Here we want to declare our desired infrastructure components only by adding **git** changes.
-By the end of this article you'll get a GKE cluster provisionned using a local Crossplane instance.
+By the end of this article you'll get a GKE cluster provisioned using a local Crossplane instance.
 We'll discover [**Flux**](https://fluxcd.io/) basics and how to use it in order to build a complete GitOps CD workflow.
 
 <br>
 
-### :ballot_box_with_check: Requirements
+## :ballot_box_with_check: Requirements
 
-#### :inbox_tray: Install required tools
+### :inbox_tray: Install required tools
 
 First of all we need to install a few tools using [asdf](/post/asdf/asdf/)
 
@@ -80,7 +80,7 @@ kustomize       4.5.5           /home/smana/sources/devflux/.tool-versions
 ```
 <br>
 
-#### :key: Create a Github personal access token
+### :key: Create a Github personal access token
 
 In this article the git repository is hosted in Github. In order to be able to use the `flux bootstrap` a personnal access token is required.
 
@@ -92,7 +92,7 @@ Store the Github token in a safe place for later use
 
 <br>
 
-#### :technologist: Clone the devflux repository
+### :technologist: Clone the devflux repository
 
 All the files used for the upcoming steps can be retrieved from [this repository](https://github.com/Smana/devflux).
 You should **clone** it, that will be easier to copy them into your own repository.
@@ -103,7 +103,7 @@ git clone https://github.com/Smana/devflux.git
 
 <br>
 
-### :rocket: Bootstrap flux in the Crossplane cluster
+## :rocket: Bootstrap flux in the Crossplane cluster
 
 As we will often be using the `flux` CLI you may want to configure the bash|zsh completion
 ```console
@@ -173,7 +173,7 @@ gotk-components.yaml  gotk-sync.yaml  kustomization.yaml
 ```
 <br>
 
-### :open_file_folder: Flux repository structure
+## :open_file_folder: Flux repository structure
 
 There are [several options](https://fluxcd.io/docs/guides/repository-structure/) for organizing your resources in the Flux configuration repository. Here is a proposition for the sake of this article.
 
@@ -216,13 +216,13 @@ Let's use this structure and begin to deploy applications :rocket:.
 
 <br>
 
-### :closed_lock_with_key: SealedSecrets
+## :closed_lock_with_key: SealedSecrets
 
 There are plenty of alternatives when it comes to secrets management in Kubernetes.
 In order to securely **store secrets in a git repository** the GitOps way we'll make use of [SealedSecrets](https://github.com/bitnami-labs/sealed-secrets).
 It uses a custom resource definition named `SealedSecrets` in order to encrypt the Kubernetes secret at the client side then the controller is in charge of decrypting and generating the expected secret in the cluster.
 
-#### :hammer_and_wrench: Deploy the controller using Helm
+### :hammer_and_wrench: Deploy the controller using Helm
 
 The first thing to do is to declare the `kustomization` that handles all the security tools.
 
@@ -265,6 +265,8 @@ This is worth noting that there are two types on kustomizations. That can be con
 * One managed by flux's kustomize controller. Its API is `kustomization.kustomize.toolkit.fluxcd.io`
 * The other `kustomization.kustomize.config.k8s.io` is for the kustomize overlay
 {{% /notice %}}
+
+The <span style="color:green">kustomization.yaml</span> file is always used for the kustomize overlay. Flux itself doesn't need this overlay in all cases, but if you want to use features of a Kustomize overlay you will occasionally need to create it in order to access them. It provides instructions to the Kustomize CLI.
 
 {{% /notice %}}
 
@@ -399,6 +401,10 @@ flux get helmrelease -n kube-system
 NAME            REVISION        SUSPENDED       READY   MESSAGE
 sealed-secrets  2.2.0           False           True    Release reconciliation succeeded
 ```
+<br>
+
+### 🧪 A first test SealedSecret
+
 Let's use the CLI `kubeseal` to test it out. We'll create a `SealedSecret` that will be decrypted by the sealed-secrets controller in the cluster and create the expected secret _foobar_
 
 ```console
@@ -416,9 +422,9 @@ sealedsecret.bitnami.com "foobar" deleted
 
 <br>
 
-### :cloud: Deploy and configure Crossplane
+## :cloud: Deploy and configure Crossplane
 
-#### :key: Create the Google service account secret
+### :key: Create the Google service account secret
 
 The first thing we need to do in order to get Crossplane working is to create the GCP serviceaccount. The steps have been covered [here](http://localhost:1313/post/crossplane_k3d/#-generate-the-google-cloud-service-account) in the previous article.
 We'll create a `SealedSecret` _gcp-creds_ that contains  the serviceaccount file <span style="color:green">crossplane.json</span>.
@@ -431,7 +437,7 @@ kubectl create secret generic gcp-creds --context k3d-crossplane -n crossplane-s
 ```
 <br>
 
-#### 🔄 Crossplane dependencies
+### 🔄 Crossplane dependencies
 
 Now we will deploy Crossplane with Flux. I won't put the manifests here you'll find all of them in [this repository](https://github.com/Smana/devflux).
 However it's important to understand that, in order to deploy and configure Crossplane properly we need to do that in a **specific order**.
@@ -528,7 +534,7 @@ dev-cluster   True    True     RUNNING   34.x.x.190      europe-west9-a   22m
 
 <br>
 
-#### :rocket: Bootstrap flux in the dev cluster
+### :rocket: Bootstrap flux in the dev cluster
 
 Our local Crossplane cluster is now ready and it created our dev cluster and we also want it to be managed with Flux.
 So let's configure Flux for this dev cluster using the same `bootstrap` command.
@@ -594,7 +600,7 @@ Use the _EXTERNAL_IP_
 
 ![online_boutique](online-boutique.png)
 
-### :detective: Troubleshooting
+## :detective: Troubleshooting
 
 The cheatsheet in [Flux's documentation](https://fluxcd.io/docs/cheatsheets/troubleshooting) contains many ways for troubleshooting when something goes wrong.
 Here I'll just give a sample of my favorite command lines.
