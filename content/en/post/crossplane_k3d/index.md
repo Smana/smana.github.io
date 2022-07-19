@@ -20,7 +20,7 @@ The target of this documentation is to be able to create and manage a GKE cluste
 
 Here are the steps we'll follow in order to get a Kubernetes cluster for development and experimentations use cases.
 
-### :whale: Create the local k3d cluster for Crossplane's control plane
+## :whale: Create the local k3d cluster for Crossplane's control plane
 
 [**k3d**](https://k3d.io) is a lightweight kubernetes cluster that leverages k3s that runs in our local laptop.
 There are several deployment models for Crossplane, we could for instance deploy the control plane on a management cluster on Kubernetes or a control plane per Kubernetes cluster.<br>
@@ -64,15 +64,17 @@ kubectl get nodes
 NAME                      STATUS   ROLES                  AGE   VERSION
 k3d-crossplane-server-0   Ready    control-plane,master   26h   v1.22.7+k3s1
 ```
+
 <br>
 
-### :cloud: Generate the Google Cloud service account
+## :cloud: Generate the Google Cloud service account
 
 {{% notice warning "Warning" %}}
 Store the downloaded `crossplane.json` credentials file in a safe place.
 {{% /notice %}}
 
 Create a service account
+
 ```console
 GCP_PROJECT=<your_project>
 gcloud iam service-accounts create crossplane --display-name "Crossplane" --project=${GCP_PROJECT}
@@ -80,6 +82,7 @@ Created service account [crossplane].
 ```
 
 Assign the proper permissions to the service account.
+
 * *Compute Network Admin*
 * *Kubernetes Engine Admin*
 * *Service Account User*
@@ -107,9 +110,10 @@ Download the service account key (json format)
 gcloud iam service-accounts keys create crossplane.json --iam-account ${SA_EMAIL}
 created key [ea2eb9ce2939127xxxxxxxxxx] of type [json] as [crossplane.json] for [crossplane@<project>.iam.gserviceaccount.com]
 ```
+
 <br>
 
-### :construction: Deploy and configure Crossplane
+## :construction: Deploy and configure Crossplane
 
 Now that we have a credentials file for Google Cloud, we can deploy the [**Crossplane**](https://crossplane.io/) operator and configure the `provider-gcp` provider.
 
@@ -117,8 +121,8 @@ Now that we have a credentials file for Google Cloud, we can deploy the [**Cross
 Most of the following steps are issued from the [official documentation](https://crossplane.io/docs/v1.8/getting-started/install-configure.html)
 {{% /notice %}}
 
-
 We'll first use Helm in order to install the **operator**
+
 ```console
 helm repo add crossplane-master https://charts.crossplane.io/master/
 "crossplane-master" has been added to your repositories
@@ -259,7 +263,7 @@ Status:
 
 <br>
 
-### :rocket: Create a GKE cluster
+## :rocket: Create a GKE cluster
 
 Everything is ready so that we can create our GKE cluster. Applying the file <span style="color:green">cluster.yaml</span> will create a cluster and attach a node group to it.
 
@@ -387,5 +391,15 @@ gke-dev-cluster-main-np-d0d978f9-5fc0   Ready    <none>   10m   v1.24.1-gke.1400
 ```
 
 That's great :tada: we know have a GKE cluster up and running.
+
+## 💭 final thoughts
+
+I've been using Crossplane for a few months now in a production environment.
+Even if I'm conviced about the declarative approach using the Kubernetes API, we decided to move with caution with it. It clearly doesn't have Terraform's community and maturity.
+We're still declaring our resources using the `deletionPolicy: Orphan` so that even if something goes wrong on the controller side the resource won't be deleted.
+Furthermore we limited to a specific list of usual AWS resources requested by our developers.
+Nevertheless our target has always been to empower developers and we had really **positive feedback** from them. That's the best indicator for us.
+As the project matures, we'll move more and more resources from Terraform to Crossplane.
+IMHO the key success of Crossplane depends on the **providers maintenance and evolution**. The Cloud providers interest and involvement is really important.
 
 In our next article we'll see how to use a [**GitOps**](https://opengitops.dev/) engine to run all the above steps.
