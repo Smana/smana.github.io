@@ -426,7 +426,7 @@ sealedsecret.bitnami.com "foobar" deleted
 
 ### :key: Create the Google service account secret
 
-The first thing we need to do in order to get Crossplane working is to create the GCP serviceaccount. The steps have been covered [here](http://localhost:1313/post/crossplane_k3d/#-generate-the-google-cloud-service-account) in the previous article.
+The first thing we need to do in order to get Crossplane working is to create the GCP serviceaccount. The steps have been covered [here](/post/crossplane_k3d/#-generate-the-google-cloud-service-account) in the previous article.
 We'll create a `SealedSecret` _gcp-creds_ that contains  the serviceaccount file <span style="color:green">crossplane.json</span>.
 
 <span style="color:green">infrastructure/k3d-crossplane/crossplane/configuration/sealedsecrets.yaml</span>
@@ -694,3 +694,19 @@ With our current setup everything is configured using the GitOps approach:
 * Our secrets are securely stored in our git repository.
 * We have a dev-cluster that we can enable or disable just but commenting a yaml file.
 * Our demo application can be deployed from scratch in seconds.
+
+## 💭 final thoughts
+
+Flux is probably the tool I'm using the most on a daily basis. It's really amazing!
+
+When you get familiar with its concepts and the command line it becomes really easy to use and troubleshoot. You can use either Helm when a chart is available or Kustomize.
+
+However we faced a few issues:
+
+* It's not straightforward to find an efficient structure depending on the company needs. Especially when you have several Kubernetes controllers that depend on other CRDs.
+* The Helm controller doesn't maintain a state of the Kubernetes resources deployed by the Helm chart. That means that if you delete a resource which has been deployed through a Helm chart, it won't be reconciled (It will change soon. Being discussed [here](https://github.com/fluxcd/helm-controller/issues/186#issuecomment-932107655))
+* Flux doesn't provide itself a web UI and switching between CLIs (kubectl, flux ...) can be annoying from a developer perspective. (I'm going to test [weave-gitops](https://github.com/weaveworks/weave-gitops) )
+
+I've been using Flux in production for more than a year and we configured it with the image automation so that the only thing a developer has to do is to merge a pull request and the new version of the application is automatically deployed in the target cluster.
+
+I should probably give another try to ArgoCD in order to be able to compare these precisely 🤔.
