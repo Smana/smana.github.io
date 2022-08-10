@@ -395,11 +395,14 @@ That's great :tada: we know have a GKE cluster up and running.
 ## 💭 final thoughts
 
 I've been using Crossplane for a few months now in a production environment.
+
 Even if I'm conviced about the declarative approach using the Kubernetes API, we decided to move with caution with it. It clearly doesn't have Terraform's community and maturity.
 We're still declaring our resources using the `deletionPolicy: Orphan` so that even if something goes wrong on the controller side the resource won't be deleted.
+
 Furthermore we limited to a specific list of usual AWS resources requested by our developers.
 Nevertheless our target has always been to empower developers and we had really **positive feedback** from them. That's the best indicator for us.
 As the project matures, we'll move more and more resources from Terraform to Crossplane.
+
 IMHO the key success of Crossplane depends on the **providers maintenance and evolution**. The Cloud providers interest and involvement is really important.
 
 In our next article we'll see how to use a [**GitOps**](https://opengitops.dev/) engine to run all the above steps.
