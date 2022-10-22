@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = '`CloudNativePG`: An easy way to run a PostgreSQL on Kubernetes'
-date = "2022-10-28"
+date = "2022-10-22"
 summary = "**CloudNativePG** is a Kubernetes operator that helps running and operationg PostgreSQL databases. Here we'll demonstrate how to create a server, perform backups and recoveries, monitoring and a few tips."
 featureImage = "cnpg.png"
 featured = true
@@ -17,14 +17,14 @@ thumbnail= "cloudnativepg.png"
 While Kubernetes is now the de-facto platform for orchestrating stateless applications (Because containers don't store data they can be destroyed and recreated elsewhere), running applications that require to persist data in an ephemeral environment can be **quite challenging**. I'm convinced this is possible and we're seing several mature cloud-native database solutions (CockroachDB, TiDB, K8ssandra, Strimzi...) but there are a few **things to consider**:
 
 * Maturity of the operator, declarative approach through CRDs.
-* How to handle the storage (CSI, PVCs, local storage)
+* How to handle the storage: Kubernetes volume management(CSI,PVCs), hdd vs ssd, local storage
 * Resiliency. What happens when something goes wrong?
 * Backup / Recovery. How easy is it? Scheduled backups
 * Replication / Scaling
 * Connection Pooling
 * Observability
 
-I was looking for a solution to host a **PostgreSQL database**. This database is a requirement for a ticket reservation software named [Alf.io](https://alf.io/) that's being used for an upcoming event: [The Kubernetes Community Days France](https://community.cncf.io/events/details/cncf-kcd-france-presents-kubernetes-community-days-france-2023/). (By the way you're welcome to submit a talk 👐).
+I was looking for a solution to host a **PostgreSQL database**. This database is a requirement for a ticket reservation software named [Alf.io](https://alf.io/) that's being used for an upcoming event: [The Kubernetes Community Days France](https://kcdfrance.fr). (By the way you're welcome to submit a talk 👐, the [CFP](https://cfp.kcdfrance.fr) closes soon).
 
 I considered several solutions but I was looking for a cloud agnostic and easy solution. I already played with several Kubernetes operators and I finally ended up looking at a new kid on the block: [**CloudNativePG**](https://cloudnative-pg.io/)
 
@@ -35,7 +35,7 @@ It has been submitted to the **CNCF** in order to join the _Sandbox_ projects.
 
 ## :bullseye: Our target
 
-Here I'm gonna try to give an overview of the main CloudNativePG features.
+Here I'm gonna try to give an **overview** of the main CloudNativePG features.
 Basically the idea is to create a PostgreSQL database on a GKE cluster.
 Then we'll add a standby instance and we'll run a few resiliency tests.
 We may want to see how it behaves in terms of performances and what are the observability tools available.
@@ -43,10 +43,12 @@ Finally we'll have a look to the backup/restore methods.
 
 
 {{% notice info Info %}}
-All the steps in this article will be made manually but you should consider using a GitOps engine.
+All the steps in this article will be made manually but you should consider using a **GitOps** engine.
 Using Flux to manage everything has been covered in a [previous article](/post/deflux).
 
 You may want to check a complete **example** that I built for my own use case [here](https://github.com/cncfparis/kcdfrance-gitops).
+
+All the manifests below can be found in [this repository](https://github.com/Smana/smana.github.io/tree/main/content/resources/cnpg).
 {{% /notice %}}
 
 
@@ -66,7 +68,10 @@ As this article is about running it in Google Cloud, you'll need to install the 
 
 ### ☁️ Create the Google cloud requirements
 
-There are  a few things to configure before creating our PostgreSQL instance: We'll create a bucket  which stores the backups and [WAL files](https://www.postgresql.org/docs/15/wal-intro.html). Then we need to give the permissions to our pods so that they'll be able to write into this newly created bucket.
+There are  a few things to configure before creating our PostgreSQL instance:
+
+* We'll create a bucket  which stores the backups and [WAL files](https://www.postgresql.org/docs/15/wal-intro.html)
+* Then we need to give the permissions to our pods so that they'll be able to write into this newly created bucket.
 
 Create the bucket using `gcloud` CLI
 
@@ -157,7 +162,7 @@ secret/cnpg-mydb-user created
 
 ## :hammer_and_wrench: Deploy the CloudNativePG operator using Helm
 
-CloudNativePG is basically a Kubernetes operator which comes with some CRD's. Here we'll use the Helm chart.
+CloudNativePG is basically a Kubernetes operator which comes with some CRD's. We'll use the Helm chart as follows
 
 ```console
 helm repo add cnpg https://cloudnative-pg.github.io/charts
@@ -170,12 +175,25 @@ NAME                    READY   STATUS      RESTARTS   AGE
 cnpg-74488f5849-8lhjr   1/1     Running     0          6h17m
 ```
 
+Here are the _Custom Resource Definitions_ installed along with the operator.
+
+```console
+kubectl get crds | grep cnpg.io
+backups.postgresql.cnpg.io                       2022-10-08T16:15:14Z
+clusters.postgresql.cnpg.io                      2022-10-08T16:15:14Z
+poolers.postgresql.cnpg.io                       2022-10-08T16:15:14Z
+scheduledbackups.postgresql.cnpg.io              2022-10-08T16:15:14Z
+```
+
+For a full list of the available parameters for these CRDs please refer to the [API reference](https://cloudnative-pg.io/documentation/1.17/api_reference/).
+
+<br>
+
 ## :rocket: Create a PostgreSQL server
 
 <center><img src="single_instance.png" alt="single_instance" width="600" /></center>
 
 Now we can create our first instance using the **custom resource** `Cluster`. In the following definition we want to start a PostgreSQL server, automatically create a database named `mydb`  and configure the credentials based on the [secrets created previously](#key-create-the-users-secrets).
-For a full list of the available parameters please refer to the [API reference](https://cloudnative-pg.io/documentation/1.17/api_reference/).
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -221,15 +239,21 @@ spec:
       memory: "1Gi"
 ```
 
+Create the namespace where our PostgreSQL instance will be deployed
+
 ```console
 kubectl create ns demo
 namespace/demo created
 ```
 
+Change the above cluster manifest to fit your needs and apply it.
+
 ```console
 kubectl apply -f cluster.yaml
 cluster.postgresql.cnpg.io/ogenki created
 ```
+
+You'll notice that the cluster will be in _initializing_ phase. Let's use the **cnpg plugin** for the first time, it will become our best friend to display a neat view of the cluster's status.
 
 ```console
 kubectl cnpg status ogenki -n demo
@@ -281,7 +305,7 @@ ogenki-1                0/1     Running     0          55s
 ogenki-1-initdb-q75cz   0/1     Completed   0          2m32s
 ```
 
-After a few seconds the cluster becomes ready
+After a few seconds the cluster becomes ready :clap:
 
 ```console
 kubectl cnpg status ogenki -n demo
@@ -303,6 +327,11 @@ Name      Database Size  Current LSN  Replication role  Status  QoS        Manag
 ogenki-1  33 MB          0/17079F8    Primary           OK      Burstable  1.17.0           gke-kcdfrance-main-np-0e87115b-xczh
 ```
 
+{{% notice info Info %}}
+There are many ways of bootstrapping your cluster. For instance, restoring a backup into a brand new instance, running SQL scripts...
+more info [here](https://cloudnative-pg.io/documentation/1.17/bootstrap/).
+{{% /notice %}}
+
 ## 🩹 Standby instance and resiliency
 
 Add a standby instance by setting up the number of replicas to 2.
@@ -313,6 +342,17 @@ Add a standby instance by setting up the number of replicas to 2.
 kubectl edit cluster -n demo ogenki
 cluster.postgresql.cnpg.io/ogenki edited
 ```
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+[...]
+spec:
+  instances: 2
+[...]
+```
+
+The operator immediately notice the change, adds a standby instance and starts the replication process.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -334,6 +374,8 @@ NAME                  READY   STATUS    RESTARTS   AGE
 ogenki-1              1/1     Running   0          3m16s
 ogenki-2-join-xxrwx   0/1     Pending   0          82s
 ```
+
+After a given time depending on the amount of data to replicate, the standby instance will be up and running and we can see the replication statistics.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -362,18 +404,27 @@ ogenki-1  33 MB          0/3000060    Primary           OK      Burstable  1.17.
 ogenki-2  33 MB          0/3000060    Standby (async)   OK      Burstable  1.17.0           gke-kcdfrance-main-np-0e87115b-xszc
 ```
 
+
+Let's promote the standby instance to primary (perform a **_Switchover_**).
+
 <center><img src="promote.png" alt="promote" width="600" /></center>
 
+The `cnpg` plugin allows to do this imperatively by running this command
 
 ```console
 kubectl cnpg promote ogenki ogenki-2 -n demo
 Node ogenki-2 in cluster ogenki will be promoted
 ```
 
+In my case the switchover was really fast. We can check that the instance `ogenki-2` is now the primary and the replication is done the other way round.
+
 ```console
 kubectl cnpg status -n demo ogenki
 [...]
-
+Status:             Switchover in progress Switching over to ogenki-2
+Instances:          2
+Ready instances:    1
+[...]
 Streaming Replication status
 Name      Sent LSN   Write LSN  Flush LSN  Replay LSN  Write Lag  Flush Lag  Replay Lag  State      Sync State  Sync Priority
 ----      --------   ---------  ---------  ----------  ---------  ---------  ----------  -----      ----------  -------------
@@ -386,9 +437,15 @@ ogenki-2  33 MB          0/4004CA0    Primary           OK      Burstable  1.17.
 ogenki-1  33 MB          0/4004CA0    Standby (async)   OK      Burstable  1.17.0           gke-kcdfrance-main-np-0e87115b-76k7
 ```
 
-Now let's simulate a failover by deleting the primary pod
+Now let's simulate a **_Failover_** by deleting the primary pod
 
 <center><img src="failover.png" alt="failover" width="600" /></center>
+
+```console
+kubectl delete po -n demo --grace-period 0 --force ogenki-2
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "ogenki-2" force deleted
+```
 
 ```console
 Cluster Summary
@@ -420,7 +477,9 @@ ogenki   13m   2           2       Cluster in healthy state   ogenki-1
 
 ## 👁️ Monitoring
 
+I won't cover the [Prometheus Stack](https://github.com/prometheus-operator/kube-prometheus) installation in this article. If you wan't to have a look on how to do this the Gitops way please check [this example](https://github.com/Smana/kcdfrance-gitops/tree/main/observability).
 
+Basically we need to create a _PodMonitor_ in order to scrape our instance's metrics.
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
@@ -440,8 +499,11 @@ spec:
       postgresql: ogenki
 ```
 
+And the Grafana dashboard available [here](https://github.com/EnterpriseDB/cnp-sandbox/blob/main/charts/cnp-sandbox/dashboard.json).
+
 ![observability](observability.png)
 
+Finally, you may want to configure alerts and you can create a _PrometheusRule_ using [these rules](https://github.com/EnterpriseDB/cnp-sandbox/blob/main/charts/cnp-sandbox/alerts.yaml)
 
 ## :fire: Performances and benchmark
 
@@ -465,46 +527,56 @@ Here are the main things to look at:
 git clone git@github.com:EnterpriseDB/cnp-bench.git
 cd cnp-bench
 
-cat > hammerdb-benchmark/myvalues.yaml <<EOF
+cat > pgbench-benchmark/myvalues.yaml <<EOF
 cnp:
   existingCluster: true
-  existingSuperuserCredentials: cnpg-mydb-superuser
-  existingHost: ogenki-rw
+  existingHost:  ogenki-rw
+  existingCredentials: cnpg-mydb-superuser
+  existingDatabase: mydb
+
+pgbench:
+  # Node where to run pgbench
+  nodeSelector:
+    workload: pgbench
+  initialize: true
+  scaleFactor: 1
+  time: 600
+  clients: 10
+  jobs: 1
+  skipVacuum: false
+  reportLatencies: false
 EOF
 
 PG_NODE=$(kubectl get po -n demo -l postgresql=ogenki,role=primary -o jsonpath={.items[0].spec.nodeName})
 kubectl label node ${PG_NODE} workload=postgresql
-kubectl label node gke-kcdfrance-main-np-xxx-xxx workload=hammerdb
+node/gke-kcdfrance-main-np-0e87115b-vlzm labeled
 
-helm upgrade --install -n demo hammerdb-bench -f hammerdb-benchmark/myvalues.yaml  hammerdb-benchmark/
 
-kubectl get po -n demo -l job-name=hammerdb-bench-hammerdb-benchmark
-NAME                                      READY   STATUS     RESTARTS   AGE
-hammerdb-bench-hammerdb-benchmark-lppl5   0/1     Init:1/3   0          8m5s
+# Choose any other node different than the ${PG_NODE}
+kubectl label node gke-kcdfrance-main-np-0e87115b-p5d7 workload=pgbench
+node/gke-kcdfrance-main-np-0e87115b-p5d7 labeled
 
+helm upgrade --install -n demo pgbench -f pgbench-benchmark/myvalues.yaml  pgbench-benchmark/
 ```
 
+![pgbench_grafana](pgbench_grafana.png)
+
+
 ```console
-kubectl logs -n demo hammerdb-bench-hammerdb-benchmark-9gthp -c hammerdb-pgschemabuild -f
-[...]
-Vuser 2:Loading Orders for D=9 W=4
-Vuser 3:...1000
-Vuser 2:...1000
-Vuser 3:...2000
-Vuser 2:...2000
-Vuser 3:...3000
-Vuser 3:Orders Done
-Vuser 3:End:Sun Oct 16 07:38:59 UTC 2022
-Vuser 3:FINISHED SUCCESS
-Vuser 2:...3000
-Vuser 2:Orders Done
-Vuser 2:Loading Orders for D=10 W=4
-Vuser 2:...1000
-Vuser 2:...2000
-Vuser 2:...3000
-Vuser 2:Orders Done
-Vuser 2:End:Sun Oct 16 07:39:00 UTC 2022
-Vuser 2:FINISHED SUCCESS
+kubectl logs -n demo job/pgbench-pgbench-benchmark -f
+Defaulted container "pgbench" out of: pgbench, wait-for-cnp (init), pgbench-init (init)
+pgbench (14.1, server 14.5 (Debian 14.5-2.pgdg110+2))
+starting vacuum...end.
+transaction type: <builtin: TPC-B (sort of)>
+scaling factor: 1
+query mode: simple
+number of clients: 10
+number of threads: 1
+duration: 600 s
+number of transactions actually processed: 545187
+latency average = 11.004 ms
+initial connection time = 111.585 ms
+tps = 908.782896 (without initial connection time)
 ```
 
 
