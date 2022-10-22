@@ -1,0 +1,41 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ogenki
+  namespace: demo
+spec:
+  description: "PostgreSQL Demo Ogenki"
+  imageName: ghcr.io/cloudnative-pg/postgresql:14.5
+  instances: 1
+
+  inheritedMetadata:
+    annotations:
+      iam.gke.io/gcp-service-account: cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com
+
+  bootstrap:
+    initdb:
+      database: mydb
+      owner: smana
+      secret:
+        name: cnpg-mydb-user
+
+  superuserSecret:
+    name: cnpg-mydb-superuser
+
+  storage:
+    storageClass: standard
+    size: 10Gi
+
+  backup:
+    barmanObjectStore:
+      destinationPath: "gs://cnpg-ogenki"
+      googleCredentials:
+        gkeEnvironment: true
+    retentionPolicy: "30d"
+
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
