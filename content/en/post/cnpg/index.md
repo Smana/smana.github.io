@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
-title = '`CloudNativePG`: An easy way to run a PostgreSQL on Kubernetes'
-date = "2022-10-22"
-summary = "**CloudNativePG** is a Kubernetes operator that helps running and operationg PostgreSQL databases. Here we'll demonstrate how to create a server, perform backups and recoveries, monitoring and a few tips."
+title = '`CloudNativePG`: An easy way to run PostgreSQL on Kubernetes'
+date = "2022-10-25"
+summary = "**CloudNativePG** is a Kubernetes operator that helps running and operating PostgreSQL databases. Here I'll demonstrate how to create a server, perform backups and recoveries, monitoring and a few tips."
 featureImage = "cnpg.png"
 featured = true
 codeMaxLines = 20
@@ -14,7 +14,7 @@ tags = [
 thumbnail= "cloudnativepg.png"
 +++
 
-While Kubernetes is now the de-facto platform for orchestrating stateless applications (Because containers don't store data they can be destroyed and recreated elsewhere), running applications that require to persist data in an ephemeral environment can be **quite challenging**. I'm convinced this is possible and we're seing several mature cloud-native database solutions (CockroachDB, TiDB, K8ssandra, Strimzi...) but there are a few **things to consider**:
+While Kubernetes is now the de-facto platform for orchestrating stateless applications (Because containers don't store data they can be destroyed and recreated elsewhere), running applications that require to persist data in an ephemeral environment can be **quite challenging**. We're seing increasing number of mature cloud-native database solutions (CockroachDB, TiDB, K8ssandra, Strimzi...) but there are a few **things to consider**:
 
 * Maturity of the operator, declarative approach through CRDs.
 * How to handle the storage: Kubernetes volume management(CSI,PVCs), hdd vs ssd, local storage
@@ -30,7 +30,7 @@ I considered several solutions but I was looking for a cloud agnostic and easy s
 
 >CloudNativePG is the Kubernetes operator that covers the full lifecycle of a highly available PostgreSQL database cluster with a primary/standby architecture, using native streaming replication.
 
-It has been submitted to the **CNCF** in order to join the _Sandbox_ projects.
+It has been submitted by the company [EnterpriseDB](https://www.enterprisedb.com/) to the **CNCF** in order to join the _Sandbox_ projects.
 
 
 ## :bullseye: Our target
@@ -56,22 +56,22 @@ All the manifests below can be found in [this repository](https://github.com/Sma
 
 ### :inbox_tray: Install required tools
 
-CloudNativePG comes with a handy `kubectl` plugin that gives insights of your PostgreSQL instance and allows to perform some operations.
+* **kubectl plugin:** CloudNativePG comes with a handy `kubectl` plugin that gives insights of your PostgreSQL instance and allows to perform some operations.
 It can be installed using [krew](https://krew.sigs.k8s.io/) as follows
 
 ```console
 kubectl krew install cnpg
 ```
 
-As this article is about running it in Google Cloud, you'll need to install the Google Cloud SDK using [this documentation](https://cloud.google.com/sdk/docs/install-sdk) and configure it in order to be able to create resources on your own GCP project.
-
+* **gcloud:** As this article is about running it in Google Cloud, you'll need to install the Google Cloud SDK using [this documentation](https://cloud.google.com/sdk/docs/install-sdk) and configure it in order to be able to create resources on your own GCP project.
 
 ### ☁️ Create the Google cloud requirements
 
 There are  a few things to configure before creating our PostgreSQL instance:
 
-* We'll create a bucket  which stores the backups and [WAL files](https://www.postgresql.org/docs/15/wal-intro.html)
-* Then we need to give the permissions to our pods so that they'll be able to write into this newly created bucket.
+* Obviously you'll need a Kubernetes cluster. This article assume that you already have a **GKE** cluster avaialble.
+* We'll create a bucket which stores the backups and [WAL files](https://www.postgresql.org/docs/15/wal-intro.html)
+* Then we need to give the **permissions** to our pods so that they'll be able to write into this newly created bucket.
 
 Create the bucket using `gcloud` CLI
 
@@ -128,7 +128,7 @@ etag: BwXrGA_VRd4=
 version: 1
 ```
 
-Allow the Kubernetes service account to impersonate the IAM service account. <br>
+Allow the Kubernetes service account to **impersonate the IAM service account**. <br>
 :information_source: ensure you use the proper format `serviceAccount:{{ gcp_project }}.svc.id.goog[{{ kubernetes_namespace }}/{{ kubernetes_serviceaccount }}]`
 
 ```console
@@ -193,7 +193,7 @@ For a full list of the available parameters for these CRDs please refer to the [
 
 <center><img src="single_instance.png" alt="single_instance" width="600" /></center>
 
-Now we can create our first instance using the **custom resource** `Cluster`. In the following definition we want to start a PostgreSQL server, automatically create a database named `mydb`  and configure the credentials based on the [secrets created previously](#key-create-the-users-secrets).
+Now we can create our first instance using a **custom resource** `Cluster`. In the following definition is pretty simple: we want to start a PostgreSQL server, automatically create a database named `mydb`  and configure the credentials based on the [secrets created previously](#key-create-the-users-secrets).
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -332,7 +332,44 @@ There are many ways of bootstrapping your cluster. For instance, restoring a bac
 more info [here](https://cloudnative-pg.io/documentation/1.17/bootstrap/).
 {{% /notice %}}
 
+{{% notice note Note %}}
+
+With this configuration the WAL files are stored in the GCS bucket we created previously
+
+```yaml
+[...]
+  backup:
+    barmanObjectStore:
+      destinationPath: "gs://cnpg-ogenki"
+      googleCredentials:
+        gkeEnvironment: true
+    retentionPolicy: "30d"
+[...]
+```
+After some time you can check the content of your bucket
+
+```console
+gcloud storage ls gs://cnpg-ogenki/ogenki/wals
+gs://cnpg-ogenki/ogenki/wals/0000000100000000/
+gs://cnpg-ogenki/ogenki/wals/0000000200000000/
+```
+
+This is possible because we gave the permissions using an annotation in the pod's serviceaccount
+
+```console
+kubectl get sa -n demo ogenki -o yaml | grep gcp-service-account
+    iam.gke.io/gcp-service-account: cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com
+```
+
+I proposed a [PR](https://github.com/cloudnative-pg/cloudnative-pg/pull/836) in order to update the documentation with this information.
+
+{{% /notice %}}
+
 ## 🩹 Standby instance and resiliency
+
+{{% notice info Info %}}
+In traditional PostgreSQL architectures we commonly find an additional component to handle high availability (e.g. [Patroni](https://patroni.readthedocs.io/en/latest/)). A specific aspect of the CloudNativePG operator is that it leverages base Kubernetes features and relies on a component named [_Postgres instance manager_](https://cloudnative-pg.io/documentation/1.17/instance_manager/).
+{{% /notice %}}
 
 Add a standby instance by setting up the number of replicas to 2.
 
@@ -375,7 +412,7 @@ ogenki-1              1/1     Running   0          3m16s
 ogenki-2-join-xxrwx   0/1     Pending   0          82s
 ```
 
-After a given time depending on the amount of data to replicate, the standby instance will be up and running and we can see the replication statistics.
+After a given time, depending on the amount of data to replicate, the standby instance will be up and running and we can see the replication statistics.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -467,13 +504,15 @@ ogenki-1  33 MB          0/40078D8    Primary           OK                 Burst
 ogenki-2  -              -            -                 pod not available  Burstable  -                gke-kcdfrance-main-np-0e87115b-xszc
 ```
 
-After a few seconds, the cluster is healthy again
+After a few seconds, the cluster becomes healthy again
 
 ```console
 kubectl get cluster -n demo
 NAME     AGE   INSTANCES   READY   STATUS                     PRIMARY
 ogenki   13m   2           2       Cluster in healthy state   ogenki-1
 ```
+
+So far so good, we've been able to test the high availability and the experience is pretty smooth 😎.
 
 ## 👁️ Monitoring
 
@@ -514,12 +553,12 @@ When it comes to performances there are many improvement areas we can work on. I
 
 Here are the main things to look at:
 
-* PostgreSQL tuning
+* PostgreSQL [configuration tuning](https://wiki.postgresql.org/wiki/Tuning_Your_PostgreSQL_Server)
 * **Compute** resources (cpu and memory)
 * **Disk** type IOPS, local storage ([local-volume-provisioner](https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-on-gcp-gke#use-local-storage)),
-* dedicated disk for **WAL**
-* Connection **pooling** [PGBouncer](https://cloudnative-pg.io/documentation/1.17/connection_pooling/#connection-pooling)
-* Database optimization, analyzing the query plans using [**explain**](https://www.postgresql.org/docs/current/performance-tips.html)
+* Dedicated disks for **WAL** and **PG_DATA**
+* Connection **pooling** [PGBouncer](https://cloudnative-pg.io/documentation/1.17/connection_pooling/#connection-pooling). The CloudNativePG comes with a CRD `Pooler` to handle that.
+* Database optimization, analyzing the query plans using [**explain**](https://www.postgresql.org/docs/current/performance-tips.html), use the extension `pg_stat_statement` ...
 {{% /notice %}}
 
 
@@ -578,7 +617,6 @@ latency average = 11.004 ms
 initial connection time = 111.585 ms
 tps = 908.782896 (without initial connection time)
 ```
-
 
 ## 💽 Backup and Restore
 
