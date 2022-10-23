@@ -1,0 +1,30 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ogenki-restore
+  namespace: demo
+spec:
+  instances: 1
+
+  inheritedMetadata:
+    annotations:
+      iam.gke.io/gcp-service-account: cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com
+
+  storage:
+    storageClass: standard
+    size: 10Gi
+
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+
+  superuserSecret:
+    name: cnpg-mydb-superuser
+
+  bootstrap:
+    recovery:
+      backup:
+        name: ogenki-now
