@@ -34,7 +34,7 @@ It has been submitted by the company [EnterpriseDB](https://www.enterprisedb.com
 
 ## :bullseye: Our target
 
-Here I'm gonna try to give an **overview** of the main CloudNativePG features.
+Here I'm gonna try to give an **introduction** of the main CloudNativePG features.
 Basically the idea is to create a PostgreSQL database on a GKE cluster.
 Then we'll add a standby instance and we'll run a few resiliency tests.
 We may want to see how it behaves in terms of performances and what are the observability tools available.
@@ -68,7 +68,7 @@ kubectl krew install cnpg
 
 There are  a few things to configure before creating our PostgreSQL instance:
 
-* Obviously you'll need a Kubernetes cluster. This article assume that you already have a **GKE** cluster avaialble.
+* Obviously you'll need a Kubernetes cluster. This article assume that you already have a **GKE** cluster available.
 * We'll create a bucket which stores the backups and [WAL files](https://www.postgresql.org/docs/15/wal-intro.html)
 * Then we need to give the **permissions** to our pods so that they'll be able to write into this newly created bucket.
 
@@ -109,14 +109,14 @@ gcloud container clusters describe <cluster_name> --format json --zone <zone> | 
 Create a Google Cloud service account
 
 ```console
-gcloud iam service-accounts create cloudnative-pg --project=cloud-native-computing-paris
+gcloud iam service-accounts create cloudnative-pg --project={{ gcp_project }}
 Created service account [cloudnative-pg].
 ```
 
 Assign the `storage.admin` permission to the serviceaccount
 
 ```console
-gcloud projects add-iam-policy-binding cloud-native-computing-paris \
+gcloud projects add-iam-policy-binding {{ gcp_project }} \
 --member "serviceAccount:cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com" \
 --role "roles/storage.admin"
 [...]
@@ -136,7 +136,7 @@ gcloud iam service-accounts add-iam-policy-binding cloudnative-pg@{{ gcp_project
 Updated IAM policy for serviceAccount [cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com].
 bindings:
 - members:
-  - serviceAccount:cloud-native-computing-paris.svc.id.goog[demo/ogenki]
+  - serviceAccount:{{ gcp_project }}.svc.id.goog[demo/ogenki]
   role: roles/iam.workloadIdentityUser
 etag: BwXrGBjt5kQ=
 version: 1
@@ -191,7 +191,7 @@ For a full list of the available parameters for these CRDs please refer to the [
 
 <center><img src="single_instance.png" alt="single_instance" width="600" /></center>
 
-Now we can create our first instance using a **custom resource** `Cluster`. In the following definition is pretty simple: we want to start a PostgreSQL server, automatically create a database named `mydb`  and configure the credentials based on the [secrets created previously](#key-create-the-users-secrets).
+Now we can create our first instance using a **custom resource** `Cluster`. The following definition is pretty simple: we want to start a PostgreSQL server, automatically create a database named `mydb`  and configure the credentials based on the [secrets created previously](#key-create-the-users-secrets).
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -538,6 +538,20 @@ Here are the main things to look at:
 * Database optimization, analyzing the query plans using [**explain**](https://www.postgresql.org/docs/current/performance-tips.html), use the extension `pg_stat_statement` ...
 {{% /notice %}}
 
+First of all we'll add labels to the nodes in order to run the `pgbench` command on different machines than the ones hosting the database.
+
+```console
+PG_NODE=$(kubectl get po -n demo -l postgresql=ogenki,role=primary -o jsonpath={.items[0].spec.nodeName})
+kubectl label node ${PG_NODE} workload=postgresql
+node/gke-kcdfrance-main-np-0e87115b-vlzm labeled
+
+
+# Choose any other node different than the ${PG_NODE}
+kubectl label node gke-kcdfrance-main-np-0e87115b-p5d7 workload=pgbench
+node/gke-kcdfrance-main-np-0e87115b-p5d7 labeled
+```
+
+And we'll deploy the Helm chart as follows
 
 ```console
 git clone git@github.com:EnterpriseDB/cnp-bench.git
@@ -562,15 +576,6 @@ pgbench:
   skipVacuum: false
   reportLatencies: false
 EOF
-
-PG_NODE=$(kubectl get po -n demo -l postgresql=ogenki,role=primary -o jsonpath={.items[0].spec.nodeName})
-kubectl label node ${PG_NODE} workload=postgresql
-node/gke-kcdfrance-main-np-0e87115b-vlzm labeled
-
-
-# Choose any other node different than the ${PG_NODE}
-kubectl label node gke-kcdfrance-main-np-0e87115b-p5d7 workload=pgbench
-node/gke-kcdfrance-main-np-0e87115b-p5d7 labeled
 
 helm upgrade --install -n demo pgbench -f pgbench-benchmark/myvalues.yaml  pgbench-benchmark/
 ```
@@ -644,13 +649,13 @@ spec:
 Recoveries can only be done on new instances. Here we'll use the backup we've created previously to bootstrap a new instance with it.
 
 ```console
-gcloud iam service-accounts add-iam-policy-binding cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com \
---role roles/iam.workloadIdentityUser --member "serviceAccount:cloud-native-computing-paris.svc.id.goog[demo/ogenki-restore]"
-Updated IAM policy for serviceAccount [cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com].
+gcloud iam service-accounts add-iam-policy-binding cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com \
+--role roles/iam.workloadIdentityUser --member "serviceAccount:{{ gcp_project }}.svc.id.goog[demo/ogenki-restore]"
+Updated IAM policy for serviceAccount [cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com].
 bindings:
 - members:
-  - serviceAccount:cloud-native-computing-paris.svc.id.goog[demo/ogenki-restore]
-  - serviceAccount:cloud-native-computing-paris.svc.id.goog[demo/ogenki]
+  - serviceAccount:{{ gcp_project }}.svc.id.goog[demo/ogenki-restore]
+  - serviceAccount:{{ gcp_project }}.svc.id.goog[demo/ogenki]
   role: roles/iam.workloadIdentityUser
 etag: BwXrs755FPA=
 version: 1
@@ -667,7 +672,7 @@ spec:
 
   inheritedMetadata:
     annotations:
-      iam.gke.io/gcp-service-account: cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com
+      iam.gke.io/gcp-service-account: cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com
 
   storage:
     storageClass: standard
@@ -689,6 +694,8 @@ spec:
         name: ogenki-now
 ```
 
+We can notice a first pod that performs the full recovery from the backup.
+
 ```console
 kubectl get po -n demo
 NAME                                   READY   STATUS      RESTARTS      AGE
@@ -697,6 +704,8 @@ ogenki-2                               1/1     Running     0             18h
 ogenki-restore-1                       0/1     Init:0/1    0             0s
 ogenki-restore-1-full-recovery-5p4ct   0/1     Completed   0             51s
 ```
+
+Then the new cluster becomes ready.
 
 ```console
 kubectl get cluster -n demo
@@ -707,6 +716,7 @@ ogenki-restore   80s   1           1       Cluster in healthy state   ogenki-res
 
 ## :broom: Cleanup
 
+Delete the cluster
 
 ```console
 kubectl delete cluster -n demo ogenki ogenki-restore
@@ -714,16 +724,24 @@ cluster.postgresql.cnpg.io "ogenki" deleted
 cluster.postgresql.cnpg.io "ogenki-restore" deleted
 ```
 
+Cleanup the IAM serviceaccount
+
 ```console
-gcloud iam service-accounts delete cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com
-You are about to delete service account [cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com].
+gcloud iam service-accounts delete cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com
+You are about to delete service account [cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com].
 
 Do you want to continue (Y/n)?  y
 
-deleted service account [cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com]
+deleted service account [cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com]
 ```
 
 ## 💭 final thoughts
 
-* Depending on the use case, the company constraints, the criticity of the application. Consider using Crossplane and composition to give an opinionated way of declaring managed databases in cloud providers. Requires more configuration.
-* can be used localy or in a CI workflow
+I just discovered CloudNativePG and I just scratched the surface but one thing for sure is that managing PostgreSQL is really made **easy**.
+However choosing a database solution is a **though decision**. Depending on the use case, the company constraints, the criticity of the application and the ops teams skills, there are plenty of options: Cloud managed databases, traditional baremetal installations, building the architecture with an Infrastructure As Code tool.
+
+We may also consider using Crossplane and composition to give an opinionated way of declaring managed databases in cloud providers but that requires more configuration.
+
+Again CloudNativePG shines by its simplicity, to run and to understand. Furthermore the **documentation** is one of the best I ever seen, especially for a young CNCF Sandbox project.
+
+If you want to learn more about it, there will be a presentation on 27th of October at the [KubeCon](https://kccncna2022.sched.com/event/182GB/data-on-kubernetes-deploying-and-running-postgresql-and-patterns-for-databases-in-a-kubernetes-cluster-chris-milsted-ondat-gabriele-bartolini-edb).
