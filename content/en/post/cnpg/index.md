@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = '`CloudNativePG`: An easy way to run PostgreSQL on Kubernetes'
-date = "2022-10-25"
+date = "2022-10-23"
 summary = "**CloudNativePG** is a Kubernetes operator that helps running and operating PostgreSQL databases. Here I'll demonstrate how to create a server, perform backups and recoveries, monitoring and a few tips."
 featureImage = "cnpg.png"
 featured = true
@@ -31,7 +31,6 @@ I considered several solutions but I was looking for a cloud agnostic and easy s
 >CloudNativePG is the Kubernetes operator that covers the full lifecycle of a highly available PostgreSQL database cluster with a primary/standby architecture, using native streaming replication.
 
 It has been submitted by the company [EnterpriseDB](https://www.enterprisedb.com/) to the **CNCF** in order to join the _Sandbox_ projects.
-
 
 ## :bullseye: Our target
 
@@ -158,7 +157,6 @@ secret/cnpg-mydb-superuser created
 kubectl create secret generic cnpg-mydb-user --from-literal=username=smana --from-literal=password=barbaz --namespace demo
 secret/cnpg-mydb-user created
 ```
-
 
 ## :hammer_and_wrench: Deploy the CloudNativePG operator using Helm
 
@@ -333,27 +331,6 @@ more info [here](https://cloudnative-pg.io/documentation/1.17/bootstrap/).
 {{% /notice %}}
 
 {{% notice note Note %}}
-
-With this configuration the WAL files are stored in the GCS bucket we created previously
-
-```yaml
-[...]
-  backup:
-    barmanObjectStore:
-      destinationPath: "gs://cnpg-ogenki"
-      googleCredentials:
-        gkeEnvironment: true
-    retentionPolicy: "30d"
-[...]
-```
-After some time you can check the content of your bucket
-
-```console
-gcloud storage ls gs://cnpg-ogenki/ogenki/wals
-gs://cnpg-ogenki/ogenki/wals/0000000100000000/
-gs://cnpg-ogenki/ogenki/wals/0000000200000000/
-```
-
 This is possible because we gave the permissions using an annotation in the pod's serviceaccount
 
 ```console
@@ -620,10 +597,131 @@ tps = 908.782896 (without initial connection time)
 
 ## 💽 Backup and Restore
 
+We can first trigger an **ondemand** backup using the custom resource `Backup`
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: ogenki-now
+  namespace: demo
+spec:
+  cluster:
+    name: ogenki
+```
+
+```console
+kubectl apply -f backup.yaml
+backup.postgresql.cnpg.io/ogenki-now created
+
+kubectl get backup -n demo
+NAME                      AGE   CLUSTER   PHASE       ERROR
+ogenki-now                36s   ogenki    completed
+```
+
+If you take a look at the Google Cloud Storage content you'll see an new directory that stores the **base backups**
+
+```console
+gcloud storage ls gs://cnpg-ogenki/ogenki/base
+gs://cnpg-ogenki/ogenki/base/20221023T130327/
+```
+
+But most of the time we would want to have a **scheduled backup**. So let's configure a daily schedule.
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: ogenki-daily
+  namespace: demo
+spec:
+  backupOwnerReference: self
+  cluster:
+    name: ogenki
+  schedule: 0 0 0 * * *
+```
+
+Recoveries can only be done on new instances. Here we'll use the backup we've created previously to bootstrap a new instance with it.
+
+```console
+gcloud iam service-accounts add-iam-policy-binding cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com \
+--role roles/iam.workloadIdentityUser --member "serviceAccount:cloud-native-computing-paris.svc.id.goog[demo/ogenki-restore]"
+Updated IAM policy for serviceAccount [cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com].
+bindings:
+- members:
+  - serviceAccount:cloud-native-computing-paris.svc.id.goog[demo/ogenki-restore]
+  - serviceAccount:cloud-native-computing-paris.svc.id.goog[demo/ogenki]
+  role: roles/iam.workloadIdentityUser
+etag: BwXrs755FPA=
+version: 1
+```
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: ogenki-restore
+  namespace: demo
+spec:
+  instances: 1
+
+  inheritedMetadata:
+    annotations:
+      iam.gke.io/gcp-service-account: cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com
+
+  storage:
+    storageClass: standard
+    size: 10Gi
+
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+
+  superuserSecret:
+    name: cnpg-mydb-superuser
+
+  bootstrap:
+    recovery:
+      backup:
+        name: ogenki-now
+```
+
+```console
+kubectl get po -n demo
+NAME                                   READY   STATUS      RESTARTS      AGE
+ogenki-1                               1/1     Running     1 (18h ago)   18h
+ogenki-2                               1/1     Running     0             18h
+ogenki-restore-1                       0/1     Init:0/1    0             0s
+ogenki-restore-1-full-recovery-5p4ct   0/1     Completed   0             51s
+```
+
+```console
+kubectl get cluster -n demo
+NAME             AGE   INSTANCES   READY   STATUS                     PRIMARY
+ogenki           18h   2           2       Cluster in healthy state   ogenki-1
+ogenki-restore   80s   1           1       Cluster in healthy state   ogenki-restore-1
+```
 
 ## :broom: Cleanup
 
 
+```console
+kubectl delete cluster -n demo ogenki ogenki-restore
+cluster.postgresql.cnpg.io "ogenki" deleted
+cluster.postgresql.cnpg.io "ogenki-restore" deleted
+```
+
+```console
+gcloud iam service-accounts delete cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com
+You are about to delete service account [cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com].
+
+Do you want to continue (Y/n)?  y
+
+deleted service account [cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com]
+```
 
 ## 💭 final thoughts
 
