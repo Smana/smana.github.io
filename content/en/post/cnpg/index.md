@@ -757,6 +757,6 @@ However choosing a database solution is a **though decision**. Depending on the 
 
 We may also consider using Crossplane and composition to give an opinionated way of declaring managed databases in cloud providers but that requires more configuration.
 
-Again CloudNativePG shines by its simplicity, to run and to understand. Furthermore the **documentation** is one of the best I ever seen, especially for a so young open source project (Hopefuly it can help in the Sandbox acceptance process 🤞).
+Again CloudNativePG shines by its simplicity, to run and to understand. Furthermore the **documentation** is one of the best I ever seen, especially for a so young open source project (Hopefuly it might help in the CNCF Sandbox acceptance process 🤞).
 
 If you want to learn more about it, there will be a presentation on 27th of October at the [KubeCon](https://kccncna2022.sched.com/event/182GB/data-on-kubernetes-deploying-and-running-postgresql-and-patterns-for-databases-in-a-kubernetes-cluster-chris-milsted-ondat-gabriele-bartolini-edb).
