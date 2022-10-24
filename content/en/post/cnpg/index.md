@@ -526,7 +526,7 @@ Finally, you may want to configure alerts and you can create a _PrometheusRule_ 
 This is worth running a **performance test** in order to know the limits of your current server and keep a baseline for further improvements.
 
 {{% notice note Note %}}
-When it comes to performances there are many improvement areas we can work on. It mostly depends on the **target** we want to achieve. Indeed we don't want to waste time and money for performances we likely never need.
+When it comes to performances there are many improvement areas we can work on. It mostly depends on the **target** we want to achieve. Indeed we don't want to waste time and money for performances we'll likely never need.
 
 Here are the main things to look at:
 
