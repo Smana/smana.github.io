@@ -43,7 +43,7 @@ Finally we'll have a look to the backup/restore methods.
 
 {{% notice info Info %}}
 All the steps in this article will be made manually but you should consider using a **GitOps** engine.
-Using Flux to manage everything has been covered in a [previous article](/post/deflux).
+Using Flux to manage everything has been covered in a [previous article](/post/deflux/).
 
 You may want to check a complete **example** that I built for my own use case [here](https://github.com/cncfparis/kcdfrance-gitops).
 
@@ -66,9 +66,9 @@ kubectl krew install cnpg
 
 ### ☁️ Create the Google cloud requirements
 
-There are  a few things to configure before creating our PostgreSQL instance:
+There are  a few things to configure before creating a PostgreSQL instance:
 
-* Obviously you'll need a Kubernetes cluster. This article assume that you already have a **GKE** cluster available.
+* Obviously you'll need a Kubernetes cluster. This article assumes that you already have a **GKE** cluster available.
 * We'll create a bucket which stores the backups and [WAL files](https://www.postgresql.org/docs/15/wal-intro.html)
 * Then we need to give the **permissions** to our pods so that they'll be able to write into this newly created bucket.
 
@@ -538,6 +538,9 @@ Here are the main things to look at:
 * Database optimization, analyzing the query plans using [**explain**](https://www.postgresql.org/docs/current/performance-tips.html), use the extension `pg_stat_statement` ...
 {{% /notice %}}
 
+<center><img src="pgbench.png" alt="standby" width="600" /></center>
+
+
 First of all we'll add labels to the nodes in order to run the `pgbench` command on different machines than the ones hosting the database.
 
 ```console
@@ -579,9 +582,21 @@ EOF
 
 helm upgrade --install -n demo pgbench -f pgbench-benchmark/myvalues.yaml  pgbench-benchmark/
 ```
+{{% notice info Info %}}
+There are different services depending on wether you want to read and **write** or **read only**.
+
+```console
+kubectl get ep -n demo
+NAME        ENDPOINTS                          AGE
+ogenki-any   10.64.1.136:5432,10.64.1.3:5432    15d
+ogenki-r     10.64.1.136:5432,10.64.1.3:5432    15d
+ogenki-ro    10.64.1.136:5432                   15d
+ogenki-rw    10.64.1.3:5432                     15d
+```
+
+{{% /notice %}}
 
 ![pgbench_grafana](pgbench_grafana.png)
-
 
 ```console
 kubectl logs -n demo job/pgbench-pgbench-benchmark -f
@@ -742,6 +757,6 @@ However choosing a database solution is a **though decision**. Depending on the 
 
 We may also consider using Crossplane and composition to give an opinionated way of declaring managed databases in cloud providers but that requires more configuration.
 
-Again CloudNativePG shines by its simplicity, to run and to understand. Furthermore the **documentation** is one of the best I ever seen, especially for a young CNCF Sandbox project.
+Again CloudNativePG shines by its simplicity, to run and to understand. Furthermore the **documentation** is one of the best I ever seen, especially for a so young open source project (Hopefuly it can help in the Sandbox acceptance process 🤞).
 
 If you want to learn more about it, there will be a presentation on 27th of October at the [KubeCon](https://kccncna2022.sched.com/event/182GB/data-on-kubernetes-deploying-and-running-postgresql-and-patterns-for-databases-in-a-kubernetes-cluster-chris-milsted-ondat-gabriele-bartolini-edb).
