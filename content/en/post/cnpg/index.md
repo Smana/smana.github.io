@@ -14,63 +14,67 @@ tags = [
 thumbnail= "cloudnativepg.png"
 +++
 
-While Kubernetes is now the de-facto platform for orchestrating stateless applications (Because containers don't store data they can be destroyed and recreated elsewhere), running applications that require to persist data in an ephemeral environment can be **quite challenging**. We're seing increasing number of mature cloud-native database solutions (CockroachDB, TiDB, K8ssandra, Strimzi...) but there are a few **things to consider**:
+Kubernetes is now the de facto platform for orchestrating stateless applications. Containers that don't store data can be destroyed and easily recreated elsewhere. On the other hand, running persistent applications in an ephemeral environment can be **quite challenging**. There is an increasing number of mature cloud-native database solutions (like CockroachDB, TiDB, K8ssandra, Strimzi...) and there are a lot of **things to consider** when evaluating them:
 
-* Maturity of the operator, declarative approach through CRDs.
-* How to handle the storage: Kubernetes volume management(CSI,PVCs), hdd vs ssd, local storage
-* Resiliency. What happens when something goes wrong?
-* Backup / Recovery. How easy is it? Scheduled backups
-* Replication / Scaling
-* Connection Pooling
-* Observability
+* How mature is the operator?
+* What do the CRDs look like, which options, settings, and status do they expose?
+* Which Kubernetes storage APIs does it leverage? (PV/PVC, CSI, snapshots...)
+* Can it differentiate HDD and SSD, local/remote storage?
+* What happens when something goes wrong: how resilient is the system?
+* Backup and recovery: how easy is it to perform and schedule backups?
+* What replication and scaling options are available?
+* What about connection and concurrency limits, connection pooling, bouncers?
+* Observability: what metrics are exposed and how?
 
 I was looking for a solution to host a **PostgreSQL database**. This database is a requirement for a ticket reservation software named [Alf.io](https://alf.io/) that's being used for an upcoming event: [The Kubernetes Community Days France](https://kcdfrance.fr). (By the way you're welcome to submit a talk 👐, the [CFP](https://cfp.kcdfrance.fr) closes soon).
 
-I considered several solutions but I was looking for a cloud agnostic and easy solution. I already played with several Kubernetes operators and I finally ended up looking at a new kid on the block: [**CloudNativePG**](https://cloudnative-pg.io/)
+I was specifically looking for a cloud-agnostic solution, with emphasis on ease of use. I was already familiar with several Kubernetes operators, and I ended up evaluating a fairly new kid on the block: [**CloudNativePG**](https://cloudnative-pg.io/).
 
->CloudNativePG is the Kubernetes operator that covers the full lifecycle of a highly available PostgreSQL database cluster with a primary/standby architecture, using native streaming replication.
+> CloudNativePG is the Kubernetes operator that covers the full lifecycle of a highly available PostgreSQL database cluster with a primary/standby architecture, using native streaming replication.
 
-It has been submitted by the company [EnterpriseDB](https://www.enterprisedb.com/) to the **CNCF** in order to join the _Sandbox_ projects.
+It has been created by the company [EnterpriseDB](https://www.enterprisedb.com/), who submitted it to the **CNCF** in order to join the _Sandbox_ projects.
 
 ## :bullseye: Our target
 
-Here I'm gonna try to give an **introduction** of the main CloudNativePG features.
-Basically the idea is to create a PostgreSQL database on a GKE cluster.
-Then we'll add a standby instance and we'll run a few resiliency tests.
-We may want to see how it behaves in terms of performances and what are the observability tools available.
+I'm going to give you an **introduction** to the main CloudNativePG features.
+The plan is to:
+- create a PostgreSQL database on a GKE cluster,
+- add a standby instance,
+- run a few resiliency tests.
+
+We will also see how it behaves in terms of performances and what are the observability tools available.
 Finally we'll have a look to the backup/restore methods.
 
 
 {{% notice info Info %}}
-All the steps in this article will be made manually but you should consider using a **GitOps** engine.
-Using Flux to manage everything has been covered in a [previous article](/post/deflux/).
+In this article, we will create and update everything manually; but in production, we probably should use a **GitOps** engine, for instance Flux (which has been covered in a [previous article](/post/deflux/)).
 
-You may want to check a complete **example** that I built for my own use case [here](https://github.com/cncfparis/kcdfrance-gitops).
+If you want to see a complete end-to-end **example**, you can look at the [KCD France infrastructure repository](https://github.com/cncfparis/kcdfrance-gitops).
 
-All the manifests below can be found in [this repository](https://github.com/Smana/smana.github.io/tree/main/content/resources/cnpg).
+All the manifests shown in this article can be found in [this repository](https://github.com/Smana/smana.github.io/tree/main/content/resources/cnpg).
 {{% /notice %}}
 
 
 ## :ballot_box_with_check: Requirements
 
-### :inbox_tray: Install required tools
+### :inbox_tray: Tooling
 
-* **kubectl plugin:** CloudNativePG comes with a handy `kubectl` plugin that gives insights of your PostgreSQL instance and allows to perform some operations.
-It can be installed using [krew](https://krew.sigs.k8s.io/) as follows
+* **gcloud SDK:** we're going to deploy on Google Cloud (specifically, on GKE) and we will need to create a few resources in our GCP project; so we'll need the Google Cloud SDK and CLI. If needed, you can install and configure it using [this documentation](https://cloud.google.com/sdk/docs/install-sdk).
+
+* **kubectl plugin:** to facilitate cluster management, CloudNativePG comes with a handy `kubectl` plugin that gives insights of your PostgreSQL instance and allows to perform some operations.
+It can be installed using [krew](https://krew.sigs.k8s.io/) as follows:
 
 ```console
 kubectl krew install cnpg
 ```
 
-* **gcloud:** As this article is about running it in Google Cloud, you'll need to install the Google Cloud SDK using [this documentation](https://cloud.google.com/sdk/docs/install-sdk) and configure it in order to be able to create resources on your own GCP project.
-
 ### ☁️ Create the Google cloud requirements
 
-There are  a few things to configure before creating a PostgreSQL instance:
+Before creating our PostgreSQL instance, we need to configure a few things:
 
-* Obviously you'll need a Kubernetes cluster. This article assumes that you already have a **GKE** cluster available.
-* We'll create a bucket which stores the backups and [WAL files](https://www.postgresql.org/docs/15/wal-intro.html)
-* Then we need to give the **permissions** to our pods so that they'll be able to write into this newly created bucket.
+* We need a Kubernetes cluster. This article assumes that you have already taken care of provisioning a **GKE** cluster.
+* We'll create a bucket to store the backups and [WAL files](https://www.postgresql.org/docs/15/wal-intro.html).
+* We'll grant **permissions** to our pods so that they can write to that bucket.
 
 Create the bucket using `gcloud` CLI
 
@@ -91,7 +95,7 @@ timeCreated: '2022-10-15T19:27:54.364000+00:00'
 updated: '2022-10-15T19:27:54.364000+00:00'
 ```
 
-Give the permissions to the pods (PostgreSQL server) to write/read from the bucket using [**Workload Identity**](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity).
+Now, we're going to give the permissions to the pods (PostgreSQL server) to write/read from the bucket using [**Workload Identity**](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity).
 
 {{% notice note Note %}}
 The GKE cluster should be configured with _Workload Identity_ enabled.
@@ -160,7 +164,7 @@ secret/cnpg-mydb-user created
 
 ## :hammer_and_wrench: Deploy the CloudNativePG operator using Helm
 
-CloudNativePG is basically a Kubernetes operator which comes with some CRD's. We'll use the Helm chart as follows
+CloudNativePG is basically a Kubernetes operator which comes with some CRDs. We'll use the Helm chart as follows
 
 ```console
 helm repo add cnpg https://cloudnative-pg.github.io/charts
@@ -345,10 +349,10 @@ I proposed a [PR](https://github.com/cloudnative-pg/cloudnative-pg/pull/836) in 
 ## 🩹 Standby instance and resiliency
 
 {{% notice info Info %}}
-In traditional PostgreSQL architectures we commonly find an additional component to handle high availability (e.g. [Patroni](https://patroni.readthedocs.io/en/latest/)). A specific aspect of the CloudNativePG operator is that it leverages base Kubernetes features and relies on a component named [_Postgres instance manager_](https://cloudnative-pg.io/documentation/1.17/instance_manager/).
+In traditional PostgreSQL architectures we usually find an additional component to handle high availability (e.g. [Patroni](https://patroni.readthedocs.io/en/latest/)). A specific aspect of the CloudNativePG operator is that it leverages built-in Kubernetes features and relies on a component named [_Postgres instance manager_](https://cloudnative-pg.io/documentation/1.17/instance_manager/).
 {{% /notice %}}
 
-Add a standby instance by setting up the number of replicas to 2.
+Add a standby instance by setting the number of replicas to 2.
 
 <center><img src="standby.png" alt="standby" width="600" /></center>
 
@@ -366,7 +370,7 @@ spec:
 [...]
 ```
 
-The operator immediately notice the change, adds a standby instance and starts the replication process.
+The operator immediately notices the change, adds a standby instance, and starts the replication process.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -389,7 +393,7 @@ ogenki-1              1/1     Running   0          3m16s
 ogenki-2-join-xxrwx   0/1     Pending   0          82s
 ```
 
-After a given time, depending on the amount of data to replicate, the standby instance will be up and running and we can see the replication statistics.
+After a while (depending on the amount of data to replicate), the standby instance will be up and running and we can see the replication statistics.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -430,7 +434,7 @@ kubectl cnpg promote ogenki ogenki-2 -n demo
 Node ogenki-2 in cluster ogenki will be promoted
 ```
 
-In my case the switchover was really fast. We can check that the instance `ogenki-2` is now the primary and the replication is done the other way round.
+In my case the switchover was really fast. We can check that the instance `ogenki-2` is now the primary and that the replication is done the other way around.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -493,9 +497,9 @@ So far so good, we've been able to test the high availability and the experience
 
 ## 👁️ Monitoring
 
-I won't cover the [Prometheus Stack](https://github.com/prometheus-operator/kube-prometheus) installation in this article. If you wan't to have a look on how to do this the Gitops way please check [this example](https://github.com/Smana/kcdfrance-gitops/tree/main/observability).
+We're going to use [Prometheus Stack](https://github.com/prometheus-operator/kube-prometheus). We won't cover its installation in this article. If you want to see how to install it "the GitOps way" you can check [this example](https://github.com/Smana/kcdfrance-gitops/tree/main/observability).
 
-Basically we need to create a _PodMonitor_ in order to scrape our instance's metrics.
+To scrape our instance's metrics, we need to create a _PodMonitor_.
 ```yaml
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
@@ -515,18 +519,18 @@ spec:
       postgresql: ogenki
 ```
 
-And the Grafana dashboard available [here](https://github.com/EnterpriseDB/cnp-sandbox/blob/main/charts/cnp-sandbox/dashboard.json).
+We can then add the Grafana dashboard available [here](https://github.com/EnterpriseDB/cnp-sandbox/blob/main/charts/cnp-sandbox/dashboard.json).
 
 ![observability](observability.png)
 
-Finally, you may want to configure alerts and you can create a _PrometheusRule_ using [these rules](https://github.com/EnterpriseDB/cnp-sandbox/blob/main/charts/cnp-sandbox/alerts.yaml)
+Finally, you may want to configure alerts and you can create a _PrometheusRule_ using [these rules](https://github.com/EnterpriseDB/cnp-sandbox/blob/main/charts/cnp-sandbox/alerts.yaml).
 
 ## :fire: Performances and benchmark
 
 This is worth running a **performance test** in order to know the limits of your current server and keep a baseline for further improvements.
 
 {{% notice note Note %}}
-When it comes to performances there are many improvement areas we can work on. It mostly depends on the **target** we want to achieve. Indeed we don't want to waste time and money for performances we'll likely never need.
+When it comes to performance there are many improvement areas we can work on. It mostly depends on the **target** we want to achieve. Indeed we don't want to waste time and money for performance we'll likely never need.
 
 Here are the main things to look at:
 
@@ -617,7 +621,7 @@ tps = 908.782896 (without initial connection time)
 
 ## 💽 Backup and Restore
 
-We can first trigger an **ondemand** backup using the custom resource `Backup`
+We can first trigger an **on-demand** backup using the custom resource `Backup`
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -752,11 +756,11 @@ deleted service account [cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.co
 
 ## 💭 final thoughts
 
-I just discovered CloudNativePG and I just scratched the surface but one thing for sure is that managing PostgreSQL is really made **easy**.
-However choosing a database solution is a **though decision**. Depending on the use case, the company constraints, the criticity of the application and the ops teams skills, there are plenty of options: Cloud managed databases, traditional baremetal installations, building the architecture with an Infrastructure As Code tool.
+I just discovered CloudNativePG and I only scratched the surface but one thing for sure is that managing PostgreSQL is really made **easy**.
+However choosing a database solution is a **though decision**. Depending on the use case, the company constraints, the criticity of the application and the ops teams skills, there are plenty of options: Cloud managed databases, traditional bare metal installations, building the architecture with an Infrastructure As Code tool...
 
 We may also consider using Crossplane and composition to give an opinionated way of declaring managed databases in cloud providers but that requires more configuration.
 
-Again CloudNativePG shines by its simplicity, to run and to understand. Furthermore the **documentation** is one of the best I ever seen, especially for a so young open source project (Hopefuly it might help in the CNCF Sandbox acceptance process 🤞).
+CloudNativePG shines by its simplicity: it is easy to run and easy to understand. Furthermore the **documentation** is excellent (one of the best I ever seen!), especially for such a young open source project (Hopefuly this will help in the CNCF Sandbox acceptance process 🤞).
 
-If you want to learn more about it, there will be a presentation on 27th of October at the [KubeCon](https://kccncna2022.sched.com/event/182GB/data-on-kubernetes-deploying-and-running-postgresql-and-patterns-for-databases-in-a-kubernetes-cluster-chris-milsted-ondat-gabriele-bartolini-edb).
+If you want to learn more about it, there was a presentation on about it at [KubeCon NA 2022](https://kccncna2022.sched.com/event/182GB/data-on-kubernetes-deploying-and-running-postgresql-and-patterns-for-databases-in-a-kubernetes-cluster-chris-milsted-ondat-gabriele-bartolini-edb).
