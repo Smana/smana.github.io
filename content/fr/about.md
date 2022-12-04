@@ -1,25 +1,23 @@
 +++
 title = "About"
-description = "Hugo, the world's fastest framework for building websites"
-date = "2019-02-28"
-aliases = ["about-us", "about-hugo", "contact"]
-author = "Hugo Authors"
+summary = "What's behind this blog post and what is the next target?"
+date = "2022-07-18"
+author = "Smana"
 +++
 
-Written in Go, Hugo is an open source static site generator available under the [Apache Licence 2.0.](https://github.com/gohugoio/hugo/blob/master/LICENSE) Hugo supports TOML, YAML and JSON data file types, Markdown and HTML content files and uses shortcodes to add rich content. Other notable features are taxonomies, multilingual mode, image processing, custom output formats, HTML/CSS/JS minification and support for Sass SCSS workflows.
+I’m currently on my flight back from the Kubecon EU 2022 and plenty of ideas are currently flooding my brain. Actually this has been a long time I’m considering starting my own blog post. My main target here is to play and learn about new technologies and share my experimentations and findings.
+<br>
+<br>
+While I’m writing this I don’t know what will be the topics in a few months but you’ll find here my next target:
+<br>
+:arrow_right: Exploring Cilium projects (CNI, hubble, servicemesh, tetragon)
 
-Hugo makes use of a variety of open source projects including:
+## Who am I?
 
-* https://github.com/yuin/goldmark
-* https://github.com/alecthomas/chroma
-* https://github.com/muesli/smartcrop
-* https://github.com/spf13/cobra
-* https://github.com/spf13/viper
+I'm a senior Site Reliability Engineer with a particular interest in Linux containers and cloud technologies.
+I worked in different companies (small startups and large scale) and I've been working in different areas in order to improve the reliability, availability of the platform as well as the developer experience.
+I helped several companies in their transition to the Cloud. I was leading SRE/DevOps teams (diverse profiles with developers and SREs) and I really enjoy seeing them engaged in the same direction.
 
-Hugo is ideal for blogs, corporate websites, creative portfolios, online magazines, single page applications or even a website with thousands of pages.
+As side activities, I am an organizer of the CNCF (Cloud Native Computing Foundation) meetup in Paris and I have the role of CNCF Ambassador in France.
 
-Hugo is for people who want to hand code their own website without worrying about setting up complicated runtimes, dependencies and databases.
-
-Websites built with Hugo are extremelly fast, secure and can be deployed anywhere including, AWS, GitHub Pages, Heroku, Netlify and any other hosting provider.
-
-Learn more and contribute on [GitHub](https://github.com/gohugoio).
+Hobbies: Reading SF books, Kick Boxing, Surfing/Skating/Inline Roller
