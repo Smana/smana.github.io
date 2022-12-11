@@ -6,9 +6,10 @@ metadata:
 spec:
   instances: 1
 
-  inheritedMetadata:
-    annotations:
-      iam.gke.io/gcp-service-account: cloudnative-pg@cloud-native-computing-paris.iam.gserviceaccount.com
+  serviceAccountTemplate:
+    metadata:
+      annotations:
+        iam.gke.io/gcp-service-account: cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com
 
   storage:
     storageClass: standard

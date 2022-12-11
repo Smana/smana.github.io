@@ -2,7 +2,7 @@
 author = "Smaine Kahlouch"
 title = '`CloudNativePG`: et PostgreSQL devient facile sur Kubernetes'
 date = "2022-10-23"
-summary = "**CloudNativePG** est un opérateur Kubernetes qui facilite la gestion et l'exploitation de bases de données PostgreSQL. Cet article montre comment créer un serveur, effectuer des sauvegardes et des récupérations, la supervision et quelques petits conseils."
+summary = "**CloudNativePG** est un opérateur Kubernetes qui facilite la gestion et l'exploitation de bases de données PostgreSQL. Cet article montre comment créer un serveur, effectuer des sauvegardes et des restaurations, la supervision et quelques petits conseils ;)"
 featureImage = "cnpg.png"
 featured = true
 codeMaxLines = 20
@@ -37,18 +37,18 @@ Ce projet été créé par l'entreprise [EnterpriseDB](https://www.enterprisedb.
 
 Je vais donner ici une **introduction** aux principales fonctionnalités de CloudNativePG.
 
-Le plan est de:
+L'objectif est de:
 
-- Créez une base de données PostgreSQL sur un cluster GKE,
-- Ajoutez une instance secondaire (réplication)
-- Exécutez quelques tests de résilience.
+- Créer une base de données PostgreSQL sur un cluster GKE,
+- Ajouter une instance secondaire (réplication)
+- Exécuter quelques tests de résilience.
 
 Nous verrons également comment tout cela se comporte en terme de performances et quels sont les outils de supervision disponibles.
 Enfin, nous allons jeter un œil aux méthodes de sauvegarde/restauration.
 
 
 {{% notice info Info %}}
-Dans cet article, nous allons tout créer et tout mettre à jour manuellement. Mais dans un environnement de production, il est conseillé d'utiliser un moteur **GitOps**, par exemple Flux (sujet couvert dans un [article précédent](/post/deflux/)).
+Dans cet article, nous allons tout créer et tout mettre à jour manuellement. Mais dans un environnement de production, il est conseillé d'utiliser un moteur **GitOps**, par exemple Flux (sujet couvert dans un [article précédent](/fr/post/devflux/)).
 
 Si vous souhaitez voir un **exemple complet**, vous pouvez consulter le dépôt git [KCD France infrastructure](https://github.com/cncfparis/kcdfrance-gitops).
 
@@ -163,7 +163,7 @@ kubectl create secret generic cnpg-mydb-user --from-literal=username=smana --fro
 secret/cnpg-mydb-user created
 ```
 
-## :hammer_and_wrench: Deploy the CloudNativePG operator using Helm
+## :hammer_and_wrench: Déployer l'opérateur CloudNativePG avec Helm
 
 Ici nous utiliserons le chart Helm pour déployer CloudNativePG:
 
@@ -178,7 +178,7 @@ NAME                    READY   STATUS      RESTARTS   AGE
 cnpg-74488f5849-8lhjr   1/1     Running     0          6h17m
 ```
 
-Suite à l'installation de l'opérateur Kubernetes, quelques resources personnalisées (_Custom Resources Definitions_) sont disponibles.
+Cela installe aussi  quelques resources personnalisées (_Custom Resources Definitions_)
 
 ```console
 kubectl get crds | grep cnpg.io
@@ -196,8 +196,8 @@ Pour une liste complète des paramètres possibles, veuillez vous référer à l
 
 <center><img src="single_instance.png" alt="single_instance" width="600" /></center>
 
-Dous pouvons désormais créer notre première instance en utilisant une **resource personnalisée** `Cluster`. La définition suivante est assez simple:
-nous souhaitons démarrer un serveur PostgreSQL, créer automatiquement une base de données nommée `mydb`  et configurer les informations d'authentification en fonction des [secrets créés précédemment](#key-créer-les-secrets-pour-les-utilisateurs-postgresql).
+Nous pouvons désormais créer notre première instance en utilisant une **resource personnalisée** `Cluster`. La définition suivante est assez simple:
+Nous souhaitons démarrer un serveur PostgreSQL, créer automatiquement une base de données nommée `mydb`  et configurer les informations d'authentification en utilisant les [secrets créés précédemment](#key-créer-les-secrets-pour-les-utilisateurs-postgresql).
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -245,12 +245,14 @@ spec:
 ```
 
 Créer le `namespace` où notre instance postgresql sera déployée
+
 ```console
 kubectl create ns demo
 namespace/demo created
 ```
 
 Adapdez le fichier YAML ci-dessus vos besoins et appliquez comme suit:
+
 ```console
 kubectl apply -f cluster.yaml
 cluster.postgresql.cnpg.io/ogenki created
@@ -337,13 +339,13 @@ Il existe de nombreuses façons de bootstrap un cluster. Par exemple, la restaur
 Plus d'infos [ici](https://cloudnative-pg.io/documentation/1.18/bootstrap/).
 {{% /notice %}}
 
-## 🩹 Standby instance and resiliency
+## 🩹 Instance de secours et résilience
 
 {{% notice info Info %}}
-Dans les architectures postgresql traditionnelles, nous trouvons généralement un composant supplémentaire pour gérer la haute disponibilité (ex: [Patroni](https://patroni.readthedocs.io/en/latest/)). Un aspect spécifique de l'opérateur CloudNativePG est qu'il tire parti des fonctionnalités de Kubernetes intégrées et s'appuie sur un composant nommé [_Postgres instance manager_](https://cloudnative-pg.io/documentation/1.17/instance_manager/).
+Dans les architectures postgresql traditionnelles, nous trouvons généralement un composant supplémentaire pour gérer la haute disponibilité (ex: [Patroni](https://patroni.readthedocs.io/en/latest/)). Un particularité de l'opérateur CloudNativePG est qu'il bénéficie des fonctionnalités de base de Kubernetes et s'appuie sur un composant nommé [_Postgres instance manager_](https://cloudnative-pg.io/documentation/1.18/instance_manager/).
 {{% /notice %}}
 
-Ajoutez une instance de veille en définissant le nombre de répliques sur 2.
+Ajoutez une instance de secours ("standby") en définissant le nombre de répliques sur 2.
 
 <center><img src="standby.png" alt="standby" width="600" /></center>
 
@@ -361,7 +363,7 @@ spec:
 [...]
 ```
 
-L'opérateur remarque immédiatement le changement, ajoute une instance de veille et démarre le processus de réplication.
+L'opérateur remarque immédiatement le changement, ajoute une instance de secours et démarre le processus de réplication.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -384,7 +386,7 @@ ogenki-1              1/1     Running   0          3m16s
 ogenki-2-join-xxrwx   0/1     Pending   0          82s
 ```
 
-Après un certain temps (selon la quantité de données à reproduire), l'instance de veille sera opérationnelle et nous pouvons voir les statistiques de réplication.
+Après un certain temps (qui dépend de la quantité de données à répliquer), l'instance de secours devient opérationnelle et nous pouvons voir les statistiques de réplication.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -413,19 +415,18 @@ ogenki-1  33 MB          0/3000060    Primary           OK      Burstable  1.18.
 ogenki-2  33 MB          0/3000060    Standby (async)   OK      Burstable  1.18.0           gke-kcdfrance-main-np-0e87115b-xszc
 ```
 
-
-Let's promote the standby instance to primary (perform a **_Switchover_**).
+Nous allons désormais éffectuer ce que l'on appelle un "**_Switchover_**": Nous allons promouvoir l'instance de secours en instance primaire.
 
 <center><img src="promote.png" alt="promote" width="600" /></center>
 
-Le plugin `cnpg` permet de le faire impératif en exécutant cette commande
+Le plugin `cnpg` permet de le faire de façon impérative, en utilisant la ligne de commande suivante:
 
 ```console
 kubectl cnpg promote ogenki ogenki-2 -n demo
 Node ogenki-2 in cluster ogenki will be promoted
 ```
 
-Dans mon cas, le basculement était vraiment rapide.Nous pouvons vérifier que l'instance `ogenki-2` est désormais le principal et que la réplication est effectuée dans l'autre sens.
+Dans mon cas, le basculement était vraiment rapide. Nous pouvons vérifier que l'instance `ogenki-2` est devenu primaire et que la réplication est effectuée dans l'autre sens.
 
 ```console
 kubectl cnpg status -n demo ogenki
@@ -446,7 +447,7 @@ ogenki-2  33 MB          0/4004CA0    Primary           OK      Burstable  1.18.
 ogenki-1  33 MB          0/4004CA0    Standby (async)   OK      Burstable  1.18.0           gke-kcdfrance-main-np-0e87115b-76k7
 ```
 
-Maintenant, simulons un **_Switchover_** en supprimant le pod principal
+Maintenant, provoquons un **_Failover_** en supprimant le pod principal
 
 <center><img src="failover.png" alt="failover" width="600" /></center>
 
@@ -476,7 +477,7 @@ ogenki-1  33 MB          0/40078D8    Primary           OK                 Burst
 ogenki-2  -              -            -                 pod not available  Burstable  -                gke-kcdfrance-main-np-0e87115b-xszc
 ```
 
-After a few seconds, the cluster becomes healthy again
+Quelques secondes plus tard le cluster devient opérationnel à nouveau.
 
 ```console
 kubectl get cluster -n demo
@@ -484,13 +485,13 @@ NAME     AGE   INSTANCES   READY   STATUS                     PRIMARY
 ogenki   13m   2           2       Cluster in healthy state   ogenki-1
 ```
 
-So far so good, we've been able to test the high availability and the experience is pretty smooth 😎.
+Jusqu'ici tout va bien, nous avons pu faire quelques tests de la haute disponibilité et c'était assez probant 😎.
 
 ## 👁️ Supervision
 
-Nous allons utiliser la [Stack Prometheus](https://github.com/prometheus-operator/kube-prometheus). Nous ne couvrirons pas son installation dans cet article.Si vous voulez voir comment l'installer "la manière Gitops", vous pouvez vérifier [cet exemple](https://github.com/Smana/kcdfrance-gitops/tree/main/observability).
+Nous allons utiliser la [Stack Prometheus](https://github.com/prometheus-operator/kube-prometheus). Nous ne couvrirons pas son installation dans cet article. Si vous voulez voir comment l'installer avec Flux, vous pouvez jeter un oeil à [cet exemple](https://github.com/Smana/kcdfrance-gitops/tree/main/observability).
 
-Pour gratter les mesures de notre instance, nous devons créer un _PodMonitor_.
+Pour récupérer les métriques de notre instance, nous devons créer un _PodMonitor_.
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -519,25 +520,29 @@ Enfin, vous souhaiterez peut-être configurer des alertes et vous pouvez créer 
 
 ## :fire: Performances and benchmark
 
-Cela vaut la peine d'exécuter un **test de performances** afin de connaître les limites de votre serveur actuel et de garder une base de référence pour de futures améliorations.
+{{% notice info Info %}}
+**Mise à jour**: Il est désormais possible de faire un test de performance avec le [plugin cnpg](https://cloudnative-pg.io/documentation/1.18/benchmarking/#pgbench)
+{{% /notice %}}
+
+Afin de connaitre les limites de votre serveur, vous devriez faire un **test de performances** et de conserver une base de référence pour de futures améliorations.
 
 {{% notice note Note %}}
-En ce qui concerne les performances, il existe de nombreux domaines d'amélioration sur lesquels nous pouvons travailler.Cela dépend principalement de l'**objectif** que nous voulons atteindre.En effet, nous ne voulons pas perdre du temps et de l'argent pour les performances dont nous n'aurons probablement jamais besoin.
+Au sujet des performances, il existe de nombreux domaines d'amélioration sur lesquels nous pouvons travailler.Cela dépend principalement de l'**objectif** que nous voulons atteindre. En effet, nous ne voulons pas perdre du temps et de l'argent pour les performances dont nous n'aurons probablement jamais besoin.
 
-Voici les principales choses à regarder:
+Voici les principaux éléments à analyser:
 
 * [Tuning de la configuration PostgreSQL](https://wiki.postgresql.org/wiki/Tuning_Your_PostgreSQL_Server)
 * **Resources systèmes** (cpu et mémoire)
 * Types de **Disque** : IOPS, stockage locale ([local-volume-provisioner](https://docs.pingcap.com/tidb-in-kubernetes/stable/deploy-on-gcp-gke#use-local-storage)),
 * Disques dédiées pour les **WAL** et les données **PG_DATA**
-* **"Pooling"** de connexions [PGBouncer](https://cloudnative-pg.io/documentation/1.18/connection_pooling/#connection-pooling). The CloudNativePG fourni une resource personnalisée `Pooler` qui permet de configurer cela facilement.
+* **"Pooling"** de connexions [PGBouncer](https://cloudnative-pg.io/documentation/1.18/connection_pooling/#connection-pooling). CloudNativePG fourni une resource personnalisée `Pooler` qui permet de configurer cela facilement.
 * Optimisation de la base de données, analyser les plans d'exécution grâce à [**explain**](https://www.postgresql.org/docs/current/performance-tips.html), utiliser l'extension `pg_stat_statement` ...
 {{% /notice %}}
 
 <center><img src="pgbench.png" alt="standby" width="600" /></center>
 
 
-Tout d'abord, nous ajouterons des étiquettes aux nœuds afin d'exécuter le `pgbench` cCommande sur différentes machines de celles hébergeant la base de données.
+Tout d'abord, nous ajouterons des "labels" aux nœuds afin d'exécuter la commande `pgbench` sur différentes machines de celles hébergeant la base de données.
 
 ```console
 PG_NODE=$(kubectl get po -n demo -l postgresql=ogenki,role=primary -o jsonpath={.items[0].spec.nodeName})
@@ -550,7 +555,7 @@ kubectl label node gke-kcdfrance-main-np-0e87115b-p5d7 workload=pgbench
 node/gke-kcdfrance-main-np-0e87115b-p5d7 labeled
 ```
 
-Et nous déploierons le graphique de la barre comme suit
+Et nous déploierons le chart Helm comme suit
 ```console
 git clone git@github.com:EnterpriseDB/cnp-bench.git
 cd cnp-bench
@@ -609,7 +614,7 @@ initial connection time = 111.585 ms
 tps = 908.782896 (without initial connection time)
 ```
 
-## 💽 Backup and Restore
+## 💽 Sauvegarde and restaurations
 
 {{% notice note Note %}}
 Le fait de pouvoir stocker des sauvegarde et fichiers WAL dans le bucket GCP est possible car nous avons attribué les autorisations en utilisant une annotation présente dans le `ServiceAccount` utilisé par le cluster
@@ -645,14 +650,14 @@ NAME                      AGE   CLUSTER   PHASE       ERROR
 ogenki-now                36s   ogenki    completed
 ```
 
-Si vous jetez un œil au contenu de stockage Google Cloud, vous verrez un nouveau répertoire qui stocke les sauvegardes de **base** ("base backups").
+Si vous jetez un œil au contenu du bucket GCS, vous verrez un nouveau répertoire qui stocke les sauvegardes de **base** ("base backups").
 
 ```console
 gcloud storage ls gs://cnpg-ogenki/ogenki/base
 gs://cnpg-ogenki/ogenki/base/20221023T130327/
 ```
 
-Mais la plupart du temps, nous préfererons avoir une sauvegarde **planifiée** ("scheduled"). Voici une configuration pour une sauvegarde quotidienne:
+Mais la plupart du temps, nous préfererons configurer une sauvegarde **planifiée** ("scheduled"). Ci-dessous un exemple pour une sauvegarde quotidienne:
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -667,7 +672,7 @@ spec:
   schedule: 0 0 0 * * *
 ```
 
-Les restaurations ne peuvent être effectuées que sur de nouvelles instances. Ici, nous utiliserons la sauvegarde que nous avons créée précédemment afin d'initialiser une nouvelle instance.
+Les restaurations ne peuvent être effectuées que sur de nouvelles instances. Ici, nous utiliserons la sauvegarde que nous avions créée précédemment afin d'initialiser une toute nouvelle instance.
 
 ```console
 gcloud iam service-accounts add-iam-policy-binding cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com \
@@ -716,7 +721,7 @@ spec:
         name: ogenki-now
 ```
 
-Nous pouvons remarquer un premier pod qui effectue la restauration complète ("full recovery").
+Nous notons qu'un pod se charge immédiatement de la restauration complète ("full recovery").
 
 ```console
 kubectl get po -n demo
@@ -727,7 +732,7 @@ ogenki-restore-1                       0/1     Init:0/1    0             0s
 ogenki-restore-1-full-recovery-5p4ct   0/1     Completed   0             51s
 ```
 
-Ensuite, le nouveau cluster devient opérationnel.
+Le nouveau cluster devient alors opérationnel ("Ready").
 
 ```console
 kubectl get cluster -n demo
@@ -757,13 +762,14 @@ Do you want to continue (Y/n)?  y
 deleted service account [cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.com]
 ```
 
-## 💭 final thoughts
+## 💭 Conclusion
 
-Je viens de découvrir CloudNativePG et je n'ai fait que gratter la surface, mais une chose est certainement que la gestion de PostgreSQL est vraiment rendue **facile**.
-Cependant, le choix d'une solution de base de données est un ** bien que la décision **.Selon le cas d'utilisation, les contraintes de l'entreprise, la critique de l'application et les compétences des équipes OPS, il existe de nombreuses options: bases de données gérées par le cloud, installations traditionnelles en métal nu, construire l'architecture avec une infrastructure comme outil de code ...
+Je viens tout juste de découvrir CloudNativePG et je n'ai fait qu'en percevoir la surface, mais une chose est sûre: la gestion d'une instance PostgreSQL est vraiment **facilitée**.
+Cependant, le choix d'une solution de base de données est une **décision complexe**. Il faut prendre en compte le cas d'usage, les contraintes de l'entreprise, la criticité de l'application et les compétences des équipes opérationnelles.
+Il existe de nombreuses options: bases de données gérées par le fournisseur Cloud, installation traditionnelle sur serveur baremetal, solutions distribuées ...
 
-Nous pouvons également envisager d'utiliser un plan transversal et une composition pour donner un moyen d'opinion de déclarer des bases de données gérées dans les fournisseurs de cloud, mais cela nécessite plus de configuration.
+Nous pouvons également envisager d'utiliser [Crossplane](/fr/post/crossplane_k3d/) et une [_Composition_](https://docs.crossplane.io/v1.10/reference/composition/) pour fournir un niveau d'abstraction supplémentaire afin de déclarer des bases de données des fournisseurs Cloud, mais cela nécessite plus de configuration.
 
-CloudNativepg brille par sa simplicité: il est facile à exécuter et facile à comprendre.De plus, la ** documentation ** est excellente (l'une des meilleures que j'aie jamais vues!), Surtout pour un si jeune projet open source (cela vous aidera dans le processus d'acceptation de bac à sable CNCF 🤞).
+CloudNativePG sort du lot par sa simplicité: Super facile à exécuter et à comprendre. De plus, la **documentation** est excellente (l'une des meilleures que j'aie jamais vues!), Surtout pour un si jeune projet open source (cela aidera peut être pour être accepté en tant que projet "Sandbox" CNCF 🤞).
 
-Si vous voulez en savoir plus à ce sujet, il y avait une présentation à ce sujet à [KubeCon NA 2022](https://kccncna2022.sched.com/event/182GB/data-on-kubernetes-deploying-and-running-postgresql-and-patterns-for-databases-in-a-kubernetes-cluster-chris-milsted-ondat-gabriele-bartolini-edb).
+Si vous voulez en savoir plus, il y avait une présentation à ce sujet à [KubeCon NA 2022](https://kccncna2022.sched.com/event/182GB/data-on-kubernetes-deploying-and-running-postgresql-and-patterns-for-databases-in-a-kubernetes-cluster-chris-milsted-ondat-gabriele-bartolini-edb).
