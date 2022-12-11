@@ -47,7 +47,7 @@ Finally we'll have a look to the backup/restore methods.
 
 
 {{% notice info Info %}}
-In this article, we will create and update everything manually; but in production, we probably should use a **GitOps** engine, for instance Flux (which has been covered in a [previous article](/post/deflux/)).
+In this article, we will create and update everything manually; but in production, we probably should use a **GitOps** engine, for instance Flux (which has been covered in a [previous article](/post/devflux/)).
 
 If you want to see a complete end-to-end **example**, you can look at the [KCD France infrastructure repository](https://github.com/cncfparis/kcdfrance-gitops).
 
@@ -516,6 +516,10 @@ Finally, you may want to configure alerts and you can create a _PrometheusRule_ 
 
 ## :fire: Performances and benchmark
 
+{{% notice info Info %}}
+**Update**: It is now possible to use the [cnpg plugin](https://cloudnative-pg.io/documentation/1.18/benchmarking/#pgbench). The following method is deprecated, I'll update it asap.
+{{% /notice %}}
+
 This is worth running a **performance test** in order to know the limits of your current server and keep a baseline for further improvements.
 
 {{% notice note Note %}}
@@ -758,7 +762,7 @@ deleted service account [cloudnative-pg@{{ gcp_project }}.iam.gserviceaccount.co
 ## 💭 final thoughts
 
 I just discovered CloudNativePG and I only scratched the surface but one thing for sure is that managing PostgreSQL is really made **easy**.
-However choosing a database solution is a **though decision**. Depending on the use case, the company constraints, the criticity of the application and the ops teams skills, there are plenty of options: Cloud managed databases, traditional bare metal installations, building the architecture with an Infrastructure As Code tool...
+However choosing a database solution is a **tough decision**. Depending on the use case, the company constraints, the criticity of the application and the ops teams skills, there are plenty of options: Cloud managed databases, traditional bare metal installations, building the architecture with an Infrastructure As Code tool...
 
 We may also consider using Crossplane and composition to give an opinionated way of declaring managed databases in cloud providers but that requires more configuration.
 

@@ -14,17 +14,16 @@ tags = [
 thumbnail= "crossplane_k3d.jpg"
 +++
 
-The target of this documentation is to be able to create and manage a GKE cluster using [**Crossplane**](https://crossplane.io/).
+La cible de cette documentation est de pouvoir créer et gérer un cluster GKE en utilisant [**Crossplane**](https://crossplane.io/).
 
-`Crossplane` leverages Kubernetes base principles in order to provision cloud resources and much more: a **declarative** approach with **drift detections** and **reconciliations** using control loops :exploding_head:. In other words, we declare what cloud resources we want and Crossplane ensures that the target state matches the one applied through the Kubernetes API.
+`Crossplane` exploite les principes de base de Kubernetes afin de fournir des ressources cloud et bien plus encore: une ** approche déclarative ** avec ** Drift Detections ** et ** réconciliations ** Utilisation de boucles de contrôle: Exploseding_head:.En d'autres termes, nous déclarons les ressources cloud que nous voulons et Crossplane garantit que l'état cible correspond à celui appliqué via l'API Kubernetes.
 
-Here are the steps we'll follow in order to get a Kubernetes cluster for development and experimentations use cases.
-
+Voici les étapes que nous suivrons afin d'obtenir un cluster Kubernetes pour le développement et les cas d'utilisation des expérimentations.
 ## :whale: Create the local k3d cluster for Crossplane's control plane
 
-[**k3d**](https://k3d.io) is a lightweight kubernetes cluster that leverages k3s that runs in our local laptop.
-There are several deployment models for Crossplane, we could for instance deploy the control plane on a management cluster on Kubernetes or a control plane per Kubernetes cluster.<br>
-Here I chose a simple method which is fine for a personal use case: A **local Kubernetes instance** in which I'll deploy Crossplane.
+[**k3d**](https://k3d.io) est un cluster Kubernetes léger qui exploite K3S qui s'exécute dans notre ordinateur portable local.
+Il existe plusieurs modèles de déploiement pour Crossplane, nous pourrions par exemple déployer le plan de contrôle sur un cluster de gestion sur Kubernetes ou un plan de contrôle par cluster Kubernetes. <br>
+Ici, j'ai choisi une méthode simple qui est bien pour un cas d'utilisation personnelle: une instance Kubernetes locale ** dans laquelle je vais déployer Crossplane.
 
 Let's install k3d using [asdf](/post/asdf/asdf).
 
