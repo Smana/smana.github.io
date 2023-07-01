@@ -2,7 +2,7 @@
 enableSearch = true
 
 # socials
-introDescription = "Lead SRE/DevOps, Cloud Native ambassador, Open Source enthusiast." 
+introDescription = "Lead SRE/DevOps, Team leader, Open Source enthusiast." 
 largeTwitterCard = false # set to true if you want to show a large twitter card image. The default is a small twitter card image
 twitter = "@_smana_" 
 # introURL = "about/" # set the url for the 'read more' button below the introDescription, or set to false to not show the button
