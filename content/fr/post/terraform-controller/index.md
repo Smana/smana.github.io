@@ -9,13 +9,13 @@ codeMaxLines = 20
 usePageBundles = true
 toc = true
 tags = [
-    "data"
+    "infrastructure"
 ]
 thumbnail= "weavetf.png"
 +++
 
 **Terraform** est probablement l'outil "Infrastructure As Code" le plus utilisé pour construire, modifier et versionner les changements d'infrastructure Cloud.
-Il s'agit d'un projet Open Source développé par Hashicorp et qui utilise le langage [FCL](https://github.com/hashicorp/hcl) pour déclarer l'état souhaité de resources Cloud.
+Il s'agit d'un projet Open Source développé par Hashicorp et qui utilise le langage [HCL](https://github.com/hashicorp/hcl) pour déclarer l'état souhaité de ressources Cloud.
 L'état des ressources créées est stocké dans un fichier d'état (terraform state).
 
 On peut considérer que Terraform est un outil "semi-déclaratif" car il n'y a pas de fonctionnalité de **réconciliation automatique** intégrée. Il existe différentes approches pour répondre à cette problématique, mais en règle générale, une modification sera appliquée en utilisant `terraform apply`. Le code est bien décrit dans des fichiers de configuration HCL (déclaratif) mais l'exécution est faite de manière impérative.
@@ -23,7 +23,7 @@ De ce fait, il peut y avoir de la dérive entre l'état déclaré et le réel (p
 
 ❓❓ Alors, comment m'assurer que ce qui est commit dans mon repo git est vraiment appliqué. Comment être alerté s'il y a un changement par rapport à l'état désiré et comment appliquer automatiquement ce qui est dans mon code (GitOps) ?
 
-C'est la promesse de [**tf-controller**](https://github.com/weaveworks/tf-controller), un operateur Kubernetes opensource de Weaveworks, étroitement lié à Flux (un moteur GitOps de la même société). [**Flux**](https://fluxcd.io/) est l'une des solutions que je plébiscite, et je vous invite donc à lire un [précédent article](https://blog.ogenki.io/post/devflux/).
+C'est la promesse de [**tf-controller**](https://github.com/weaveworks/tf-controller), un operateur Kubernetes Open Source de Weaveworks, étroitement lié à Flux (un moteur GitOps de la même société). [**Flux**](https://fluxcd.io/) est l'une des solutions que je plébiscite, et je vous invite donc à lire un [précédent article](https://blog.ogenki.io/post/devflux/).
 
 {{% notice info Info %}}
 L'ensemble des étapes décrites ci-dessous sont faites avec ce [**repo Git**](https://github.com/Smana/demo-tf-controller)
@@ -34,25 +34,24 @@ L'ensemble des étapes décrites ci-dessous sont faites avec ce [**repo Git**](h
 En suivant les étapes de cet article nous visons les objectifs suivant:
 
 * Déployer un cluster Kubernetes qui servira de "**Control plane**". Pour résumer il hébergera le controlleur Terraform qui nous permettra de déclarer tous les éléments d'infrastructure souhaités.
-* Utiliser **Flux** comme moteur GitOps pour toutes les resources Kubernetes.
+* Utiliser **Flux** comme moteur GitOps pour toutes les ressources Kubernetes.
 
 Concernant le controleur Terraform, nous allons voir:
 
 * Quelle est le moyen de définir des **dépendances** entre modules
-* Création de **plusieurs resources** AWS: Zone route53, Certificat ACM, réseau, cluster EKS.
+* Création de **plusieurs ressources** AWS: Zone route53, Certificat ACM, réseau, cluster EKS.
 * Les différentes options de **reconciliation** (automatique, nécessitant une confirmation)
 * Comment sauvegarder et **restaurer** un fichier d'état (tfstate)
 
 ## 🛠️ Installer le controleur Terraform
 
-### Le cluster "Control Plane"
+### ☸ Le cluster "Control Plane"
 
 Afin de pouvoir utiliser le controleur Kubernetes `tf-controller`, il nous faut d'abord un cluster Kubernetes 😆.
 Nous allons donc créer un cluster **control plane** en utilisant la ligne de commande `terraform` et les bonnes pratiques EKS.
 
 {{% notice warning Warning %}}
-Il est primordial que ce cluster soit résiliant, sécurisé et supervisé car il sera responsable de la gestion de l'ensemble des resources AWS créées par la suite.
-Il est aussi fortement conseillé d'avoir une politique de sauvegarde du cluster en question, en utilisant par exemple [Velero](https://velero.io/)
+Il est primordial que ce cluster soit résiliant, sécurisé et supervisé car il sera responsable de la gestion de l'ensemble des ressources AWS créées par la suite.
 {{% /notice %}}
 
 Sans entrer dans le détail, le cluster "control plane" a été créé un utilisant [ce code](https://github.com/Smana/demo-tf-controller/tree/main/terraform/controlplane). Celà-dit, il est important de noter que toutes les opérations de déploiement d'application se font en utilisant Flux.
@@ -95,13 +94,14 @@ tf-controller           main@sha1:e2cdaced      False           True    Applied 
 
 {{% /notice %}}
 
-### Le chart Helm et Flux
+### 📦 Le chart Helm et Flux
 
 Maintenant que notre cluster "controlplane" est opérationnel, **l'ajout le contrôleur Terraform** consiste à utiliser le chart Helm.
 
 Il faut tout d'abord déclarer la source:
 
 [source.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/base/tf-controller/source.yaml)
+
 ```yaml
 apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
@@ -115,6 +115,7 @@ spec:
 Et définir la HelmRelease:
 
 [release.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/base/tf-controller/release.yaml)
+
 ```yaml
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
 kind: HelmRelease
@@ -147,7 +148,7 @@ spec:
           eks.amazonaws.com/role-arn: "arn:aws:iam::${aws_account_id}:role/tfcontroller_${cluster_name}"
 ```
 
-Lorsque ce changement est écrit dans le repo git, la HelmRelease sera déployée et le contrôlleur `tf-controller` démarera
+Lorsque ce changement est écrit dans le repo Git, la HelmRelease sera déployée et le contrôlleur `tf-controller` démarera
 
 ```console
 kubectl get hr -n flux-system
@@ -159,17 +160,17 @@ NAME                             READY   STATUS    RESTARTS   AGE
 tf-controller-7ffdc69b54-c2brg   1/1     Running   0          2m6s
 ```
 
-Dans le repo de demo il y a déjà un certain nombre de ressources AWS déclarées. Par conséquent, au bout de quelques minutes, le cluster se charge de la création de celles-cis au bout de quelques minutes:
+Dans le repo de demo il y a déjà un certain nombre de ressources AWS déclarées. Par conséquent, au bout de quelques minutes, le cluster se charge de la création de celles-cis:
 [![asciicast](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq.png)](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq?&speed=2)
 
 {{% notice info Info %}}
-Bien que la majorité des tâches puissent être réalisées de manière déclarative ou via les utilitaires de ligne de commande tels que `kubectl` et `flux`, un autre outil existe qui offre la possibilité d'interagir avec les ressources terraform : [tfctl](https://docs.gitops.weave.works/docs/terraform/tfctl/)
+Bien que la majorité des tâches puisse être réalisée de manière déclarative ou via les utilitaires de ligne de commande tels que `kubectl` et `flux`, un autre outil existe qui offre la possibilité d'interagir avec les ressources terraform : [tfctl](https://docs.gitops.weave.works/docs/terraform/tfctl/)
 {{% /notice %}}
 
 ## 🚀 Appliquer un changement
 
 Parmis les [bonnes pratiques](https://www.terraform-best-practices.com/) avec Terraform, il y a l'usage de **[modules](https://developer.hashicorp.com/terraform/language/modules)**.</br>
-Un module est un ensemble de resources Terraform liées logigement afin d'obtenir une seule unité réutilisable. Cela permet d'abstraire la complexité, de prendre des entrées, effectuer des actions spécifiques et produire des sorties.
+Un module est un ensemble de ressources Terraform liées logigement afin d'obtenir une seule unité réutilisable. Cela permet d'abstraire la complexité, de prendre des entrées, effectuer des actions spécifiques et produire des sorties.
 
 Il est possible de créer ses propres modules et de les mettre à disposition dans des `Sources` ou d'utiliser les nombreux modules partagés et maintenus par les communautés.</br>
 Il suffit alors d'indiquer quelques `variables` afin de l'adapter au contexte.
@@ -177,6 +178,7 @@ Il suffit alors d'indiquer quelques `variables` afin de l'adapter au contexte.
 Avec `tf-controller`, la première étape consiste donc à indiquer la `Source` du module. Ici nous allons configurer le socle réseau sur AWS (vpc, subnets...) avec le module [terraform-aws-vpc](https://github.com/terraform-aws-modules/terraform-aws-vpc).
 
 [sources/terraform-aws-vpc.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/custom-resources/sources/terraform-aws-vpc.yaml)
+
 ```yaml
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: GitRepository
@@ -190,7 +192,7 @@ spec:
   url: https://github.com/terraform-aws-modules/terraform-aws-vpc
 ```
 
-Nous pouvons ensuite créer la resource `Terraform` qui en fait usage:
+Nous pouvons ensuite créer la ressource `Terraform` qui en fait usage:
 
 [vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/custom-resources/vpc/dev.yaml)
 
@@ -202,7 +204,7 @@ metadata:
 spec:
   interval: 8m
   path: .
-  destroyResourcesOnDeletion: true # You wouldn't do that on a prod env ;)
+  destroyresourcesOnDeletion: true # You wouldn't do that on a prod env ;)
   storeReadablePlan: human
   sourceRef:
     kind: GitRepository
@@ -252,9 +254,13 @@ Il y a ensuite plusieurs paramètres qui influent sur le fonctionnement de `tf-c
 Définir `spec.approvePlan` avec une valeur à `disable` permet uniquement de notifier que l'état actuel des ressources a dérivé par rapport au code Terraform.
 Cela permet notamment de choisir le moment et la manière dont l'application des changements sera effectuée.
 
+{{% notice note Note %}}
+De mon point de vue il manque une section sur les **notifications**: La dérive, les plans en attentes, les problèmese de réconcilation. J'essaye d'identifier les méthodes possibles (de préférence avec Prometheus) et de mettre à jour cet article dès que possible.
+{{% /notice %}}
+
 ### 🔧 Application manuelle
 
-L'exemple donné précédemment (`vpc-dev`) n'a pas le paramètre `.spec.approvePlan` et celui-ci a pour valeur par défaut `false`.
+L'exemple donné précédemment (`vpc-dev`) ne contient pas le paramètre `.spec.approvePlan` et hérite donc de la valeur par défaut qui est `false`.
 Par conséquent, l'application concrète des modifications (`apply`), n'est pas faite automatiquement.
 
 Un `plan` est exécuté et sera en attente d'une validation:
@@ -263,7 +269,7 @@ Un `plan` est exécuté et sera en attente d'une validation:
 tfctl get
 NAMESPACE       NAME                            READY   MESSAGE                                                                                                                 PLAN PENDING    AGE
 ...
-flux-system     vpc-dev                         Unknown Plan generated: set approvePlan: "plan-v5.0.0@sha1:26c38a66f12e7c6c93b6a2ba127ad68981a48671" to approve this plan.      true            2 minutes
+flux-system     vpc-dev                         Unknown Plan generated: set approvePlan: "plan-v5.0.0-26c38a66f12e7c6c93b6a2ba127ad68981a48671" to approve this plan.      true            2 minutes
 ```
 
 Je conseille d'ailleurs de configurer le paramètre `storeReadablePlan` à `human`. Cela permet de visualiser simplement les modifications en attente en utilisant `tfctl`:
@@ -272,13 +278,13 @@ Je conseille d'ailleurs de configurer le paramètre `storeReadablePlan` à `huma
 tfctl show plan vpc-dev
 
 Terraform used the selected providers to generate the following execution
-plan. Resource actions are indicated with the following symbols:
+plan. ressource actions are indicated with the following symbols:
   + create
 
 Terraform will perform the following actions:
 
   # aws_default_network_acl.this[0] will be created
-  + resource "aws_default_network_acl" "this" {
+  + ressource "aws_default_network_acl" "this" {
       + arn                    = (known after apply)
       + default_network_acl_id = (known after apply)
       + id                     = (known after apply)
@@ -307,7 +313,7 @@ To set the field, you can also run:
   tfctl approve vpc-dev -f filename.yaml
 ```
 
-Après revue des modifications qui seront apportées ci-dessus, il suffit donc d'ajouter l'identifiant du `plan` à valider et de pousser le changement sur git comme suit:
+Après revue des modifications ci-dessus, il suffit donc d'ajouter l'identifiant du `plan` à valider et de pousser le changement sur git comme suit:
 
 ```yaml
 apiVersion: infra.contrib.fluxcd.io/v1alpha2
@@ -316,7 +322,7 @@ metadata:
   name: vpc-dev
 spec:
 ...
-  approvePlan: plan-v5.0.0@sha1:26c38a66f1
+  approvePlan: plan-v5.0.0-26c38a66f1
 ...
 ```
 
@@ -333,7 +339,7 @@ aws_route_table_association.private[1]: Creation complete after 0s [id=rtbassoc-
 aws_nat_gateway.this[0]: Still creating... [10s elapsed]
 ```
 
-Si la réconciliation se passe bien nous obtenons donc
+La réconciliation éffectuée, la ressource passe à l'état `READY: True`
 
 ```console
 kubectl get tf -n flux-system vpc-dev
@@ -343,12 +349,12 @@ vpc-dev   True    Outputs written: v5.0.0@sha1:26c38a66f12e7c6c93b6a2ba127ad6898
 
 ### 🤖 Application automatique
 
-Nous pouvons aussi activer la **réconciliation** automatique. (rappel: [4 principes GitOps](https://opengitops.dev/#principles)).
-Pour ce faire il faut déclarer le paramètre `.spec.autoApprove` à `true`.
+Nous pouvons aussi activer la **réconciliation** automatique. Pour ce faire il faut déclarer le paramètre `.spec.autoApprove` à `true`.
 
-Toutes les resources IRSA sont configurées de la sorte:
+Toutes les ressources IRSA sont configurées de la sorte:
 
 [external-secrets.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/irsa/base/external-secrets.yaml)
+
 ```yaml
 piVersion: infra.contrib.fluxcd.io/v1alpha2
 kind: Terraform
@@ -356,7 +362,7 @@ metadata:
   name: irsa-external-secrets
 spec:
   approvePlan: auto
-  destroyResourcesOnDeletion: true
+  destroyresourcesOnDeletion: true
   interval: 8m
   path: ./modules/iam-role-for-service-accounts-eks
   sourceRef:
@@ -379,7 +385,7 @@ Donc si je fais le moindre changement sur la console AWS par exemple, celui-ci s
 
 ### 🔄 Entrées et sorties: dépendances entre modules
 
-Lorsque que l'on utilise Terraform, nous avons souvent besoin de passer des données d'un module à l'autre. Généralement ce sont les [**outputs**](https://developer.hashicorp.com/terraform/language/values/outputs) du module qui exportent ces informations. Il faut donc un moyen de les consommer à partir d'un autre module.
+Lorsque qu'on utilise Terraform, on a souvent besoin de passer des données d'un module à l'autre. Généralement ce sont les [**outputs**](https://developer.hashicorp.com/terraform/language/values/outputs) du module qui exportent ces informations. Il faut donc un moyen de les importer dans un autre module.
 
 Reprenons encore l'exemple donné ci-dessus (`vpc-dev`). Nous notons en bas du YAML la directive suivante:
 
@@ -410,7 +416,7 @@ vpc-0c06a6d153b8cc4db
 
 Certains de ces éléments d'informations sont ensuite utilisés pour créer un cluster EKS de dev:
 
-<span style="color:green">infrastructure/controlplane-0/terraform/custom-resources/vpc/dev.yaml</span>
+[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/custom-resources/vpc/dev.yaml)
 
 ```yaml
 ...
@@ -425,7 +431,12 @@ Certains de ces éléments d'informations sont ensuite utilisés pour créer un 
 
 ## 💾 Sauvegarder et restaurer un tfstate
 
-Dans mon cas je ne souhaite pas recréer la zone et le certificat à chaque destruction du controlplane. Voici un exemple des étapes à mener pour que je puisse **restaurer** l'état de ces resources lorsque j'utilise cette demo.
+Dans mon cas je ne souhaite pas recréer la zone et le certificat à chaque destruction du controlplane. Voici un exemple des étapes à mener pour que je puisse **restaurer** l'état de ces ressources lorsque j'utilise cette demo.
+
+{{% notice info Info %}}
+La politique de suppression d'une ressource Terraform est définie par le paramètre `destroyresourcesOnDeletion`.
+Par défaut elles sont conservées et il faut donc que ce paramètre ait pour valeur `true` afin de détruire les éléments crées lorsque l'objet Kubernetes est supprimé.
+{{% /notice %}}
 
 {{% notice note Note %}}
 Il s'agit là d'une procédure manuelle afin de démontrer le comportement de `tf-controller` par rapport aux fichiers d'état. Par défaut ces `tfstates` sont stockés dans des `secrets` mais on préferera configurer un backend GCS ou S3
@@ -445,6 +456,7 @@ base64 -d | gzip -d > ${BACKUPDIR}/${WORKSPACE}-${STACK}.tfstate
 ```
 
 Lorsque le cluster est créé à nouveau, tf-controller essaye de créer la zone car le fichier d'état est vide.
+
 ```console
 tfctl get
 NAMESPACE       NAME                            READY   MESSAGE                                                                                                                 PLAN PENDING    AGE
@@ -454,7 +466,7 @@ flux-system     route53-cloud-hostedzone        Unknown Plan generated: set appr
 tfctl show plan route53-cloud-hostedzone
 
 Terraform used the selected providers to generate the following execution
-plan. Resource actions are indicated with the following symbols:
+plan. resource actions are indicated with the following symbols:
   + create
 
 Terraform will perform the following actions:
@@ -485,7 +497,7 @@ Changes to Outputs:
   + zone_arn    = (known after apply)
   + zone_id     = (known after apply)
 
-Plan generated: set approvePlan: "plan-main@sha1:345394fb4a82b9b258014332ddd556dde87f73ab" to approve this plan.
+Plan generated: set approvePlan: "plan-main@345394fb4a82b9b258014332ddd556dde87f73ab" to approve this plan.
 To set the field, you can also run:
 
   tfctl approve route53-cloud-hostedzone -f filename.yaml
@@ -513,10 +525,11 @@ EOF
 Il faudra aussi relancer un plan de façon explicite pour mettre à jour l'état de la ressource en question
 
 ```console
-tfctl replan acm-cloud --request-timeout 0
- Replan requested for flux-system/acm-cloud
+tfctl replan route53-cloud-hostedzone
+ Replan requested for flux-system/route53-cloud-hostedzone
 Error: timed out waiting for the condition
 ```
+
 Nous pouvons alors vérifier que le fichier d'état a bien été mis à jour
 
 ```console
@@ -537,7 +550,7 @@ Il est possible d'y indiquer des **variables de substitution** qui pourront êtr
 J'ai découvert l'efficacité de cette fonctionnalité très récemment. Je vais décrire ici la façon dont je l'utilise:
 
 Le code terraform qui crée un cluster EKS, génère aussi une `ConfigMap` qui contient les **variables propres au cluster**.
-On y retrouvera bien sûr le nom du cluster, mais aussi tous les paramètres qui varient entre les clusters et qui sont utilisés dans les manifests Kubernetes.
+On y retrouvera, bien sûr, le nom du cluster, mais aussi tous les paramètres qui varient entre les clusters et qui sont utilisés dans les manifests Kubernetes.
 
 [flux.tf](https://github.com/Smana/demo-tf-controller/blob/main/terraform/controlplane/flux.tf#L36)
 
@@ -562,7 +575,7 @@ resource "kubernetes_config_map" "flux_clusters_vars" {
 
 Comme spécifié précedemment, les variables de substition sont définies dans les `Kustomization`. Prenons un exemple concret.
 Ci-dessous on définie la Kustomization qui déploie toutes les ressources qui sont consommées par `tf-controller` </br>
-On consomme ici la ConfigMap `eks-controlplane-0-vars` générée à la création du cluster EKS.
+On déclare ici la ConfigMap `eks-controlplane-0-vars` qui avait été généré à la création du cluster EKS.
 
 [infrastructure.yaml](https://github.com/Smana/demo-tf-controller/blob/main/clusters/controlplane-0/infrastructure.yaml#L2)
 
@@ -592,9 +605,9 @@ spec:
     - name: tf-controller
 ```
 
-Et donc voici un exemple de resource Kubernetes qui en fait usage. **Cet unique manifest peut être utilisé par tous les clusters!**.
+Enfin voici un exemple de ressource Kubernetes qui en fait usage. **Cet unique manifest peut être utilisé par tous les clusters!**.
 
-<span style="color:green">infrastructure/base/external-dns/helmrelease.yaml</span>
+[external-dns/helmrelease.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/base/external-dns/helmrelease.yaml)
 
 ```yaml
 apiVersion: helm.toolkit.fluxcd.io/v2beta1
@@ -617,8 +630,9 @@ spec:
     serviceAccount:
       annotations:
         eks.amazonaws.com/role-arn: "arn:aws:iam::${aws_account_id}:role/${cluster_name}-external-dns"
-
 ```
+
+Cela élimine totalement les overlays qui consistaient à ajouter les paramètres spécifiques au cluster.
 
 ### Web UI (Weave GitOps)
 
@@ -635,14 +649,13 @@ Il existe aussi le [plugin VSCode](https://github.com/weaveworks/vscode-gitops-t
 Et voilà, nous arrivons au bout de notre exploration de cet autre outil de gestion d'infrastructure sur Kubernetes. Malgré quelques petits soucis rencontrés en cours de route, que j'ai [partagé](https://github.com/weaveworks/tf-controller/issues?q=author%3ASmana) sur le repo Git du projet, l'expérience m'a beaucoup plu. `tf-controller` offre une réponse concrète à une question fréquente : comment gérer notre infra comme on gère notre code ?
 
 J'aime beaucoup l'approche GitOps appliquée à l'infrastructure, j'avais d'ailleurs écrit un [article sur Crossplane](https://blog.ogenki.io/post/crossplane_k3d/).
-
-`tf-controller` a une approche différente: utiliser du Terraform directement. Cela signifie qu'on peut utiliser nos connaissances actuelles et notre code existant. Pas besoin d'apprendre une nouvelle façon de déclarer nos ressources, comme c'est le cas avec certains autres outils.</br>
+`tf-controller` aborde la problématique sous un angle différent: utiliser du Terraform directement. Cela signifie qu'on peut utiliser nos connaissances actuelles et notre code existant. Pas besoin d'apprendre une nouvelle façon de déclarer nos ressources.</br>
 C'est un critère à prendre en compte car migrer vers un nouvel outil lorsque l'on a un existant représente un coût non négligeable. Cependant j'ajouterais aussi que `tf-controller` s'adresse aux utilisateurs de Flux uniquement et, de ce fait, restreint le publique cible.
 
-Je recommande donc de garder un œil sur l'évolution de ce projet, de l'essayer vous-même, et peut-être même d'y apporter votre contribution 🙂.
+Ceci étant dit, je vous encourage à essayer `tf-controller` vous-même, et peut-être même d'y apporter votre contribution 🙂.
 
 {{% notice note Note %}}
+
 * La démo que j'ai faite ici utilise pas mal de ressources, dont certaines assez cruciales (comme le réseau). Donc, gardez en tête que c'est juste pour la démo ! Je suggère une approche progressive si vous envisagez de le mettre en ouvre: commencez par utiliser la détection de dérives, puis créez des ressources simples.
 * J'ai aussi pris quelques raccourcis en terme de sécurité à éviter absolument, notamment le fait de donner les droits admin au contrôleur.
-* De mon point de vue il manque aussi une section sur les notifications: La dérive, les plans en attentes, les problèmese de réconcilation. J'essaye de mettre à jour cet article dès que possible
 {{% /notice %}}
