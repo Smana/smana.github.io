@@ -431,7 +431,7 @@ Some of these are then used to create a dev EKS cluster. Note that you don't hav
 For my demos, I don't want to recreate the zone and the certificate each time the control plane is destroyed (The DNS propagation and certificate validation take time). Here is an example of the steps to take so that I can **restore** the state of these resources when I use this demo.
 
 {{% notice info Info %}}
-The deletion policy of components created by a Terraform resource is controlled by the setting `destroyresourcesOnDeletion`. By default anything created is not destroyed by the controller. If you want to destroy the resources when the `Terraform` object is deleted you must set this parameter to `true`.
+The deletion policy of components created by a Terraform resource is controlled by the setting `destroyResourcesOnDeletion`. By default anything created is not destroyed by the controller. If you want to destroy the resources when the `Terraform` object is deleted you must set this parameter to `true`.
 {{% /notice %}}
 
 {{% notice note Note %}}
@@ -643,7 +643,7 @@ One might say "yet another infrastructure management tool from Kubernetes". Well
 
 I really like the GitOps approach applied to infrastructure, and I had actually written an [article on Crossplane](https://blog.ogenki.io/post/crossplane_k3d/).
 `tf-controller` tackles the problem from a different angle: using Terraform directly. This means that we can leverage our existing knowledge and code. There's no need to learn a new way of declaring our resources.</br>
-This is an important criterion to consider because migrating to a new tool when you already have an existing infrastructure represents a significant cost. However, I would also add that `tf-controller` is only targeted at Flux users, which restricts its target audience.
+This is an important criterion to consider because migrating to a new tool when you already have an existing infrastructure represents a significant effort. However, I would also add that `tf-controller` is only targeted at Flux users, which restricts its target audience.
 
 That being said, I encourage you to try `tf-controller` yourself, and perhaps even contribute to it 🙂
 

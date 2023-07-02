@@ -204,7 +204,7 @@ metadata:
 spec:
   interval: 8m
   path: .
-  destroyresourcesOnDeletion: true # You wouldn't do that on a prod env ;)
+  destroyResourcesOnDeletion: true # You wouldn't do that on a prod env ;)
   storeReadablePlan: human
   sourceRef:
     kind: GitRepository
@@ -362,7 +362,7 @@ metadata:
   name: irsa-external-secrets
 spec:
   approvePlan: auto
-  destroyresourcesOnDeletion: true
+  destroyResourcesOnDeletion: true
   interval: 8m
   path: ./modules/iam-role-for-service-accounts-eks
   sourceRef:
@@ -434,7 +434,7 @@ Certains de ces éléments d'informations sont ensuite utilisés pour créer un 
 Dans mon cas je ne souhaite pas recréer la zone et le certificat à chaque destruction du controlplane. Voici un exemple des étapes à mener pour que je puisse **restaurer** l'état de ces ressources lorsque j'utilise cette demo.
 
 {{% notice info Info %}}
-La politique de suppression d'une ressource Terraform est définie par le paramètre `destroyresourcesOnDeletion`.
+La politique de suppression d'une ressource Terraform est définie par le paramètre `destroyResourcesOnDeletion`.
 Par défaut elles sont conservées et il faut donc que ce paramètre ait pour valeur `true` afin de détruire les éléments crées lorsque l'objet Kubernetes est supprimé.
 {{% /notice %}}
 
@@ -650,7 +650,7 @@ Et voilà, nous arrivons au bout de notre exploration de cet autre outil de gest
 
 J'aime beaucoup l'approche GitOps appliquée à l'infrastructure, j'avais d'ailleurs écrit un [article sur Crossplane](https://blog.ogenki.io/post/crossplane_k3d/).
 `tf-controller` aborde la problématique sous un angle différent: utiliser du Terraform directement. Cela signifie qu'on peut utiliser nos connaissances actuelles et notre code existant. Pas besoin d'apprendre une nouvelle façon de déclarer nos ressources.</br>
-C'est un critère à prendre en compte car migrer vers un nouvel outil lorsque l'on a un existant représente un coût non négligeable. Cependant j'ajouterais aussi que `tf-controller` s'adresse aux utilisateurs de Flux uniquement et, de ce fait, restreint le publique cible.
+C'est un critère à prendre en compte car migrer vers un nouvel outil lorsque l'on a un existant représente un éffort non négligeable. Cependant j'ajouterais aussi que `tf-controller` s'adresse aux utilisateurs de Flux uniquement et, de ce fait, restreint le publique cible.
 
 Ceci étant dit, je vous encourage à essayer `tf-controller` vous-même, et peut-être même d'y apporter votre contribution 🙂.
 
