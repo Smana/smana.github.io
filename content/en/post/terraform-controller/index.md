@@ -34,7 +34,7 @@ All the steps described in this article come from this [**Git repo**](https://gi
 
 By following the steps in this article, we aim to achieve the following things:
 
-* Deploy a **Control plane** EKS cluster. Long story shortcuts, it will host the Terraform controller that will be in charge of managing all the desired infrastructure components.
+* Deploy a **Control plane** EKS cluster. Long story short, it will host the Terraform controller that will be in charge of managing all the desired infrastructure components.
 * Use **Flux** as the GitOps engine for all Kubernetes resources.
 
 Regarding the Terraform controller, we will see:
@@ -380,6 +380,12 @@ spec:
 
 So if I make any change on the AWS console for example, it will be quickly **overwritten** by the one managed by `tf-controller`.
 
+{{% notice info Info %}}
+The deletion policy of components created by a Terraform resource is controlled by the setting `destroyResourcesOnDeletion`. By default anything created is not destroyed by the controller. If you want to destroy the resources when the `Terraform` object is deleted you must set this parameter to `true`.
+
+Here we want to be able to delete IRSA roles because they're tightly linked to a given EKS cluster
+{{% /notice %}}
+
 ### 🔄 Inputs/Outputs and modules dependencies
 
 When using Terraform, we often need to share data from one module to another. This is done using the [**outputs**](https://developer.hashicorp.com/terraform/language/values/outputs) that are defined within modules. </br>
@@ -429,10 +435,6 @@ Some of these are then used to create a dev EKS cluster. Note that you don't hav
 ## 💾 Backup and restore a tfstate
 
 For my demos, I don't want to recreate the zone and the certificate each time the control plane is destroyed (The DNS propagation and certificate validation take time). Here is an example of the steps to take so that I can **restore** the state of these resources when I use this demo.
-
-{{% notice info Info %}}
-The deletion policy of components created by a Terraform resource is controlled by the setting `destroyResourcesOnDeletion`. By default anything created is not destroyed by the controller. If you want to destroy the resources when the `Terraform` object is deleted you must set this parameter to `true`.
-{{% /notice %}}
 
 {{% notice note Note %}}
 This is a manual procedure to demonstrate the behavior of `tf-controller` with respect to state files. By default, these `tfstates` are stored in `secrets`, but we would prefer to configure a GCS or S3 backend.
@@ -645,7 +647,10 @@ I really like the GitOps approach applied to infrastructure, and I had actually 
 `tf-controller` tackles the problem from a different angle: using Terraform directly. This means that we can leverage our existing knowledge and code. There's no need to learn a new way of declaring our resources.</br>
 This is an important criterion to consider because migrating to a new tool when you already have an existing infrastructure represents a significant effort. However, I would also add that `tf-controller` is only targeted at Flux users, which restricts its target audience.
 
-That being said, I encourage you to try `tf-controller` yourself, and perhaps even contribute to it 🙂
+Currently, I'm using a combination of Terraform, Terragrunt and RunAtlantis. `tf-controller` could become a serious alternative: We've talked about the value of Kustomize combined with variable substitions to avoid code deduplication. The project's roadmap also aims to display plans in pull-requests.
+Another frequent need is to pass sensitive information to modules. Using a `Terraform` resource, we can inject variables from Kubernetes secrets. This makes it possible to use common secrets management tools, such as `external-secrets`, `sealed-secrets` ...
+
+So, I encourage you to try `tf-controller` yourself, and perhaps even contribute to it 🙂
 
 {{% notice note Note %}}
 

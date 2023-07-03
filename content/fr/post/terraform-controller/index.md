@@ -383,6 +383,13 @@ spec:
 
 Donc si je fais le moindre changement sur la console AWS par exemple, celui-ci sera rapidement **écrasé** par celui géré par `tf-controller`.
 
+{{% notice info Info %}}
+La politique de suppression d'une ressource Terraform est définie par le paramètre `destroyResourcesOnDeletion`.
+Par défaut elles sont conservées et il faut donc que ce paramètre ait pour valeur `true` afin de détruire les éléments crées lorsque l'objet Kubernetes est supprimé.
+
+Ici nous voulons la possibilité de supprimer les rôles IRSA. Ils sont en effet étroitement liés aux clusters.
+{{% /notice %}}
+
 ### 🔄 Entrées et sorties: dépendances entre modules
 
 Lorsque qu'on utilise Terraform, on a souvent besoin de passer des données d'un module à l'autre. Généralement ce sont les [**outputs**](https://developer.hashicorp.com/terraform/language/values/outputs) du module qui exportent ces informations. Il faut donc un moyen de les importer dans un autre module.
@@ -432,11 +439,6 @@ Certains de ces éléments d'informations sont ensuite utilisés pour créer un 
 ## 💾 Sauvegarder et restaurer un tfstate
 
 Dans mon cas je ne souhaite pas recréer la zone et le certificat à chaque destruction du controlplane. Voici un exemple des étapes à mener pour que je puisse **restaurer** l'état de ces ressources lorsque j'utilise cette demo.
-
-{{% notice info Info %}}
-La politique de suppression d'une ressource Terraform est définie par le paramètre `destroyResourcesOnDeletion`.
-Par défaut elles sont conservées et il faut donc que ce paramètre ait pour valeur `true` afin de détruire les éléments crées lorsque l'objet Kubernetes est supprimé.
-{{% /notice %}}
 
 {{% notice note Note %}}
 Il s'agit là d'une procédure manuelle afin de démontrer le comportement de `tf-controller` par rapport aux fichiers d'état. Par défaut ces `tfstates` sont stockés dans des `secrets` mais on préferera configurer un backend GCS ou S3
@@ -652,7 +654,10 @@ J'aime beaucoup l'approche GitOps appliquée à l'infrastructure, j'avais d'aill
 `tf-controller` aborde la problématique sous un angle différent: utiliser du Terraform directement. Cela signifie qu'on peut utiliser nos connaissances actuelles et notre code existant. Pas besoin d'apprendre une nouvelle façon de déclarer nos ressources.</br>
 C'est un critère à prendre en compte car migrer vers un nouvel outil lorsque l'on a un existant représente un éffort non négligeable. Cependant j'ajouterais aussi que `tf-controller` s'adresse aux utilisateurs de Flux uniquement et, de ce fait, restreint le publique cible.
 
-Ceci étant dit, je vous encourage à essayer `tf-controller` vous-même, et peut-être même d'y apporter votre contribution 🙂.
+Aujourd'hui, j'utilise une combinaison de Terraform, Terragrunt et RunAtlantis. `tf-controller` pourrait devenir une alternative viable: Nous avons en effet évoqué l'intérêt de Kustomize associé aux substitions de variables pour la factorisation de code. Dans la roadmap du projet il y a aussi l'objectif d'afficher les plans dans les pull-requests.
+Autre problématique fréquente: la nécessité de passer des éléments sensibles aux modules. En utilisant une ressource `Terraform`, on peut injecter des variables depuis des secrets Kubernetes. Ce qui permet d'utiliser certains outils, tels que `external-secrets`, `sealed-secrets` ...
+
+Je vous encourage donc à essayer `tf-controller` vous-même, et peut-être même d'y apporter votre contribution 🙂.
 
 {{% notice note Note %}}
 
