@@ -337,7 +337,7 @@ aws_route_table_association.private[1]: Creation complete after 0s [id=rtbassoc-
 aws_nat_gateway.this[0]: Still creating... [10s elapsed]
 ```
 
-La réconciliation éffectuée, la ressource passe à l'état `READY: True`
+As soon as the apply is finished the status of the Terraform resource becomes "READY"
 
 ```console
 kubectl get tf -n flux-system vpc-dev
