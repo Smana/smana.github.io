@@ -23,7 +23,7 @@ As a result, there can be a drift between the declared and actual state (for exa
 
 ❓❓ So, how can I ensure that what is committed using Git is really applied. How to be notified if there is a change compared to the desired state and how to automatically apply what is in my code (GitOps)?
 
-This is the promise of [**tf-controller**](https://github.com/weaveworks/tf-controller), an Open Source Kubernetes operator from Weaveworks, tightly related to Flux (a GitOps engine from the same company). [**Flux**](https://fluxcd.io/) is one of the solutions I really appreciate, that's why I invite you to have a look on my [previous article](<https://blog.ogenki.io/post/devflux/>
+This is the promise of [**tf-controller**](https://github.com/weaveworks/tf-controller), an Open Source Kubernetes operator from Weaveworks, tightly related to Flux (a GitOps engine from the same company). [**Flux**](https://fluxcd.io/) is one of the solutions I really appreciate, that's why I invite you to have a look on my [previous article](https://blog.ogenki.io/post/devflux/)
 
 
 {{% notice info Info %}}
