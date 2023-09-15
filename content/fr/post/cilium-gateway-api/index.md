@@ -16,7 +16,7 @@ tags = [
 thumbnail= "cilium-gateway-api-thumbnail.png"
 +++
 
-Lorsque l'on déploie une application sur Kubernetes, l'étape suivante consiste généralement à l'exposer aux utilisateurs. On utilise habituellement des "[**Ingress controllers**](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)", comme Nginx, Haproxy, Traefik ou encore ceux des différents Clouders afin de diriger le trafic entrant vers l'application, gérer l'équilibrage de charge, la terminaison SSL et j'en passe.
+Lorsque l'on déploie une application sur Kubernetes, l'étape suivante consiste généralement à l'exposer aux utilisateurs. On utilise habituellement des "[**Ingress controllers**](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)", comme Nginx, Haproxy, Traefik ou encore ceux des différents Clouders afin de diriger le trafic entrant vers l'application, gérer l'équilibrage de charge, la terminaison TLS et j'en passe.
 
 Il faut alors choisir parmi la pléthore d'[options disponibles](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) 🤯 la solution qui sera en charge de tous ces aspects et Cilium est, depuis relativement récemment, l'une d'entre elles.
 
@@ -47,7 +47,7 @@ L'idée étant d'avoir l'ensemble configuré au bout de quelques minutes, en une
 
 Comme évoqué précédemment, il y a de nombreuses options qui font office d' _Ingress controller_ et chacune a ses propres spécificités et des fonctionnalités particulières, rendant leur utilisation parfois complexe. Par ailleurs, l'API `Ingress`, utilisée historiquement dans Kubernetes possède très peu d'options. Certaines solutions ont d'ailleurs créé des [CRDs](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) (Ressources personalisées) quand d'autres font usage des `annotations` pour lever ces limites.
 
-C'est dans ce contexte que le standard **Gateway API** fait son apparition. Il s'agit d'un **standard** qui permet de définir des fonctionnalités avancées sans nécessiter d'extensions spécifiques au contrôleur sous-jacent. De plus étant donné que tous les contrôleurs utilisent la même API , il est possible de passer d'une solution à une autre **sans changer de configuration** (les ressources qui gèrent le trafic entrant restent les mêmes).
+C'est dans ce contexte que **Gateway API** fait son apparition. Il s'agit d'un **standard** qui permet de définir des fonctionnalités réseau avancées sans nécessiter d'extensions spécifiques au contrôleur sous-jacent. De plus étant donné que tous les contrôleurs utilisent la même API , il est possible de passer d'une solution à une autre **sans changer de configuration** (les ressources qui gèrent le trafic entrant restent les mêmes).
 
 Parmi les concepts que nous allons explorer la GAPI  introduit un schéma de répartition des responsabilités. Elle définit des **roles explicites avec des permissions bien distinctes**. (Plus d'informations sur le modèle de sécurité GAPI [ici](https://gateway-api.sigs.k8s.io/concepts/security-model/#roles-and-personas)).
 
@@ -94,24 +94,24 @@ gatewayAPI:
   La commande suivante permet de s'assurer que tous les composants sont démarrés et opérationnels
   ```console
   cilium status --wait
-      /¯¯\
-  /¯¯\__/¯¯\    Cilium:             OK
-  \__/¯¯\__/    Operator:           OK
-  /¯¯\__/¯¯\    Envoy DaemonSet:    OK
-  \__/¯¯\__/    Hubble Relay:       disabled
-      \__/       ClusterMesh:        disabled
+    /¯¯\
+ /¯¯\__/¯¯\    Cilium:             OK
+ \__/¯¯\__/    Operator:           OK
+ /¯¯\__/¯¯\    Envoy DaemonSet:    OK
+ \__/¯¯\__/    Hubble Relay:       disabled
+    \__/       ClusterMesh:        disabled
 
-  Deployment             cilium-operator    Desired: 2, Ready: 2/2, Available: 2/2
-  DaemonSet              cilium             Desired: 2, Ready: 2/2, Available: 2/2
-  DaemonSet              cilium-envoy       Desired: 2, Ready: 2/2, Available: 2/2
-  Containers:            cilium             Running: 2
-                        cilium-operator    Running: 2
-                        cilium-envoy       Running: 2
-  Cluster Pods:          33/33 managed by Cilium
-  Helm chart version:    1.14.1
-  Image versions         cilium             quay.io/cilium/cilium:v1.14.1@sha256:edc1d05ea1365c4a8f6ac6982247d5c145181704894bb698619c3827b6963a72: 2
-                        cilium-operator    quay.io/cilium/operator-aws:v1.14.1@sha256:ff57964aefd903456745e53a4697a4f6a026d8fffdb06f53f624a23d23ade37a: 2
-                        cilium-envoy       quay.io/cilium/cilium-envoy:v1.25.9-f039e2bd380b7eef2f2feea5750676bb36133699@sha256:023d09eeb8a44ae99b489f4af7ffed8b8b54f19a532e0bc6ab4c1e4b31acaab1: 2
+Deployment             cilium-operator    Desired: 2, Ready: 2/2, Available: 2/2
+DaemonSet              cilium             Desired: 2, Ready: 2/2, Available: 2/2
+DaemonSet              cilium-envoy       Desired: 2, Ready: 2/2, Available: 2/2
+Containers:            cilium             Running: 2
+                       cilium-operator    Running: 2
+                       cilium-envoy       Running: 2
+Cluster Pods:          33/33 managed by Cilium
+Helm chart version:    1.14.2
+Image versions         cilium             quay.io/cilium/cilium:v1.14.2@sha256:6263f3a3d5d63b267b538298dbeb5ae87da3efacf09a2c620446c873ba807d35: 2
+                       cilium-operator    quay.io/cilium/operator-aws:v1.14.2@sha256:8d514a9eaa06b7a704d1ccead8c7e663334975e6584a815efe2b8c15244493f1: 2
+                       cilium-envoy       quay.io/cilium/cilium-envoy:v1.25.9-e198a2824d309024cb91fb6a984445e73033291d@sha256:52541e1726041b050c5d475b3c527ca4b8da487a0bbb0309f72247e8127af0ec: 2
   ```
 
   Enfin le support de GAPI peut être vérifié comme suit
@@ -316,7 +316,7 @@ Comme vous pouvez le voir le service est exposé en HTTP sans certificat. Essayo
 
 #### Exposer un service en utilisant un certificat TLS
 
-Il existe plusieurs méthodes pour configurer du TLS avec GAPI. Ici nous allons utiliser le cas le plus commun: Utilisation du protocole HTTPS et la terminaison TLS se fait au niveau de la Gateway.
+Il existe plusieurs méthodes pour configurer du TLS avec GAPI. Ici nous allons utiliser le cas le plus commun: protocole HTTPS et terminaison TLS sur la Gateway.
 
 Supposons que nous souhaitons configurer le nom de domaine `echo.cloud.ogenki.io` utilisé précédemment. La configuration se fait principalement au niveau de la `Gateway`
 
@@ -537,7 +537,7 @@ spec:
 La commande suivante permet de vérifier que le header est bien présent.
 
 ```console {hl_lines=[10]}
-curl https://echo.cloud.ogenki.io/req-header-add -sk | jq '.request.headers'
+curl -s https://echo.cloud.ogenki.io/req-header-add -sk | jq '.request.headers'
 {
   "host": "echo.cloud.ogenki.io",
   "user-agent": "curl/8.2.1",
@@ -608,15 +608,14 @@ Alors suis-je prêt à changer mon Ingress Controller pour `Cilium` aujourd'hui?
 
 Tout d'abord j'aimerais mettre en évidence sur l'étendue des possiblités offertes par Cilium: De nombreuses personnes se sentent noyées sous les nombreux outils qui gravitent autour de Kubernetes. Cilium permettrait de remplir les fonctionnalités de nombre d'entre eux (metrics, tracing, service-mesh, sécurité et ... _Ingress Controller_ avec GAPI).
 
-Cependant, bien que nous puissions faire du routage HTTP de base, il y à certains éléments manquants:
+Cependant, bien que nous puissions faire du routage HTTP de base, il y à certains points d'attention:
 
-* la version 1.14.x utilisée pour cet article ne permet pas de définir des règles de réécriture et de redirection d'URLs. (Ce sera disponible avec la prochaine version, donc très prochainement, [Issue Github](https://github.com/cilium/cilium/pull/27472))
 * Le [support de TCP et UDP](https://github.com/cilium/cilium/issues/21929)
 * Le [support de GRPC](https://github.com/cilium/cilium/issues/21928)
 * Devoir passer par une règle de mutation pour pouvoir configurer les composants cloud. ([Issue Github](https://github.com/cilium/cilium/issues/25357))
+* De nombreuses fonctionnalités explorées sont toujours au stade expérimental. On peut citer les [fonctions étendues](https://github.com/cilium/cilium/pull/27472) qui supportés depuis quelques jours: J'ai par exemple tenté de configurer une redirection HTTP>HTTPS simple mais je suis tombé sur [ce problème](https://github.com/kubernetes-sigs/gateway-api/issues/1185). Je m'attends donc à ce qu'il y ait des changements dans l'API très prochainement.
 
-L'expérience est tout de même très **convainquante** et je pense que d'ici quelques mois une utilisation en prod sera vraiment envisageable. Il est donc temps de vous y plonger si ce n'est pas déjà fait! 😉
-
+Je n'ai pas abordé toutes les fonctionnalités de l'implémentation Cilium de GAPI (Honnêtement, cet article est déjà bien fourni 😜). Néanmoins, je suis vraiment **convaincu** de son potentiel. J'ai bon espoir qu'on pourra bientôt envisager son utilisation en production. Si vous n'avez pas encore envisagé cette transition, c'est le moment de s'y pencher 😉 ! Toutefois, compte tenu des aspects évoqués précédemment, je conseillerais de patienter un peu.
 ## 🔖 References
 
 * <https://gateway-api.sigs.k8s.io/>
