@@ -4,7 +4,6 @@ title = "100% `GitOps` using Flux"
 date = "2022-07-18"
 summary = "Create and update cloud resources and applications with **Flux**"
 featureImage = "devflux.png"
-featured = true
 codeMaxLines = 20
 usePageBundles = true
 toc = true
