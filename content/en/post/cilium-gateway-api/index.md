@@ -49,7 +49,7 @@ Here comes the **Gateway API**! This is actually a **standard** that allows decl
 
 Among the concepts that we will explore, GAPI brings a granular authorization model which defines **explicit roles with distinct permissions**. (More information on the GAPI security model [here](https://gateway-api.sigs.k8s.io/concepts/security-model/#roles-and-personas)).
 
-This is worth noting that this project is driven by the [sig-network-kubernetes](https://github.com/kubernetes/community/tree/master/sig-network) working group, and there's a slack [channel](https://communityinviter.com/apps/cloud-native/cncf) where you can reach out to them if needed.
+This is worth noting that this project is driven by the [sig-network-kubernetes](https://github.com/kubernetes/community/tree/master/sig-network) working group, and there's a slack [channel](https://kubernetes.slack.com/archives/CR0H13KGA) where you can reach out to them if needed.
 
 Let's see how GAPI is used in practice with Cilium 🚀!
 
