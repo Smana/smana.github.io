@@ -618,4 +618,4 @@ While I've only scratched the surface of what Cilium's GAPI can offer (honestly,
 * <https://docs.cilium.io/en/latest/network/servicemesh/gateway-api/gateway-api/#gs-gateway-api>
 * <https://isovalent.com/blog/post/cilium-gateway-api/>
 * <https://isovalent.com/blog/post/tutorial-getting-started-with-the-cilium-gateway-api/>
-* Les [labs](https://isovalent.com/resource-library/labs/) d'Isovalent permettent de rapidement de tester GAPI et vous pourrez ajouter des badges à votre collection 😄 <img src="badges.png" width="330" height="330" alt="">
+* Isovalent's [labs](https://isovalent.com/resource-library/labs/) are great to start playing with Gateway API and you'll get new badges to add to your collection 😄 <img src="badges.png" width="330" height="330" alt="">
