@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`Gateway API`: Can I replace my Ingress Controller with `Cilium`?"
-date = "2023-09-15"
+date = "2023-09-17"
 summary = "Cilium supports features typically provided by Ingress controllers through the implementation of the Gateway API standard. An introduction and a practical implementation."
 featured = true
 # featureImage = "crossplane_k3d.png"
@@ -96,7 +96,7 @@ gatewayAPI:
   \__/¯¯\__/    Operator:           OK
   /¯¯\__/¯¯\    Envoy DaemonSet:    OK
   \__/¯¯\__/    Hubble Relay:       disabled
-      \__/       ClusterMesh:        disabled
+     \__/       ClusterMesh:        disabled
 
   Deployment             cilium-operator    Desired: 2, Ready: 2/2, Available: 2/2
   DaemonSet              cilium             Desired: 2, Ready: 2/2, Available: 2/2
@@ -587,9 +587,9 @@ roleRef:
 
 ### 🤔 A somewhat unclear scope at first glance
 
-One could be confused with what's commonly referred to as an `API Gateway`. A section of the [FAQ](https://gateway-api.sigs.k8s.io/faq/) has been created to clarify its difference with the `Gateway API`. Although GAPI offers features typically found in an API Gateway, it primarily serves as a specific implementation for Kubernetes. However, this is true that this naming choice can **lead to confusion**.
+One could be confused with what's commonly referred to as an `API Gateway`. A section of the [FAQ](https://gateway-api.sigs.k8s.io/faq/) has been created to clarify its difference with the `Gateway API`. Although GAPI offers features typically found in an API Gateway, it primarily serves as a specific implementation for Kubernetes. However, the choice of this name can indeed cause **confusion**.
 
-It's essential to note that this article focuses solely on inbound traffic, termed [north-south](https://gateway-api.sigs.k8s.io/concepts/glossary/#northsouth-traffic), traditionally managed by _Ingress Controllers_. This traffic is actually GAPI's initial scope. A recent initiative named [**GAMMA**](https://gateway-api.sigs.k8s.io/concepts/gamma/) aims to also handle [east-west](https://gateway-api.sigs.k8s.io/concepts/glossary/#eastwest-traffic) routing, which will standardize certain features commonly provided by `Service Meshes` solutions in the future. (See [this article](https://kubernetes.io/blog/2023/08/29/gateway-api-v0-8/) for more details).
+Moreover please note that this article focuses solely on inbound traffic, termed [north-south](https://gateway-api.sigs.k8s.io/concepts/glossary/#northsouth-traffic), traditionally managed by _Ingress Controllers_. This traffic is actually GAPI's initial scope. A recent initiative named [**GAMMA**](https://gateway-api.sigs.k8s.io/concepts/gamma/) aims to also handle [east-west](https://gateway-api.sigs.k8s.io/concepts/glossary/#eastwest-traffic) routing, which will standardize certain features commonly provided by `Service Meshes` solutions in the future. (See [this article](https://kubernetes.io/blog/2023/08/29/gateway-api-v0-8/) for more details).
 
 ## 💭 Final thoughts
 
@@ -608,7 +608,8 @@ However, there are a few challenges to note:
 * [TCP and UDP support](https://github.com/cilium/cilium/issues/21929)
 * [GRPC support](https://github.com/cilium/cilium/issues/21928)
 * The need to use a mutation rule to configure cloud components ([Github Issue](https://github.com/cilium/cilium/issues/25357)).
-* Many of the features under exploration are still experimental. For example, [extended functions](https://github.com/cilium/cilium/pull/27472), which have been supported since the latest release as I'm writing this (`v1.14.2`). I tried setting up a simple HTTP>HTTPS redirect but encountered [this issue](https://github.com/kubernetes-sigs/gateway-api/issues/1185). Thus, I anticipate some changes in the API soon.
+* Many of the features discussed in this blog are still in the experimental stage. For instance, the [extended functions](https://github.com/cilium/cilium/pull/27472), which have been supported since the most recent release at the time of my writing (`v1.14.2`). I attempted to set up a straightforward HTTP>HTTPS redirect but ran into [this issue](https://github.com/kubernetes-sigs/gateway-api/issues/1185). Consequently, I expect some modifications to the API in the near future.
+
 
 While I've only scratched the surface of what Cilium's GAPI can offer (honestly, this post is already quite long 😜), I am hopeful that we can consider its use in production soon. If you haven't thought about this transition yet, now's the time 😉! But considering the points mentioned earlier, I would advise waiting a bit longer.
 
