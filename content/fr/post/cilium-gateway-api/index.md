@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`Gateway API`: Remplacer mon Ingress Controller avec `Cilium`?"
-date = "2023-09-15"
+date = "2023-09-17"
 summary = "Cilium permet de prendre en charge les fonctionnalités généralement fournies par des **Ingress controllers** grâce à l'implémentation du standard **Gateway API**. Une introduction et une mise en oeuvre concrète"
 featured = true
 # featureImage = "crossplane_k3d.png"
@@ -94,24 +94,24 @@ gatewayAPI:
   La commande suivante permet de s'assurer que tous les composants sont démarrés et opérationnels
   ```console
   cilium status --wait
-    /¯¯\
- /¯¯\__/¯¯\    Cilium:             OK
- \__/¯¯\__/    Operator:           OK
- /¯¯\__/¯¯\    Envoy DaemonSet:    OK
- \__/¯¯\__/    Hubble Relay:       disabled
-    \__/       ClusterMesh:        disabled
+     /¯¯\
+  /¯¯\__/¯¯\    Cilium:             OK
+  \__/¯¯\__/    Operator:           OK
+  /¯¯\__/¯¯\    Envoy DaemonSet:    OK
+  \__/¯¯\__/    Hubble Relay:       disabled
+     \__/       ClusterMesh:        disabled
 
-Deployment             cilium-operator    Desired: 2, Ready: 2/2, Available: 2/2
-DaemonSet              cilium             Desired: 2, Ready: 2/2, Available: 2/2
-DaemonSet              cilium-envoy       Desired: 2, Ready: 2/2, Available: 2/2
-Containers:            cilium             Running: 2
-                       cilium-operator    Running: 2
-                       cilium-envoy       Running: 2
-Cluster Pods:          33/33 managed by Cilium
-Helm chart version:    1.14.2
-Image versions         cilium             quay.io/cilium/cilium:v1.14.2@sha256:6263f3a3d5d63b267b538298dbeb5ae87da3efacf09a2c620446c873ba807d35: 2
-                       cilium-operator    quay.io/cilium/operator-aws:v1.14.2@sha256:8d514a9eaa06b7a704d1ccead8c7e663334975e6584a815efe2b8c15244493f1: 2
-                       cilium-envoy       quay.io/cilium/cilium-envoy:v1.25.9-e198a2824d309024cb91fb6a984445e73033291d@sha256:52541e1726041b050c5d475b3c527ca4b8da487a0bbb0309f72247e8127af0ec: 2
+  Deployment             cilium-operator    Desired: 2, Ready: 2/2, Available: 2/2
+  DaemonSet              cilium             Desired: 2, Ready: 2/2, Available: 2/2
+  DaemonSet              cilium-envoy       Desired: 2, Ready: 2/2, Available: 2/2
+  Containers:            cilium             Running: 2
+                        cilium-operator    Running: 2
+                        cilium-envoy       Running: 2
+  Cluster Pods:          33/33 managed by Cilium
+  Helm chart version:    1.14.2
+  Image versions         cilium             quay.io/cilium/cilium:v1.14.2@sha256:6263f3a3d5d63b267b538298dbeb5ae87da3efacf09a2c620446c873ba807d35: 2
+                        cilium-operator    quay.io/cilium/operator-aws:v1.14.2@sha256:8d514a9eaa06b7a704d1ccead8c7e663334975e6584a815efe2b8c15244493f1: 2
+                        cilium-envoy       quay.io/cilium/cilium-envoy:v1.25.9-e198a2824d309024cb91fb6a984445e73033291d@sha256:52541e1726041b050c5d475b3c527ca4b8da487a0bbb0309f72247e8127af0ec: 2
   ```
 
   Enfin le support de GAPI peut être vérifié comme suit
