@@ -45,7 +45,7 @@ The idea being to have everything set up in just a few minutes, with a single co
 
 As mentioned previously, there are many **Ingress Controllers** options, and each has its own specificities and particular features, sometimes making their use complex. Furthermore, the traditionnal `Ingress` API in Kubernetes has very limited parameters. Some solutions have even created their own [CRDs](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) (Kubernetes Custom Resources) while others use `annotations` to overcome these limitations.
 
-Here comes the **Gateway API**! This is actually a **standard** that allows declaring advanced networking features without requiring specific extensions to the underlying controller. Moreover, since all controllers use the same API, it is possible to switch from one solution to another **without changing the configuration** (the Kubenetes manifests that describe how the incoming traffic should be routed).
+Here comes the **Gateway API**! This is actually a **standard** that allows declaring advanced networking features without requiring specific extensions to the underlying controller. Moreover, since all controllers use the same API, it is possible to switch from one solution to another **without changing the configuration** (The Kubenetes manifests which describe how the incoming traffic should be routed).
 
 Among the concepts that we will explore, GAPI brings a granular authorization model which defines **explicit roles with distinct permissions**. (More information on the GAPI security model [here](https://gateway-api.sigs.k8s.io/concepts/security-model/#roles-and-personas)).
 
@@ -72,7 +72,7 @@ kubeProxyReplacement: true
 ```
 
 
-* **Enable Gateway API support.
+* **Enable** Gateway API support.
 
 ```yaml
 gatewayAPI:
@@ -154,7 +154,7 @@ cilium status
 
 {{% /notice %}}
 
-### 🚪 The Entry Point: GatewayClass and Gateway
+## 🚪 The Entry Point: GatewayClass and Gateway
 
 <center><img src="gateway.png" alt="Gateway" width="650" /></center>
 
@@ -166,7 +166,7 @@ NAME     CONTROLLER                     ACCEPTED   AGE
 cilium   io.cilium/gateway-controller   True       7m59s
 ```
 
-On a Kubernetes cluster, you could to configure multiple `GatewayClass`, thus having the ability to use different implementations. For instance, we can use `Linkerd` by referencing the GatewayClass in the `Gateway` configuration.
+On a Kubernetes cluster, you could configure multiple `GatewayClass`, thus having the ability to use different implementations. For instance, we can use `Linkerd` by referencing the GatewayClass in the `Gateway` configuration.
 
 The `Gateway` is the resource that allows **triggering** the creation of load balancing components in the Cloud provider.
 
@@ -190,7 +190,7 @@ spec:
           from: Same
 ```
 
-On AWS (EKS), when configuring a `Gateway`, Cilium creates a `Service` of type `LoadBalancer`. This service is then interpreted by another controller, the ([AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller)), which produces an [NLB](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html).
+On AWS (EKS), when configuring a `Gateway`, Cilium creates a `Service` of type `LoadBalancer`. Then another controller (The [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller)) will handle the creation of the Cloud load balancer ([NLB](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html))
 
 ```console
 kubectl get svc -n echo cilium-gateway-echo
@@ -242,13 +242,13 @@ The service `cilium-gateway-echo` will therefore have the AWS controller's annot
 
 {{% /notice %}}
 
-### :arrow_right_hook: Routing rules: HTTPRoute
+## :arrow_right_hook: Routing rules: HTTPRoute
 
-#### A basic rule
+### A basic rule
 <center><img src="simple-httproute.png" alt="HTTPRoute" width="950" /></center>
 
 To summarize the above diagram in a few words: </br>
-An `HTTPRoute` resource allows configuring the routing to the service by referencing the gateway and defining the desired routing parameters.
+An `HTTPRoute` allows configuring the routing to the service by referencing the Gateway and defining the desired routing parameters.
 
 [apps/base/echo/httproute.yaml](https://github.com/Smana/cilium-gateway-api/blob/main/apps/base/echo/httproute.yaml)
 ```yaml {hl_lines=["7-10"]}
@@ -310,7 +310,7 @@ echo-1-echo-server-fd88497d-w6sgn
 
 As you can see, the service is exposed in HTTP without a certificate. Let's try to fix that 😉
 
-#### Configure a TLS certificate
+### Configure a TLS certificate
 
 There are several methods to configure TLS with GAPI. Here, we will use the most common case: HTTPS protocol and TLS termination at the Gateway.
 
@@ -402,11 +402,11 @@ This is done by configuring the Gateway in `Passthrough` mode and using a `TLSRo
 The certificate must also be carried by the pod that performs the TLS termination.
 {{% /notice %}}
 
-#### Sharing a Gateway accross multiple namespaces
+### Sharing a Gateway accross multiple namespaces
 
 <center><img src="shared-gateway.png" alt="Shared Gateway" width="850" /></center>
 
-With `GAPI`, it is possible to route traffic across `Namespaces`. This is made possible thanks to distinct resources for each function: A `Gateway` that allows configuring the infrastructure, and the `*Routes`. These routes can reference a Gateway located in another namespace. It is thus possible for different teams/projects to share the same infrastructure components.
+With `GAPI`, it is possible to route traffic across `Namespaces`. This is made possible thanks to distinct resources for each function: A `Gateway` that allows configuring the infrastructure, and the `*Routes`. These routes can be attached to a Gateway located in another namespace. It is thus possible for different teams/projects to share the same infrastructure components.
 
 However, this requires to specify which route is allowed to reference the Gateway. Here we assume that we have a Gateway dedicated to internal tools called `platform`.
 By using the `allowedRoutes` parameter, we explicitly specify which namespaces are allowed to be attached to this Gateway.
@@ -430,7 +430,7 @@ By using the `allowedRoutes` parameter, we explicitly specify which namespaces a
           - name: platform-tls
 ```
 
-The `HTTPRoutes` configured in the namespacse `observability` and `flux-system` are attached to this unique `Gateway`.
+The `HTTPRoutes` configured in the namespaces `observability` and `flux-system` are attached to this unique `Gateway`.
 
 ```yaml
 ...
@@ -460,7 +460,7 @@ dig +short gitops-mycluster-0.cloud.ogenki.io
 For instance, we could use an internal Gateway (private IP) by playing with the annotations and make use of a private connection system (VPN, tunnels...).
 {{% /notice %}}
 
-#### Traffic splitting
+### Traffic splitting
 
 <center><img src="split.png" alt="Split" width="750" /></center>
 
@@ -499,7 +499,7 @@ Number of requests for echo-1: 95
 Number of requests for echo-2: 5
 ```
 
-#### Headers modifications
+### Headers modifications
 
 It is also possible to change HTTP **Headers**: to add, modify, or delete them. These modifications can be applied to either request or response headers through the use of [filters](https://gateway-api.sigs.k8s.io/api-types/httproute#filters-optional) in the `HTTPRoute` manifest.
 
@@ -546,7 +546,7 @@ curl -s https://echo.cloud.ogenki.io/req-header-add | jq '.request.headers'
 }
 ```
 
-### 🔒 Assign the proper permissions
+## 🔒 Assign the proper permissions
 
 `GAPI` offers a clear permission-sharing model between the traffic routing infrastructure (managed by cluster administrators) and the applications (managed by developers).
 
@@ -585,7 +585,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-### 🤔 A somewhat unclear scope at first glance
+## 🤔 A somewhat unclear scope at first glance
 
 One could be confused with what's commonly referred to as an `API Gateway`. A section of the [FAQ](https://gateway-api.sigs.k8s.io/faq/) has been created to clarify its difference with the `Gateway API`. Although GAPI offers features typically found in an API Gateway, it primarily serves as a specific implementation for Kubernetes. However, the choice of this name can indeed cause **confusion**.
 
