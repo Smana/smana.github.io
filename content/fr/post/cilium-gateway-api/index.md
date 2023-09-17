@@ -157,7 +157,7 @@ cilium status
 
 {{% /notice %}}
 
-### 🚪 La porte d'entrée: GatewayClass et Gateway
+## 🚪 La porte d'entrée: GatewayClass et Gateway
 
 <center><img src="gateway.png" alt="Gateway" width="650" /></center>
 
@@ -245,9 +245,9 @@ Le service `cilium-gateway-echo` se verra donc ajouter les annotations du contr�
 
 {{% /notice %}}
 
-### :arrow_right_hook: Les règles de routage: HTTPRoute
+## :arrow_right_hook: Les règles de routage: HTTPRoute
 
-#### Un routage simple
+### Un routage simple
 <center><img src="simple-httproute.png" alt="HTTPRoute" width="950" /></center>
 
 Pour résumer le schéma ci-dessus en quelques mots: </br>
@@ -314,7 +314,7 @@ echo-1-echo-server-fd88497d-w6sgn
 
 Comme vous pouvez le voir le service est exposé en HTTP sans certificat. Essayons de corriger cela 😉
 
-#### Exposer un service en utilisant un certificat TLS
+### Exposer un service en utilisant un certificat TLS
 
 Il existe plusieurs méthodes pour configurer du TLS avec GAPI. Ici nous allons utiliser le cas le plus commun: protocole HTTPS et terminaison TLS sur la Gateway.
 
@@ -406,7 +406,7 @@ Cela se fait en configurant la Gateway en `Passthrough` et en utilisant une ress
 Il faut aussi que le certificat soit porté par le pod qui fait terminaison TLS.
 {{% /notice %}}
 
-#### Une Gateway partagée par plusieurs namespaces
+### Une Gateway partagée par plusieurs namespaces
 
 <center><img src="shared-gateway.png" alt="Shared Gateway" width="850" /></center>
 
@@ -464,7 +464,7 @@ dig +short gitops-mycluster-0.cloud.ogenki.io
 On pourrait par exemple, utiliser et une Gateway interne (IP privée) en jouant sur les annotations et un moyen de connexion privé (VPN, tunnels ...)
 {{% /notice %}}
 
-#### Traffic splitting
+### Traffic splitting
 
 <center><img src="split.png" alt="Split" width="750" /></center>
 
@@ -503,7 +503,7 @@ Number of requests for echo-1: 95
 Number of requests for echo-2: 5
 ```
 
-#### Manipulation des entêtes HTTP (Headers)
+### Manipulation des entêtes HTTP (Headers)
 
 Il est aussi possible de jouer avec les entêtes HTTP (**Headers**): en ajouter, modifier ou supprimer. Ces modifications peuvent se faire sur les Headers de requête ou de réponse par le biais de [filtres](https://gateway-api.sigs.k8s.io/api-types/httproute#filters-optional) ajoutés à la ressource `HTTPRoute`.
 
@@ -550,7 +550,7 @@ curl -s https://echo.cloud.ogenki.io/req-header-add -sk | jq '.request.headers'
 }
 ```
 
-### 🪪 Les roles et permissions
+## 🪪 Les roles et permissions
 
 `GAPI` offre un modèle de partage des permissions claire entre l'infrastructure de routage du trafic (gérée par les administrateurs de cluster) et les applications (gérées par les développeurs).
 
@@ -589,7 +589,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ```
 
-### 🤔 Un périmètre pas évident
+## 🤔 Un périmètre pas évident
 
 Il ne faut pas confondre `GAPI` avec ce que l'on nomme couramment une `API Gateway`. Une section de la [FAQ](https://gateway-api.sigs.k8s.io/faq/) a d'ailleurs été créé pour éclaircir ce point. Bien que GAPI offre des fonctionnalités typiquement présentes dans une API Gateway, il s'agit avant tout d'une implémentation spécifique pour Kubernetes. Cependant, ce choix de dénomination peut **prêter à confusion**.
 
