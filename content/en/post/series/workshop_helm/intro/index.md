@@ -5,7 +5,6 @@ summary: |
   This is  a series of workshops dedicated to Helm, the famous Kubernetes package manager.
   We'll start by preparing your local environment
 date: "2021-06-01"
-featured: true
 aliases:
   - workshop-helm
 author: 'Smana'
