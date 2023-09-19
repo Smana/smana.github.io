@@ -34,7 +34,7 @@ All the steps carried out in this article come from this [**git repository**](ht
 I encourage you to explore it, as it goes far beyond the context of this article:
 
 * Installation of an **EKS** cluster with `Cilium` configured with the kube-proxy replacement enbled and a dedicated Daemonset for `Envoy`.
-* Proposal of a `Flux` structure with dependency management and a DRY code I find effective.
+* Proposal of a `Flux` structure with dependency management and a DRY code I think is efficient.
 * `Crossplane` and [IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html) composition which simplifies the management of IAM permissions for platform components.
 * Automated domain names and certificates management with `External-DNS` and `Let's Encrypt`.
 
@@ -131,7 +131,7 @@ gatewayAPI:
   <img src="https://raw.githubusercontent.com/cncf/artwork/master/projects/envoy/horizontal/color/envoy-horizontal-color.svg" width="120" height="120" alt=""> **as DaemonSet**
 
   By default, the Cilium agent also runs `Envoy` within the same pod and delegates to it level 7 network operations.
-  Since version the version `v1.14`, it is possible to deploy Envoy separately, which brings several benefits:
+  Since the version `v1.14`, it is possible to deploy Envoy separately, which brings several benefits:
 
   * If one modifies/restarts a component (whether it's Cilium or Envoy), it doesn't affect the other.
   * Better allocate resources to each component to optimize performance.
@@ -166,7 +166,7 @@ NAME     CONTROLLER                     ACCEPTED   AGE
 cilium   io.cilium/gateway-controller   True       7m59s
 ```
 
-On a Kubernetes cluster, you could configure multiple `GatewayClass`, thus having the ability to use different implementations. For instance, we can use `Linkerd` by referencing the GatewayClass in the `Gateway` configuration.
+On a Kubernetes cluster, you could configure multiple `GatewayClasses`, thus having the ability to use different implementations. For instance, we can use `Linkerd` by referencing the GatewayClass in the `Gateway` configuration.
 
 The `Gateway` is the resource that allows **triggering** the creation of load balancing components in the Cloud provider.
 
@@ -190,7 +190,7 @@ spec:
           from: Same
 ```
 
-On AWS (EKS), when configuring a `Gateway`, Cilium creates a `Service` of type `LoadBalancer`. Then another controller (The [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller)) will handle the creation of the Cloud load balancer ([NLB](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html))
+On AWS (EKS), when configuring a `Gateway`, Cilium creates a `Service` of type `LoadBalancer`. Then another controller (The [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller)) handles the creation of the Cloud load balancer ([NLB](https://docs.aws.amazon.com/elasticloadbalancing/latest/network/introduction.html))
 
 ```console
 kubectl get svc -n echo cilium-gateway-echo
@@ -238,7 +238,7 @@ spec:
             loadBalancerClass: service.k8s.aws/nlb
 ```
 
-The service `cilium-gateway-echo` will therefore have the AWS controller's annotations added, as well as an annotation allowing for automatic DNS entry configuration.
+The service `cilium-gateway-echo` will therefore have the AWS controller's annotations added, as well as an annotation allowing for automatic DNS record configuration.
 
 {{% /notice %}}
 
@@ -406,7 +406,7 @@ The certificate must also be carried by the pod that performs the TLS terminatio
 
 <center><img src="shared-gateway.png" alt="Shared Gateway" width="850" /></center>
 
-With `GAPI`, it is possible to route traffic across `Namespaces`. This is made possible thanks to distinct resources for each function: A `Gateway` that allows configuring the infrastructure, and the `*Routes`. These routes can be attached to a Gateway located in another namespace. It is thus possible for different teams/projects to share the same infrastructure components.
+With `GAPI`, you can route traffic across `Namespaces`. This is made possible thanks to distinct resources for each function: A `Gateway` that allows configuring the infrastructure, and the `*Routes`. These routes can be attached to a Gateway located in another namespace. It is thus possible for different teams/projects to share the same infrastructure components.
 
 However, this requires to specify which route is allowed to reference the Gateway. Here we assume that we have a Gateway dedicated to internal tools called `platform`.
 By using the `allowedRoutes` parameter, we explicitly specify which namespaces are allowed to be attached to this Gateway.
