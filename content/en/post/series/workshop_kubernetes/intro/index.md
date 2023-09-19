@@ -3,7 +3,6 @@ title: 'Kubernetes workshop'
 description: 'Introduction to Kubernetes basics through hands-on'
 summary: 'Introduction to Kubernetes basics through hands-on'
 date: "2021-05-01"
-featured: true
 aliases:
   - workshop-kubernetes
 author: 'Smana'
