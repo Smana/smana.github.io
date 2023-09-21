@@ -209,6 +209,14 @@ NAME   CLASS    ADDRESS                                                         
 echo   cilium   k8s-echo-ciliumga-64708ec85c-fcb7661f1ae4e4a4.elb.eu-west-3.amazonaws.com   True         16m
 ```
 
+## :arrow_right_hook: Les règles de routage: HTTPRoute
+
+### Un routage simple
+<center><img src="simple-httproute.png" alt="HTTPRoute" width="950" /></center>
+
+Pour résumer le schéma ci-dessus en quelques mots: </br>
+Une ressource `HTTPRoute` permet de configurer le routage vers le service en référencant la gateway et en définissant le les paramètres de routage souhaités.
+
 {{% notice note Note %}}
 <img src="https://raw.githubusercontent.com/cncf/artwork/5281c91b356fccf31aa12fcb3374799774438b59/projects/kyverno/horizontal/color/kyverno-horizontal-color.png" width="120" height="120" alt=""> **workaround**
 
@@ -244,14 +252,6 @@ spec:
 Le service `cilium-gateway-echo` se verra donc ajouter les annotations du contrôleur AWS ainsi qu'une annotation permettant de configurer une entrée DNS automatiquement.
 
 {{% /notice %}}
-
-## :arrow_right_hook: Les règles de routage: HTTPRoute
-
-### Un routage simple
-<center><img src="simple-httproute.png" alt="HTTPRoute" width="950" /></center>
-
-Pour résumer le schéma ci-dessus en quelques mots: </br>
-Une ressource `HTTPRoute` permet de configurer le routage vers le service en référencant la gateway et en définissant le les paramètres de routage souhaités.
 
 [apps/base/echo/httproute.yaml](https://github.com/Smana/cilium-gateway-api/blob/main/apps/base/echo/httproute.yaml)
 ```yaml {hl_lines=["7-10"]}

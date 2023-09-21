@@ -206,6 +206,14 @@ NAME   CLASS    ADDRESS                                                         
 echo   cilium   k8s-echo-ciliumga-64708ec85c-fcb7661f1ae4e4a4.elb.eu-west-3.amazonaws.com   True         16m
 ```
 
+## :arrow_right_hook: Routing rules: HTTPRoute
+
+### A basic rule
+<center><img src="simple-httproute.png" alt="HTTPRoute" width="950" /></center>
+
+To summarize the above diagram in a few words: </br>
+An `HTTPRoute` allows configuring the routing to the service by referencing the Gateway and defining the desired routing parameters.
+
 {{% notice note Note %}}
 <img src="https://raw.githubusercontent.com/cncf/artwork/5281c91b356fccf31aa12fcb3374799774438b59/projects/kyverno/horizontal/color/kyverno-horizontal-color.png" width="120" height="120" alt=""> **workaround**
 
@@ -242,13 +250,6 @@ The service `cilium-gateway-echo` will therefore have the AWS controller's annot
 
 {{% /notice %}}
 
-## :arrow_right_hook: Routing rules: HTTPRoute
-
-### A basic rule
-<center><img src="simple-httproute.png" alt="HTTPRoute" width="950" /></center>
-
-To summarize the above diagram in a few words: </br>
-An `HTTPRoute` allows configuring the routing to the service by referencing the Gateway and defining the desired routing parameters.
 
 [apps/base/echo/httproute.yaml](https://github.com/Smana/cilium-gateway-api/blob/main/apps/base/echo/httproute.yaml)
 ```yaml {hl_lines=["7-10"]}
@@ -611,7 +612,7 @@ However, there are a few challenges to note:
 * Many of the features discussed in this blog are still in the experimental stage. For instance, the [extended functions](https://github.com/cilium/cilium/pull/27472), which have been supported since the most recent release at the time of my writing (`v1.14.2`). I attempted to set up a straightforward HTTP>HTTPS redirect but ran into [this issue](https://github.com/kubernetes-sigs/gateway-api/issues/1185). Consequently, I expect some modifications to the API in the near future.
 
 
-While I've only scratched the surface of what Cilium's GAPI can offer (honestly, this post is already quite long 😜), I am hopeful that we can consider its use in production soon. If you haven't thought about this transition yet, now's the time 😉! But considering the points mentioned earlier, I would advise waiting a bit longer.
+While I've only scratched the surface of what Cilium's GAPI can offer (honestly, this post is already quite long 😜), I am hopeful that we can consider its use in production soon. But considering the points mentioned earlier, I would advise waiting a bit longer. That said if you want to prepare the future, now's the time 😉!
 
 ## 🔖 References
 
