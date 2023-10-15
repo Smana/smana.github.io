@@ -38,7 +38,7 @@ Lorsque le compte est crée, on a directement accès à la console de gestion ci
 {{% notice info Terminologie %}}
 **Mesh VPN**: Un _mesh VPN_ est un type de réseau VPN où chaque nœud (c'est-à-dire chaque appareil ou machine) est connecté à tous les autres nœuds du réseau, formant ainsi un maillage. À distinguer des configurations VPN traditionnelles qui sont conçues généralement "en étoile", où plusieurs clients se connectent à un serveur central.
 
-**Zero trust**: Signifie que chaque machine, application ou utilisateur doit prouver son identité et son autorisation avant d'accéder à une ressource. On ne fait pas confiance simplement parce qu'une machine ou un utilisateur provient d'un réseau interne ou d'une certaine zone géographique. Chaque demande d'accès est traitée comme si elle venait d'une source non fiable, et elle doit être authentifiée et autorisée avant d'être accordée.
+**Zero trust**: Signifie que chaque demande d'accès à un réseau est traitée comme si elle venait d'une source non fiable. Une application ou utilisateur doit prouver son identité et être autorisée avant d'accéder à une ressource. On ne fait pas confiance simplement parce qu'une machine ou un utilisateur provient d'un réseau interne ou d'une certaine zone géographique.
 
 **Tailnet**: Dès la première utilisation de Tailscale, un _Tailnet_ est crée pour vous et correspond à votre propre réseau privé. Chaque appareil dans un tailnet reçoit une IP Tailscale unique, permettant une communication directe entre eux. Chacun de ces réseaux possède son propre nom ainsi qu'un label associé à une organisation.
 {{% /notice %}}
@@ -122,7 +122,7 @@ Pour cela il faut au préalable génerer une clé d'API 🔑 sur la console d'ad
 
 <center><img src="api_key.png" width="750" /></center>
 
-Il faudra conserver cette clé dans un endroit sécurisé car elle est utilisé pour déployer le Subnet router
+Il faudra conserver cette clé dans un endroit sécurisé car elle est utilisée pour déployer le Subnet router
 
 ```hcl
 provider "tailscale" {
@@ -149,14 +149,37 @@ resource "tailscale_acl" "this" {
 }
 ```
 {{% notice note Note %}}
-Pour mon environnement de Lab, j'ai conservé cette configuration par défault car je suis la seule personne à y accéder. De plus les seuls appareils connectés à mon Tailnet sont mon laptop et le Subnet router. En revanche dans un cadre d'entreprise, il faudra bien y réfléchir. Il serait possible de définir une politique basée sur des groupes d'utilisitateurs ou sur les tags des noeuds.
+Pour mon environnement de Lab, j'ai conservé cette configuration par défault car je suis la seule personne à y accéder. De plus les seuls appareils connectés à mon Tailnet sont mon laptop et le Subnet router. En revanche dans un cadre d'entreprise, il faudra bien y réfléchir. Il est alors possible de définir une politique basée sur des groupes d'utilisitateurs ou sur les tags des noeuds.
 
 Consulter cette [doc](https://tailscale.com/kb/1018/acls/) pour plus d'info.
 {{% /notice %}}
 
 <ins>**Les noms de domaines (DNS)**</ins>
 
-<https://tailscale.com/kb/1141/aws-rds/#step-3-add-aws-dns-for-your-tailnet>
+Il y a [différentes façons](https://tailscale.com/kb/1054/dns/) possibles de gérer les noms de domaines avec Tailscale:
+
+**Magic DNS**: Lorsqu'un appareil rejoint le Tailnet, il s'enregistre avec un nom et celui-ci peut-être utilisé directement pour communiquer avec l'appareil.
+```console
+tailscale status
+100.118.83.67   ogenki               smainklh@    linux   -
+100.115.31.152  ip-10-0-43-98        smainklh@    linux   active; relay "par", tx 3044 rx 2588
+
+ping ip-10-0-43-98
+PING ip-10-0-43-98.tail9c382.ts.net (100.115.31.152) 56(84) bytes of data.
+64 bytes from ip-10-0-43-98.tail9c382.ts.net (100.115.31.152): icmp_seq=1 ttl=64 time=11.4 ms
+```
+
+Pour utiliser les noms de domaines internes à AWS il est possible d'utiliser la [deuxième IP du VPC](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html#AmazonDNS) qui correspond toujours au serveur DNS. Cela permet d'utiliser les éventuelles zones privées sur route53 ou de se connecter aux ressources en utilisant les noms de domaines.
+
+{{% notice note "Split DNS" %}}
+Le _Split DNS_ permet d'utiliser un serveur de noms (DNS) à condition que la requête **corresponde à un domaine donné**.
+
+Cependant il n'est pas possible de configurer le _Split DNS_ en utilisant le provider Terraform. Cela doit donc être fait via la console d'admin
+
+<center><img src="split_dns.png" width="450" /></center>
+
+La demo utilise une zone route53 privée et afin que les noms de domaines puissent être résolus. Je souhaite ici rediriger toutes les  requêtes en `*.priv.cloud.ogenki.io` vers le serveur DNS sur AWS.
+{{% /notice %}}
 
 Next DNS provider ..
 
@@ -164,10 +187,11 @@ Next DNS provider ..
 resource "tailscale_dns_nameservers" "this" {
   nameservers = [
     "2a07:a8c0::9d:3ccb",
-    cidrhost(module.vpc.vpc_cidr_block, 2)
   ]
 }
+```
 
+```hcl
 resource "tailscale_dns_search_paths" "this" {
   search_paths = [
     "${var.region}.compute.internal"
@@ -194,7 +218,7 @@ Ce module est publié dans le registry Terraform [ici](https://registry.terrafor
 ```hcl
 module "tailscale_subnet_router" {
   source  = "Smana/tailscale-subnet-router/aws"
-  version = "1.0.3"
+  version = "1.0.4"
 
   region = var.region
   env    = var.env
@@ -281,3 +305,6 @@ Ce qui distingue Tailscale des autres VPN, c'est sa capacité à configurer des 
 
 <https://tailscale.com/blog/how-tailscale-works/#the-control-plane-key-exchange-and-coordination>
 <https://tailscale.com/blog/2019-09-10-zero-trust/>
+
+
+<https://cert-manager.io/docs/configuration/ca/>
