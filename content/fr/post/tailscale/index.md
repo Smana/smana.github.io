@@ -169,37 +169,22 @@ PING ip-10-0-43-98.tail9c382.ts.net (100.115.31.152) 56(84) bytes of data.
 64 bytes from ip-10-0-43-98.tail9c382.ts.net (100.115.31.152): icmp_seq=1 ttl=64 time=11.4 ms
 ```
 
-Pour utiliser les noms de domaines internes à AWS il est possible d'utiliser la [deuxième IP du VPC](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html#AmazonDNS) qui correspond toujours au serveur DNS. Cela permet d'utiliser les éventuelles zones privées sur route53 ou de se connecter aux ressources en utilisant les noms de domaines.
+**AWS**: Pour utiliser les noms de domaines internes à AWS il est possible d'utiliser la [deuxième IP du VPC](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-dns.html#AmazonDNS) qui correspond toujours au serveur DNS. Cela permet d'utiliser les éventuelles zones privées sur route53 ou de se connecter aux ressources en utilisant les noms de domaines.
 
-{{% notice note "Split DNS" %}}
-Le _Split DNS_ permet d'utiliser un serveur de noms (DNS) à condition que la requête **corresponde à un domaine donné**.
-
-Cependant il n'est pas possible de configurer le _Split DNS_ en utilisant le provider Terraform. Cela doit donc être fait via la console d'admin
-
-<center><img src="split_dns.png" width="450" /></center>
-
-La demo utilise une zone route53 privée et afin que les noms de domaines puissent être résolus. Je souhaite ici rediriger toutes les  requêtes en `*.priv.cloud.ogenki.io` vers le serveur DNS sur AWS.
-{{% /notice %}}
-
-Next DNS provider ..
+La configuration la plus simple est donc de déclarer la liste des serveurs DNS à utiliser et d'y ajouter celui de AWS. Ici un exemple avec le DNS publique de Cloudflare.
 
 ```hcl
 resource "tailscale_dns_nameservers" "this" {
   nameservers = [
-    "2a07:a8c0::9d:3ccb",
-  ]
-}
-```
-
-```hcl
-resource "tailscale_dns_search_paths" "this" {
-  search_paths = [
-    "${var.region}.compute.internal"
+    "1.1.1.1",
+    cidrhost(module.vpc.vpc_cidr_block, 2)
   ]
 }
 ```
 
 <ins>**La clé d'authentification ("auth key")**</ins>
+
+Pour qu'un appareil puisse rejoindre le Tailnet au démarrage il faut que Tailscale soit démarré en utilisant une clé d'authentification. Celle-ci est générée comme suit
 
 ```hcl
 resource "tailscale_tailnet_key" "this" {
@@ -208,12 +193,39 @@ resource "tailscale_tailnet_key" "this" {
   preauthorized = true
 }
 ```
-autoApprovers
+
+* `reusable`: S'agissant d'un `autoscaling group`, il faut que cette même clé puisse être utilisée plusieurs fois.
+* `ephemeral`: Pour cette démo nous créons une clé qui n'expire pas. En production il serait préférable d'activer l'expiration.
+* `preauthorized`: Il faut que cette clé soit déjà valide et autorisée pour que l'instance rejoigne automatiquement le Tailscale.
+
+La clé ainsi générée est utilisée pour lancer tailscale avec le paramètre `--auth-key`
+```console
+sudo tailscale up --authkey=<REDACTED>
+```
+
+
+<ins>**Annoncer les routes pour les réseaux AWS**</ins>
+
+Enfin il faut annoncer le réseau que l'on souhaite faire passer par le _Subnet router_. Dans notre exemple, nous décidons de router tout le réseau du VPC qui a pour CIDR `10.0.0.0/16`.
+
+Afin que cela soit possible de façon automatique, il y a une règle [autoApprovers](https://tailscale.com/kb/1018/acls/#auto-approvers-for-routes-and-exit-nodes) à ajouter. Cela permet d'indiquer que les routes annoncées par l'utilisateur `smainklh@gmail.com` sont autorisées sans que cela requiert une étape d'approbation.
+
+```hcl
+    autoApprovers = {
+      routes = {
+        "10.0.0.0/16" = ["smainklh@gmail.com"]
+      }
+    }
+```
+
+La commande lancée au démarrage de l'instance _Subnet router_ est la suivante:
+```console
+sudo tailscale up --authkey=<REDACTED> --advertise-routes="10.0.0.0/16"
+```
 
 #### Le module Terraform
 
-J'ai créé un module très simple qui permet de déployer un autoscaling group sur AWS et de configurer Tailscale pour qu'au démarrage d'une instance elle rejoigne le Tailnet et que le routage vers les ressources privées soit immédiatement possible.
-Ce module est publié dans le registry Terraform [ici](https://registry.terraform.io/modules/Smana/tailscale-subnet-router/aws/latest).
+J'ai créé un [module](https://github.com/Smana/terraform-aws-tailscale-subnet-router) très simple qui permet de déployer un `autoscaling group` sur AWS et de configurer Tailscale. Au démarrage de l'instance, elle s'authentifiera en utilisant une `auth_key` et annoncera les réseaux indiqués. Dans l'exemple ci-dessous l'instance annonce le CIDR du VPC sur AWS.
 
 ```hcl
 module "tailscale_subnet_router" {
@@ -233,42 +245,59 @@ module "tailscale_subnet_router" {
 }
 ```
 
-### 💻 Une autre façon de faire du SSH
+Maintenant que nous avons analysé les différents paramètres, il est temps de **démarrer notre Subnet router** 🚀 !! </br>
 
-```console
-ss -tulnp sport = :22
-Netid                State                 Recv-Q                Send-Q                                 Local Address:Port                                 Peer Address:Port                Process
-tcp                  LISTEN                0                     4096                                               *:22                                              *:*
+Il faut au préalable créer un fichier `variable.tfvars` dans le répertoire [terraform/network](https://github.com/Smana/demo-secured-eks/tree/main/terraform/network).
+
+```hcl
+env                 = "dev"
+region              = "eu-west-3"
+private_domain_name = "priv.cloud.ogenki.io"
+
+tailscale = {
+  subnet_router_name = "ogenki"
+  tailnet            = "smainklh@gmail.com"
+  api_key            = "tskey-api-..."
+}
+
+tags = {
+  project = "demo-secured-eks"
+  owner   = "Smana"
+}
 ```
 
+
+Puis lancer la commande suivante:
 ```console
-ssh root@ip-10-0-45-95
-Rejected. Source key was revoked.
-root@ip-10-0-45-95: Permission denied (tailscale).
-
-sudo tailscale up --force-reauth --accept-routes
-
-ssh root@ip-10-0-45-95
-# Authentication checked with Tailscale SSH.
-# Time since last authentication: 4s
-Welcome to Ubuntu 23.04 (GNU/Linux 6.2.0-1013-aws x86_64)
-...
-root@ip-10-0-45-95:~#
-
-
-ssh ubuntu@ip-10-0-45-95
-# Tailscale SSH requires an additional check.
-# To authenticate, visit: https://login.tailscale.com/a/31e3dd2d681c
+tofu plan --var-file variables.tfvars
 ```
 
-### 🗄️ Accéder à une base de données RDS
-
-Depuis le poste de travail
+Après vérification du plan, appliquer les changements
 
 ```console
-nc -zv demo-tailscale.cymnaynfchjt.eu-west-3.rds.amazonaws.com 5432
-demo-tailscale.cymnaynfchjt.eu-west-3.rds.amazonaws.com [10.0.52.80] 5432 (postgresql) open
+tofu apply --var-file variables.tfvars
+```
 
+Quand l'instance est démarrée, elle apparaitra dans la liste des appareils du Tailnet.
+```console
+tailscale status
+100.118.83.67   ogenki               smainklh@    linux   -
+100.68.109.138  ip-10-0-26-99        smainklh@    linux   active; relay "par", tx 33868 rx 32292
+```
+
+Nous pouvons aussi vérifier que la route est bien annoncée comme suit:
+```console
+tailscale status --json|jq '.Peer[] | select(.HostName == "ip-10-0-26-99") .PrimaryRoutes'
+[
+  "10.0.0.0/16"
+]
+```
+
+⚠️ Pour des raisons de sécurité, pensez à supprimer le fichier `variables.tfvars` car il contient la clé d'API.
+
+👏 Et voilà ! Nous sommes maintenant en mesure d'**accéder au réseau sur AWS**, à condition d'avoir également configuré les règles de filtrage, comme les ACL et les security groups. Nous pouvons par exemple accéder à une base de données depuis le poste de travail
+
+```console
 psql -h demo-tailscale.cymnaynfchjt.eu-west-3.rds.amazonaws.com -U postgres
 Password for user postgres:
 psql (15.4, server 15.3)
@@ -278,6 +307,51 @@ Type "help" for help.
 postgres=>
 ```
 
+### 💻 Une autre façon de faire du SSH
+
+Traditionnellement, nous devons parfois nous connecter à des serveurs en utilisant le protocole SSH. Pour ce faire, il faut générer une clé privée et distribuer la clé publique correspondante sur les serveurs distants.
+
+Contrairement à l'utilisation des clés SSH classiques, étant donné que Tailscale utilise `Wireguard` pour l'authentification et le chiffrement des connexions il n'est **pas nécessaire de ré-authentifier le client**. De plus, Tailscale gère également la distribution des clés SSH d'hôtes. Les règles ACL permettent de révoquer l'accès des utilisateurs sans avoir à supprimer les clés SSH. De plus, il est possible d'activer un mode de vérification qui renforce la sécurité en exigeant une ré-authentification périodique. On peut donc affirmer que l'utilisation de `Tailscale SSH` **simplifie** l'authentification, la gestion des connexions SSH et **améliore le niveau de sécurité**.
+
+ℹ️ Avec Tailscale SSH il est possible de se connecter en SSH peu importe où est situé l'appareil. En revanche dans un contexte 100% AWS, on préferera probablement utiliser [AWS SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html).
+
+Les autorisations pour utiliser SSH sont aussi gérées au niveau des ACL's
+```hcl
+...
+    ssh = [
+      {
+        action = "check"
+        src    = ["autogroup:member"]
+        dst    = ["autogroup:self"]
+        users  = ["autogroup:nonroot"]
+      }
+    ]
+...
+```
+
+La règle ci-dessus autorise tous les utilisateurs à accéder à leurs propres appareils en utilisant SSH. Lorsqu'ils essaient de se connecter, ils doivent utiliser un compte utilisateur autre que `root`.
+Pour chaque tentative de connexion, une authentification supplémentaire est nécessaire (`action=check`). Cette authentification se fait en visitant un lien web spécifique
+
+```console
+ssh ubuntu@ip-10-0-26-99
+...
+# Tailscale SSH requires an additional check.
+# To authenticate, visit: https://login.tailscale.com/a/f1f09a548cc6
+...
+ubuntu@ip-10-0-26-99:~$
+```
+
+Les logs d'accès à la machine peuvent être consultés en utilisant `journalctl`
+```console
+ubuntu@ip-10-0-26-99:~$ journalctl -aeu tailscaled|grep ssh
+Oct 15 15:51:34 ip-10-0-26-99 tailscaled[1768]: ssh-conn-20231015T155130-00ede660b8: handling conn: 100.118.83.67:55098->ubuntu@100.68.109.138:22
+Oct 15 15:51:56 ip-10-0-26-99 tailscaled[1768]: ssh-conn-20231015T155156-b6d1dc28c0: handling conn: 100.118.83.67:44560->ubuntu@100.68.109.138:22
+Oct 15 15:52:52 ip-10-0-26-99 tailscaled[1768]: ssh-conn-20231015T155156-b6d1dc28c0: starting session: sess-20231015T155252-5b2acc170e
+Oct 15 15:52:52 ip-10-0-26-99 tailscaled[1768]: ssh-session(sess-20231015T155252-5b2acc170e): handling new SSH connection from smainklh@gmail.com (100.118.83.67) to ssh-user "ubuntu"
+Oct 15 15:52:52 ip-10-0-26-99 tailscaled[1768]: ssh-session(sess-20231015T155252-5b2acc170e): access granted to smainklh@gmail.com as ssh-user "ubuntu"
+Oct 15 15:52:52 ip-10-0-26-99 tailscaled[1768]: ssh-session(sess-20231015T155252-5b2acc170e): starting pty command: [/usr/sbin/tailscaled be-child ssh --uid=1000 --gid=1000 --groups=1000,4,20,24,25,27,29,30,44,46,115,116 --local-user=ubuntu --remote-user=smainklh@gmail.com --remote-ip=100.118.83.67 --has-tty=true --tty-name=pts/0 --shell --login-cmd=/usr/bin/login --cmd=/bin/bash -- -l]
+```
+
 ### ☸ Plusieurs options sur Kubernetes
 
 * Subnet router
@@ -285,6 +359,27 @@ postgres=>
 * Sidecar
 * Operator
 
+```console
+  CURRENT_K8S_URL=$(kubectl config view --minify --output=jsonpath="{.contexts[?(@.name=='$(kubectl config current-context)')].context.cluster}")
+  dig +short ${CURRENT_K8S_URL}
+```
+
+```hcl
+module "eks" {
+...
+  cluster_security_group_additional_rules = {
+    ingress_source_security_group_id = {
+      description              = "Ingress from the Tailscale security group to the API server"
+      protocol                 = "tcp"
+      from_port                = 443
+      to_port                  = 443
+      type                     = "ingress"
+      source_security_group_id = data.aws_security_group.tailscale.id
+    }
+  }
+...
+}
+```
 
 
 ## 👐 Open source et tarifs
@@ -308,3 +403,7 @@ Ce qui distingue Tailscale des autres VPN, c'est sa capacité à configurer des 
 
 
 <https://cert-manager.io/docs/configuration/ca/>
+
+```console
+sudo tailscale up --force-reauth --accept-routes
+```
