@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "Sécuriser le Cloud avec `Tailscale` : Mise en œuvre d'un VPN simplifiée"
-date = "2023-10-07"
+date = "2023-10-16"
 summary = "Tailscale est une solution de **VPN** qui permet connecter des appareils ou serveurs de manière sécurisée. Comment en bénéficier pour accéder à une infrastruture Cloud?"
 featured = true
 codeMaxLines = 21
@@ -97,7 +97,7 @@ Il va permettre de créer l'ensemble des composants qui ont pour objectif d'obte
 
 {{% /notice %}}
 
-## ☁️ Accéder aux réseaux privés sur AWS
+## ☁️ Accéder à AWS en privé
 
 ![Subnet router](subnet_router.png)
 
@@ -313,8 +313,6 @@ Traditionnellement, nous devons parfois nous connecter à des serveurs en utilis
 
 Contrairement à l'utilisation des clés SSH classiques, étant donné que Tailscale utilise `Wireguard` pour l'authentification et le chiffrement des connexions il n'est **pas nécessaire de ré-authentifier le client**. De plus, Tailscale gère également la distribution des clés SSH d'hôtes. Les règles ACL permettent de révoquer l'accès des utilisateurs sans avoir à supprimer les clés SSH. De plus, il est possible d'activer un mode de vérification qui renforce la sécurité en exigeant une ré-authentification périodique. On peut donc affirmer que l'utilisation de `Tailscale SSH` **simplifie** l'authentification, la gestion des connexions SSH et **améliore le niveau de sécurité**.
 
-ℹ️ Avec Tailscale SSH il est possible de se connecter en SSH peu importe où est situé l'appareil. En revanche dans un contexte 100% AWS, on préferera probablement utiliser [AWS SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html).
-
 Les autorisations pour utiliser SSH sont aussi gérées au niveau des ACL's
 ```hcl
 ...
@@ -341,6 +339,8 @@ ssh ubuntu@ip-10-0-26-99
 ubuntu@ip-10-0-26-99:~$
 ```
 
+Pour que cela soit possible il faut aussi démarrer Tailscale avec l'option `--ssh`
+
 Les logs d'accès à la machine peuvent être consultés en utilisant `journalctl`
 ```console
 ubuntu@ip-10-0-26-99:~$ journalctl -aeu tailscaled|grep ssh
@@ -352,17 +352,32 @@ Oct 15 15:52:52 ip-10-0-26-99 tailscaled[1768]: ssh-session(sess-20231015T155252
 Oct 15 15:52:52 ip-10-0-26-99 tailscaled[1768]: ssh-session(sess-20231015T155252-5b2acc170e): starting pty command: [/usr/sbin/tailscaled be-child ssh --uid=1000 --gid=1000 --groups=1000,4,20,24,25,27,29,30,44,46,115,116 --local-user=ubuntu --remote-user=smainklh@gmail.com --remote-ip=100.118.83.67 --has-tty=true --tty-name=pts/0 --shell --login-cmd=/usr/bin/login --cmd=/bin/bash -- -l]
 ```
 
-### ☸ Plusieurs options sur Kubernetes
+ℹ️ Avec Tailscale SSH il est possible de se connecter en SSH peu importe où est situé l'appareil. En revanche dans un contexte 100% AWS, on préferera probablement utiliser [AWS SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html).
 
-* Subnet router
-* Proxy
-* Sidecar
-* Operator
+{{% notice info Logs %}}
+💾 En sécurité il est primordial de pouvoir conserver les logs pour un usage ultérieur. Il existe différents types de logs:
 
-```console
-  CURRENT_K8S_URL=$(kubectl config view --minify --output=jsonpath="{.contexts[?(@.name=='$(kubectl config current-context)')].context.cluster}")
-  dig +short ${CURRENT_K8S_URL}
-```
+**Logs d'audit**: Ils sont essentiels pour savoir qui a fait quoi. Ils sont accessibles sur la console d'admin et peuvent aussi être envoyés vers un [SIEM](https://tailscale.com/learn/security-information-and-event-management/).
+
+**Logs sur les appareils**: Ceux-cis peuvent être consultés en utilisant les commandes appropriées à l'appareil. (`journalctl -u tailscaled` sur Linux)
+
+**Logs réseau**: Utiles pour visualiser quels appareils sont connectés les uns aux autres.
+
+{{% /notice %}}
+
+### ☸ Qu'en est-il de Kubernetes?
+
+Sur Kubernetes il existe [plusieurs options](https://tailscale.com/kb/1185/kubernetes/) pour accéder à un `Service`:
+
+* **Proxy**: Il s'agit d'un pod supplémentaire qui transfert les appels à un Service existant.
+* **Sidecar**: Permet de connecter le pod au Tailnet. Donc la connectivité se fait de bout en bout et il est même possible de communiquer dans les 2 sens. (du pod vers les noeuds du Tailnet).
+* **Operator**: Permet d'exposer les services et l'API Kubernetes (`ingress`) ainsi que de permettre aux pods d'accéder aux noeuds du Tailnet (`egress`). La configuration se fait en configurant les ressources existantes: Services et Ingresses
+
+Dans notre cas, nous disposons déjà d'un _Subnet router_ qui route tout le réseau du VPC. Il suffit donc que notre service soit exposé sur une IP privée.
+
+#### L'API Kubernetes
+
+Pour accéder à l'API Kubernetes il est nécessaire d'**autoriser le Subnet router**. Cela se fait en définissant la règle suivante pour le _security group_ source.
 
 ```hcl
 module "eks" {
@@ -381,29 +396,70 @@ module "eks" {
 }
 ```
 
+Nous allons vérifier que l'API est bien accessible sur une IP privée.
 
-## 👐 Open source et tarifs
+```console
+CLUSTER_URL=$(TERM=dumb kubectl cluster-info | grep "Kubernetes control plane" | awk '{print $NF}')
 
-Pricing raisonnable avec une vrai politique OpenSource et je suis pour payer une solution lorsqu'elle le mérite et que cela reste raisonnable. Encourager ces sociétés qui ont une sensibilité Open Source
+curl -s -o /dev/null -w '%{remote_ip}\n' ${CLUSTER_URL}
+10.228.244.167
 
-Le [client Tailscale](https://github.com/tailscale/tailscale) est Open source sous license `BSD 3-Clause`
+kubectl get ns
+NAME                STATUS   AGE
+cilium-secrets      Active   5m46s
+crossplane-system   Active   4m1s
+default             Active   23m
+flux-system         Active   5m29s
+infrastructure      Active   4m1s
+...
+```
 
-Self hosted <https://github.com/juanfont/headscale> non lié à la société Tailscale.
+#### Accéder aux services en privé
+
+Un `Service` Kubernetes exposé est une resource AWS comme une autre 😉. Il faut juste s'assurer que ce service utilise bien une **IP privée**.
+Dans mon exemple j'utilise `Gateway API` pour configurer la répartition de charge du Clouder et je vous invite à lire mon [**précédent article**](https://blog.ogenki.io/fr/post/cilium-gateway-api/) sur le sujet.
+
+Il suffirait donc  de créer un NLB interne en s'assurant que le `Service` ait bien l'annotation `service.beta.kubernetes.io/aws-load-balancer-scheme` ayant pour valeur `internal`. Dans le cas de Gateway API, cela se fait via la [clusterPolicy](https://github.com/Smana/demo-secured-eks/blob/main/security/mycluster-0/platform-gw-clusterpolicy.yaml) [Kyverno](https://kyverno.io/).
+
+```yaml
+          metadata:
+            annotations:
+              external-dns.alpha.kubernetes.io/hostname: gitops-${cluster_name}.priv.${domain_name},grafana-${cluster_name}.priv.${domain_name}
+              service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+              service.beta.kubernetes.io/aws-load-balancer-backend-protocol: tcp
+          spec:
+            loadBalancerClass: service.k8s.aws/nlb
+```
+
+Il y a cependant un prérequis supplémentaire car nous ne pouvons pas utiliser Let's Encrypt pour les certificats internes. J'ai donc généré une **PKI interne** qui génère des certificates auto-signés avec [Cert-manager](https://cert-manager.io/).
+
+Ici je ne détaillerai pas le déploiement du cluster EKS, ni la configuration de [Flux](https://fluxcd.io/). Lorsque le cluster est créé et que toutes les ressources Kubernetes ont été réconcilié, nous avons un service qui est exposé via un LoadBalancer interne AWS.
+
+```console
+NLB_DOMAIN=$(kubectl get svc -n infrastructure cilium-gateway-platform -o jsonpath={.status.loadBalancer.ingress[0].hostname})
+dig +short ${NLB_DOMAIN}
+10.0.33.5
+10.0.26.228
+10.0.9.183
+```
+
+Une entrée DNS est également créée automatiquement pour les services exposés et nous pouvons donc accéder en privé grâce à Tailscale.
+```console
+dig +short gitops-mycluster-0.priv.cloud.ogenki.io
+10.0.9.183
+10.0.26.228
+10.0.33.5
+```
+
+<center><img src="gitops-login.png" width="750" /></center>
+
 
 ## 💭 Dernières remarques
 
-Cloudflare, interface web, latencie. Ça fait longtemps.
+Il y a quelques temps, dans le cadre professionnel, j'ai mis en place [Cloudflare Zero Trust](https://developers.cloudflare.com/cloudflare-one/). Je découvre ici que Tailscale présente de nombreuses similitudes avec cette solution. La décision entre les deux est loin d'être triviale et dépend grandement du contexte. Pour ma part, j'ai été particulièrement **convaincu par la simplicité de mise en œuvre** de Tailscale, répondant parfaitement à mon besoin d'accéder au réseau du Clouder. Bien entendu il existe d'autres solutions comme [Teleport](https://goteleport.com/), qui offre une approche différente pour accéder à des ressources internes.
 
-Ce qui distingue Tailscale des autres VPN, c'est sa capacité à configurer des connexions de manière quasi instantanée sans nécessiter de configuration complexe.
+Cela dit, focalisons-nous sur `Tailscale`.
 
-## 🔖 References
+Une partie du code de Tailscale est **open source**, notamment le client qui est sous license [BSD 3-Clause](https://opensource.org/license/bsd-3-clause/). La partie propriétaire concerne éssentiellement la plateforme de coordination.   À noter qu'il existe une alternative open source nommée [Headscale](https://github.com/juanfont/headscale). Celle-ci est une initiative distincte qui n'a aucun lien avec la société `Tailscale`.
 
-<https://tailscale.com/blog/how-tailscale-works/#the-control-plane-key-exchange-and-coordination>
-<https://tailscale.com/blog/2019-09-10-zero-trust/>
-
-
-<https://cert-manager.io/docs/configuration/ca/>
-
-```console
-sudo tailscale up --force-reauth --accept-routes
-```
+Pour un usage **personnel**, Tailscale est vraiment généreux, offrant un accès gratuit pour jusqu'à **100 appareils et 3 utilisateurs**. Ceci-dit Tailscale est une option sérieuse à considérer en entreprise et il est important, selon moi, d'encourager ce type d'entreprises qui ont une politique open source claire et un produit de qualité.
