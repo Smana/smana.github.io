@@ -40,7 +40,7 @@ Lorsque le compte est crée, on a directement accès à la console de gestion ci
 
 **Zero trust**: Signifie que chaque demande d'accès à un réseau est traitée comme si elle venait d'une source non fiable. Une application ou utilisateur doit prouver son identité et être autorisée avant d'accéder à une ressource. On ne fait pas confiance simplement parce qu'une machine ou un utilisateur provient d'un réseau interne ou d'une certaine zone géographique.
 
-**Tailnet**: Dès la première utilisation de Tailscale, un _Tailnet_ est crée pour vous et correspond à votre propre réseau privé. Chaque appareil dans un tailnet reçoit une IP Tailscale unique, permettant une communication directe entre eux. Chacun de ces réseaux possède son propre nom ainsi qu'un label associé à une organisation.
+**Tailnet**: Dès la première utilisation de Tailscale, un _Tailnet_ est crée pour vous et correspond à votre propre réseau privé. Chaque appareil dans un tailnet reçoit une IP Tailscale unique, permettant une communication directe entre eux.
 {{% /notice %}}
 
 <center><img src="mesh.png" width="500" /></center>
