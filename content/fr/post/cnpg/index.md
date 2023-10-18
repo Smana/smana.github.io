@@ -4,7 +4,6 @@ title = '`CloudNativePG`: et PostgreSQL devient facile sur Kubernetes'
 date = "2022-10-23"
 summary = "**CloudNativePG** est un opérateur Kubernetes qui facilite la gestion et l'exploitation de bases de données PostgreSQL. Cet article montre comment créer un serveur, effectuer des sauvegardes et des restaurations, la supervision et quelques petits conseils ;)"
 featureImage = "cnpg.png"
-featured = true
 codeMaxLines = 20
 usePageBundles = true
 toc = true

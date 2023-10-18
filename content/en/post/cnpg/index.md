@@ -4,7 +4,6 @@ title = '`CloudNativePG`: An easy way to run PostgreSQL on Kubernetes'
 date = "2022-10-23"
 summary = "**CloudNativePG** is a Kubernetes operator that helps running and operating PostgreSQL databases. Here I'll demonstrate how to create a server, perform backups and recoveries, monitoring and a few tips."
 featureImage = "cnpg.png"
-featured = true
 codeMaxLines = 20
 usePageBundles = true
 toc = true
