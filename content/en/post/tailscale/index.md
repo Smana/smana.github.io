@@ -145,6 +145,7 @@ resource "tailscale_acl" "this" {
     ]
 ...
 }
+```
 
 {{% notice note Note %}}
 For my Lab environment, I kept this default configuration because I'm the only person accessing it. Furthermore, the only devices connected to my Tailnet are my laptop and the Subnet router. However, in a corporate setting, you need to think this through. It's then possible to **define a security policy** based on groups of people or node tags.
