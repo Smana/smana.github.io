@@ -10,7 +10,7 @@ toc = true
 tags = [
     "data"
 ]
-thumbnail= "cloudnativepg.png"
+thumbnail= "thumbnail.png"
 +++
 
 Kubernetes est désormais la plate-forme privilégiée pour orchestrer les applications "sans état" aussi appelé "stateless". Les conteneurs qui ne stockent pas de données peuvent être détruits et recréés ailleurs sans impact. En revanche, la gestion d'applications "stateful" dans un environnement dynamique tel que Kubernetes peut être un véritable **défi**. Malgré le fait qu'il existe un nombre croissant de solutions de base de données "Cloud Native" (comme CockroachDB, TiDB, K8ssandra, Strimzi ...) et il y a de nombreux **éléments à considérer** lors de leur évaluation:

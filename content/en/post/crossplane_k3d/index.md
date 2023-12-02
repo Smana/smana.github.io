@@ -11,7 +11,7 @@ tags = [
     "kubernetes",
     "infrastructure"
 ]
-thumbnail= "crossplane_k3d.jpg"
+thumbnail= "thumbnail.png"
 +++
 
 The target of this documentation is to be able to create and manage a GKE cluster using [**Crossplane**](https://crossplane.io/).

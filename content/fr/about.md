@@ -14,3 +14,6 @@ I helped several companies in their transition to the Cloud. I was leading SRE/D
 As side activities, I am an organizer of the Cloud Native Computing meetup in Paris and the [Kubernetes Community Days France](https://www.kcdfrance.fr/).
 
 Hobbies: Reading SF books, Kick Boxing, Surfing/Skating/Inline Roller
+
+<center><img src="about.png" width="250" /></center>
+
