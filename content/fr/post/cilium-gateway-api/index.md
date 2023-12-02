@@ -13,7 +13,7 @@ tags = [
     "infrastructure",
     "network"
 ]
-thumbnail= "cilium-gateway-api-thumbnail.png"
+thumbnail= "thumbnail.png"
 +++
 
 Lorsque l'on déploie une application sur Kubernetes, l'étape suivante consiste généralement à l'exposer aux utilisateurs. On utilise habituellement des "[**Ingress controllers**](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)", comme Nginx, Haproxy, Traefik ou encore ceux des différents Clouders afin de diriger le trafic entrant vers l'application, gérer l'équilibrage de charge, la terminaison TLS et j'en passe.

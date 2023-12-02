@@ -11,7 +11,7 @@ toc = true
 tags = [
     "infrastructure"
 ]
-thumbnail= "weavetf.png"
+thumbnail= "thumbnail.png"
 +++
 
 **Terraform** is probably the most used "Infrastructure As Code" tool for building, modifying, and versioning Cloud infrastructure changes.

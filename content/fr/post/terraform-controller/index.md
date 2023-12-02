@@ -11,7 +11,7 @@ toc = true
 tags = [
     "infrastructure"
 ]
-thumbnail= "weavetf.png"
+thumbnail= "thumbnail.png"
 +++
 
 **Terraform** est probablement l'outil "Infrastructure As Code" le plus utilisé pour construire, modifier et versionner les changements d'infrastructure Cloud.

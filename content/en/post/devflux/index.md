@@ -11,7 +11,7 @@ tags = [
     "gitops",
     "devxp"
 ]
-thumbnail= "flux.png"
+thumbnail= "thumbnail.png"
 +++
 
 In a [previous article](/post/crossplane_k3d/), we've seen how to use **Crossplane** so that we can manage cloud resources the same way as our applications. :heart: Declarative approach!

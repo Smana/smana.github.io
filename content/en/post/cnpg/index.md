@@ -10,7 +10,7 @@ toc = true
 tags = [
     "data"
 ]
-thumbnail= "cloudnativepg.png"
+thumbnail= "thumbnail.png"
 +++
 
 Kubernetes is now the de facto platform for orchestrating stateless applications. Containers that don't store data can be destroyed and easily recreated elsewhere. On the other hand, running persistent applications in an ephemeral environment can be **quite challenging**. There is an increasing number of mature cloud-native database solutions (like CockroachDB, TiDB, K8ssandra, Strimzi...) and there are a lot of **things to consider** when evaluating them:
