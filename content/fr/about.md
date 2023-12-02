@@ -7,13 +7,12 @@ author = "Smana"
 
 ## Qui suis-je?
 
-I'm a senior Site Reliability Engineer with a particular interest in Linux containers and cloud technologies.
-I worked in different companies (small startups and large scale) and I've been working in different areas in order to improve the reliability, availability of the platform as well as the developer experience.
-I helped several companies in their transition to the Cloud. I was leading SRE/DevOps teams (diverse profiles with developers and SREs) and I really enjoy seeing them engaged in the same direction.
+Je suis un **ingénieur système / SRE senior**. Je porte un intérêt particulier aux conteneurs Linux et les technologies dîtes "Cloud Native". Au fil de ma carrière, j'ai eu l'occasion de collaborer avec une variété d'entreprises, des startups dynamiques aux grandes structures, où j'ai contribué à optimiser la fiabilité et la disponibilité des plateformes, tout en améliorant l'expérience des développeurs. Mon parcours inclut l'accompagnement de plusieurs sociétés dans leur migration vers des solutions Cloud. J'ai également pu **diriger des équipes SRE/DevOps** composées de profils variés, incluant développeurs et ingénieurs SRE, avec pour objectif un engagement collectif vers des objectifs communs.
 
-As side activities, I am an organizer of the Cloud Native Computing meetup in Paris and the [Kubernetes Community Days France](https://www.kcdfrance.fr/).
+En parallèle de mon parcours professionnel, je m'investis dans l'organisation du meetup Cloud Native Computing à Paris ainsi que les [Kubernetes Community Days France](https://www.kcdfrance.fr/) , reflétant mon engagement continu dans l'écosystème du Cloud.
 
-Hobbies: Reading SF books, Kick Boxing, Surfing/Skating/Inline Roller
+Autres centre d'intéret : Lecture de romans de science-fiction, Kickboxing, Surf, Longboard et Rollers..
+
 
 <center><img src="about.png" width="250" /></center>
 

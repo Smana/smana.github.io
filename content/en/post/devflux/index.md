@@ -31,7 +31,7 @@ There are several GitOps engine options. The most famous ones are [ArgoCD](https
 
 Learn more about **GitOps toolkit** components [here](https://fluxcd.io/docs/components/).
 
-## :bullseye: Our target
+## 🎯 Our target
 
 Here we want to declare our desired infrastructure components only by adding **git** changes.
 By the end of this article you'll get a GKE cluster provisioned using a local Crossplane instance.

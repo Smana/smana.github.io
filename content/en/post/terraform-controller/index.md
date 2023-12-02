@@ -30,7 +30,7 @@ This is the promise of [**tf-controller**](https://github.com/weaveworks/tf-cont
 All the steps described in this article come from this [**Git repo**](https://github.com/Smana/demo-tf-controller)
 {{% /notice %}}
 
-## :bullseye: Our target
+## 🎯 Our target
 
 By following the steps in this article, we aim to achieve the following things:
 

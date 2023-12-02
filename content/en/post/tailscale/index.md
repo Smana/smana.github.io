@@ -20,7 +20,7 @@ When we talk about securing access to cloud resources, one of the golden rules i
 
 Among these options, I wanted to introduce you to [**Tailscale**](https://tailscale.com/). This solution uses `WireGuard` under the hood, known for its simplicity and performance. With Tailscale, you can securely connect devices or servers as if they were on the same local network, even though they are spread across the globe.
 
-## :bullseye: Our target
+## 🎯 Our target
 
 * Understanding how Tailscale works
 * Implementing a secure connection with AWS in a few minutes

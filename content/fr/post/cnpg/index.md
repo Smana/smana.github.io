@@ -32,7 +32,7 @@ Je cherchais spécifiquement une solution indépendante d'un clouder (cloud agno
 
 Ce projet été créé par l'entreprise [EnterpriseDB](https://www.enterprisedb.com/) et a été soumis à la **CNCF** afin de rejoindre les projets _Sandbox_.
 
-## :bullseye: Notre objectif
+## 🎯 Notre objectif
 
 Je vais donner ici une **introduction** aux principales fonctionnalités de CloudNativePG.
 
