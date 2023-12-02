@@ -22,7 +22,7 @@ Then we have to choose from the plethora of [available options](https://kubernet
 
 [**Cilium**](https://cilium.io/) is an Open-Source networking and security solution based on eBPF whose adoption is growing rapidly. It's probably the network plugin that provides the most features. We won't cover all of them, but one such feature involves managing incoming traffic using the [**Gateway API**](https://gateway-api.sigs.k8s.io/) (`GAPI`).
 
-## :bullseye: Our target
+## 🎯 Our target
 
 * Understand exactly what the **Gateway API** is and how it represents an evolution from the `Ingress` API.
 * Demonstrations of real-world scenarios deployed the GitOps way.

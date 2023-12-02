@@ -24,7 +24,7 @@ Il faut alors choisir parmi la pléthore d'[options disponibles](https://kuberne
 Il s'agit probablement du plugin réseau qui fournit le plus de fonctionnalités. Nous n'allons pas toutes les parcourir mais l'une d'entre elles consiste à gérer le trafic entrant en utilisant le standard [**Gateway API**](https://gateway-api.sigs.k8s.io/) (`GAPI`).
 
 
-## :bullseye: Notre objectif
+## 🎯 Notre objectif
 
 * Comprendre ce qu'est exactement **Gateway API** et en quoi il s'agit d'une évolution par rapport à l'API `Ingress`.
 * Démonstrations de cas concrets à la sauce GitOps.

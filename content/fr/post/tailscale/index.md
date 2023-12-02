@@ -20,7 +20,7 @@ Les **réseaux privés virtuels (VPN)** offrent une réponse en établissant un 
 
 Parmi ces options, je souhaitais vous parler de [**Tailscale**](https://tailscale.com/). Cette solution utilise le protocole `WireGuard`, réputé pour sa simplicité et sa performance.  Avec Tailscale, il est possible de connecter des appareils ou serveurs de manière sécurisée, comme s'ils étaient sur un même réseau local, bien qu'ils soient répartis à travers le monde.
 
-## :bullseye: Nos objectifs
+## 🎯 Nos objectifs
 
 * Comprendre comment fonctionne `Tailscale`
 * Mise en oeuvre d'une connexion sécurisée avec AWS en quelques minutes

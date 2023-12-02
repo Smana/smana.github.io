@@ -33,7 +33,7 @@ I was specifically looking for a cloud-agnostic solution, with emphasis on ease 
 
 It has been created by the company [EnterpriseDB](https://www.enterprisedb.com/), who submitted it to the **CNCF** in order to join the _Sandbox_ projects.
 
-## :bullseye: Our target
+## 🎯 Our target
 
 I'm going to give you an **introduction** to the main CloudNativePG features.
 The plan is to:
