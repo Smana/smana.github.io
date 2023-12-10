@@ -90,7 +90,7 @@ tailscale status
 ℹ️ For Linux users, ensure that Tailscale works well with your DNS configuration: Follow [this documentation](https://tailscale.com/kb/1188/linux-dns/).
 
 {{% notice tip "Sources" %}}
-All the steps performed in this article come from this [**git repository**](https://github.com/Smana/demo-secured-eks).
+All the steps performed in this article come from this [**git repository**](https://github.com/Smana/demo-cloud-native-ref).
 
 It will allow you to create all the components aiming to set up an EKS Lab cluster, following a previous blog post on [Cilium and Gateway API](https://blog.ogenki.io/fr/post/cilium-gateway-api/).
 
@@ -111,7 +111,7 @@ We can then **reach Cloud subnets through Tailscale's VPN**.
 ### 🚀 Deploying a Subnet Router
 
 Let's dive in and deploy a _Subnet router_ on an AWS network!</br>
-Everything is done using the **Terraform** code present in the directory [terraform/network](https://github.com/Smana/demo-secured-eks/tree/main/terraform/network). We will analyze the Tailscale-specific configuration present in the [tailscale.tf](https://github.com/Smana/demo-secured-eks/blob/main/terraform/network/tailscale.tf) file before deploying.
+Everything is done using the **Terraform** code present in the directory [terraform/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/network). We will analyze the Tailscale-specific configuration present in the [tailscale.tf](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/network/tailscale.tf) file before deploying.
 
 #### The Terraform provider
 
@@ -248,7 +248,7 @@ module "tailscale_subnet_router" {
 
 Now that we've examined the various parameters, it's time to **start our Subnet router** 🚀 !! </br>
 
-First, you need to create a `variable.tfvars` file in the [terraform/network](https://github.com/Smana/demo-secured-eks/tree/main/terraform/network) directory.
+First, you need to create a `variable.tfvars` file in the [terraform/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/network) directory.
 
 ```hcl
 env                 = "dev"
@@ -262,7 +262,7 @@ tailscale = {
 }
 
 tags = {
-  project = "demo-secured-eks"
+  project = "demo-cloud-native-ref"
   owner   = "Smana"
 }
 ```
@@ -381,7 +381,7 @@ In our setup, we already have a _Subnet router_ that routes the entire VPC netwo
 
 To access the Kubernetes API, it's essential to **authorize the Subnet router**. This is accomplished by setting the following rule for the source _security group_.
 
-[terraform/eks/main.tf](https://github.com/Smana/demo-secured-eks/blob/main/terraform/eks/main.tf#L44)
+[terraform/eks/main.tf](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/eks/main.tf#L44)
 
 ```hcl
 module "eks" {
@@ -423,7 +423,7 @@ infrastructure      Active   4m1s
 An exposed Kubernetes `Service` is just another AWS network resource 😉. We simply need to ensure that this service uses a **private IP**.
 In my example, I'm using the `Gateway API` to configure Clouder's load balancing, and I encourage you to read my [**previous article**](https://blog.ogenki.io/fr/post/cilium-gateway-api/) on the subject.
 
-All that's needed is to create an internal NLB, ensuring that the `Service` has the annotation `service.beta.kubernetes.io/aws-load-balancer-scheme` set to `internal`. With Cilium Gateway API, this is achieved via the [Kyverno](https://kyverno.io/) [clusterPolicy](https://github.com/Smana/demo-secured-eks/blob/main/security/mycluster-0/platform-gw-clusterpolicy.yaml).
+All that's needed is to create an internal NLB, ensuring that the `Service` has the annotation `service.beta.kubernetes.io/aws-load-balancer-scheme` set to `internal`. With Cilium Gateway API, this is achieved via the [Kyverno](https://kyverno.io/) [clusterPolicy](https://github.com/Smana/demo-cloud-native-ref/blob/main/security/mycluster-0/platform-gw-clusterpolicy.yaml).
 
 ```yaml
           metadata:
