@@ -258,7 +258,7 @@ go install github.com/crossplane-contrib/crossplane-migrator@latest
 crossplane-migrator new-pipeline-composition --function-name crossplane-contrib-function-patch-and-transform -i composition.yaml -o composition-pipeline.yaml
 ```
 
-ℹ️ This capabilitiy should be added to the Crossplane CLI in the next release (1.5)
+ℹ️ This capabilitiy should be added to the Crossplane CLI in the next release (v1.15)
 
 {{% /notice %}}
 
