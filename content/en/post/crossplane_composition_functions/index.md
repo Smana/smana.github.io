@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
-title = "Going Further with Crossplane: Compositions and Functions"
+title = "Going Further with `Crossplane`: Compositions and Functions"
 date = "2023-10-23"
-summary = "Applying advanced Crossplane concepts in a practical example, particularly through the use of 'Composition functions', which might be the missing piece we've been waiting for..."
+summary = "Applying advanced Crossplane concepts in a practical example, particularly through the use of **`Composition functions`**, which might be the missing piece we've been waiting for..."
 featured = true
 codeMaxLines = 21
 usePageBundles = true
