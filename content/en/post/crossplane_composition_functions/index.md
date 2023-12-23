@@ -2,7 +2,7 @@
 author = "Smaine Kahlouch"
 title = "Going Further with Crossplane: Compositions and Functions"
 date = "2023-10-23"
-summary = "Use of advanced Crossplane concepts in a concrete example. Especially using to `Composition functions` which can be the missing piece we were waiting for..."
+summary = "Applying advanced Crossplane concepts in a practical example, particularly through the use of 'Composition functions', which might be the missing piece we've been waiting for..."
 featured = true
 codeMaxLines = 21
 usePageBundles = true
@@ -348,7 +348,7 @@ As we can see, the possibilities are greatly expanded thanks to the ability to c
 
 ## 💭 Final Thoughts
 
-When we talk about Infrastructure As Code, Terraform often comes to mind first. This tool, supported by a vast community, with a wide set of tools, remains a top choice. However, it's interesting to ponder how Terraform has evolved in response to the new paradigms introduced by Kubernetes. We touched on this in our article on [terraform controller](https://blog.ogenki.io/post/terraform-controller/). Since then, you may have noticed the controversal [Hashicorp's decision to adopt the Business Source License](https://www.hashicorp.com/blog/hashicorp-adopts-business-source-license). This switch sparked many reactions and might have influenced the strategy and roadmap of other solutions...
+When we talk about Infrastructure As Code, Terraform often comes to mind first. This tool, supported by a vast community, with a mature ecosystem, remains a top choice. However, it's interesting to ponder how Terraform has evolved in response to the new paradigms introduced by Kubernetes. We touched on this in our article on [terraform controller](https://blog.ogenki.io/post/terraform-controller/). Since then,  you may have noticed Hashicorp's controversial decision to adopt the [Business Source License](https://www.hashicorp.com/blog/hashicorp-adopts-business-source-license). This switch sparked many reactions and might have influenced the strategy and roadmap of other solutions...
 
 Without saying that this is a direct reaction, recently, `Crossplane` updated its [charter](https://blog.crossplane.io/charter-expansion-upjet-donation/) to expand its scope to the entire ecosystem (providers, functions), notably by integrating the [**Upjet**](https://github.com/crossplane/upjet) project under the CNCF umbrella. The goal of this move is to strengthen the governance of associated projects and ultimately improve the **developer experience**.
 
@@ -356,9 +356,9 @@ Personally, I've been using `Crossplane` for a while for specific use cases. I e
 
 ❓ So, what to think of this new experience with Crossplane?
 
-It is obvious that _**Composition Functions**_ unveil exciting horizons, and we can expect to see many functions emerge in 2024 🚀
+It is obvious that _**Composition Functions**_ promise exciting horizons, and we can expect to see many functions emerge in 2024 🚀
 
-However, imho, it is crucial that **development and operation tools** continue to improve to foster adoption of the project. For instance, a web interface or a k9s plugin would be useful.
+However, imho, it is crucial that **development and operation tools** continue to improve to foster adoption of the project. For instance, a web interface or a [k9s](https://k9scli.io/) plugin would be useful.
 
 Furthermore, for a beginner looking to develop a composition or a function, the **first step might seem daunting**. Validating a composition is not straightforward, and there aren't many examples to follow. We hope the [marketplace](https://marketplace.upbound.io/) will grow over time.
 
