@@ -4,7 +4,6 @@ title = "Applying GitOps Principles to Infrastructure: An overview of `tf-contro
 date = "2023-06-01"
 summary = "**Weave tf-controller** is a Kubernetes operator that allows the execution of Terraform code and provides a few missing features (reconciliation, drift detection, etc.). Let's have a deeper look at it 🔍"
 featureImage = "tf-controller.png"
-featured = true
 codeMaxLines = 20
 usePageBundles = true
 toc = true

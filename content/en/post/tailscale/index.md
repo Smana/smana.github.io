@@ -3,7 +3,6 @@ author = "Smaine Kahlouch"
 title = "Beyond Traditional VPNs: Simplifying Cloud Access with `Tailscale`"
 date = "2023-10-16"
 summary = "Tailscale is a **VPN** solution that allows devices or servers to connect securely. How can one leverage it to access a Cloud infrastructure?"
-featured = true
 codeMaxLines = 21
 usePageBundles = true
 toc = true
