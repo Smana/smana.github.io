@@ -16,3 +16,4 @@ Autres centre d'intéret : Lecture de romans de science-fiction, Kickboxing, Sur
 
 <center><img src="about.png" width="250" /></center>
 
+_Les images sympas (miniatures) de chaque article ont été générées avec DALL-E_
