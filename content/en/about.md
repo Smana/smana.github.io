@@ -16,3 +16,5 @@ As side activities, I am an organizer of the Cloud Native Computing meetup in Pa
 Hobbies: Reading SF books, Kick Boxing, Surfing/Skating/Inline Roller
 
 <center><img src="about.png" width="250" /></center>
+
+_The cute thumbnails have been generetad with DALL-E_

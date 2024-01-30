@@ -4,7 +4,6 @@ title = "Appliquer les principes de GitOps à l'infrastructure: Introduction à 
 date = "2023-06-01"
 summary = "**Weave tf-controller** est un opérateur Kubernetes qui permet d'appliquer du code Terraform et apporte certaines fonctionnalités manquantes (réconciliation, détection de dérive ...). Explorons les principales fonctionnalités 🕵️"
 featureImage = "tf-controller.png"
-featured = true
 codeMaxLines = 20
 usePageBundles = true
 toc = true

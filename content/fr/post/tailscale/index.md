@@ -3,7 +3,6 @@ author = "Smaine Kahlouch"
 title = "Sécuriser le Cloud avec `Tailscale` : Mise en œuvre d'un VPN simplifiée"
 date = "2023-10-16"
 summary = "Tailscale est une solution de **VPN** qui permet connecter des appareils ou serveurs de manière sécurisée. Comment en bénéficier pour accéder à une infrastruture Cloud?"
-featured = true
 codeMaxLines = 21
 usePageBundles = true
 toc = true
