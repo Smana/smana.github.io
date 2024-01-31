@@ -2,7 +2,7 @@
 author = "Smaine Kahlouch"
 title = "`TLS` avec Gateway API: Une gestion efficace et sécurisée des certificats publiques et privés"
 date = "2024-01-30"
-summary = "Dans cet article nous allons construire une stratégie de PKI solide permettant de gérer des certificats TLS publiques et privés en utilisant `Vault` et `cert-manager`"
+summary = "Dans cet article nous allons construire une stratégie de PKI solide permettant de gérer des certificats TLS publiques et privés en utilisant `Cert-Manager`, `Vault` et `Let's Encrypt`"
 featured = true
 codeMaxLines = 21
 usePageBundles = true
@@ -58,7 +58,7 @@ Ce système permet à une organisation de :
 
 Cependant, la mise en œuvre de ce type d'infrastructure requiert une **attention particulière** et une gestion de plusieurs composants. Ici, nous allons explorer une des fonctionnalités principales de **Vault**, qui est initialement un outil de gestion de secrets mais qui peut aussi faire office de PKI interne.
 
-{{% notice tip "Opiniated Cloud Native Reference" %}}
+{{% notice tip "Une plateforme Cloud Native de référence" %}}
 Toutes les actions réalisées dans cet article proviennent de ce [**dépôt git**](https://github.com/Smana/demo-cloud-native-ref)
 
 On y trouve le code `Opentofu` permettant de déployer et configurer Vault mais aussi de **nombreuses sources** qui me permettent de construire mes articles de blog. N'hésitez pas à me faire des retours, ouvrir des issues si nécessaire ... 🙏
@@ -145,7 +145,7 @@ Le déploiement d'une plateforme complète se fait par **étapes distinctes** ca
 
 Il faut bien entendu tous les composants réseaux afin d'y déployer des machines, puis le cluster Vault peut être installé et configuré avant de considérer l'ajout d'autres éléments d'infrastructure, qui dépendront probablement des informations sensibles stockées dans Vault.
 
-La configuration de Vault se fait grâce au [provider Terraform](https://registry.terraform.io/providers/hashicorp/vault/latest/docs) dont l'authentification se fait via un token généré depuis l'instance Vault. La proposition [**ici**](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/vault/management) démontre comment configurer la PKI et autoriser les applications internes à interagir avec l'API de Vault et, en particulier, comment configurer Cert-Manager.
+La configuration de Vault est appliquée grâce au [provider Terraform](https://registry.terraform.io/providers/hashicorp/vault/latest/docs) dont l'authentification se fait via un token généré depuis l'instance Vault. La proposition [**ici**](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/vault/management) démontre comment configurer la PKI et autoriser les applications internes à interagir avec l'API de Vault et, en particulier, comment configurer `Cert-Manager`.
 
 Il suffit donc de déclarer les variables propre à votre organisation
 
@@ -160,11 +160,11 @@ pki_domains = [
 ]
 ```
 
-Après avoir suivi la procédure, la PKI est configurée et il est alors possible de générer des certificats.
+Après avoir suivi la procédure, la PKI est configurée et il est alors possible de **générer des certificats**.
 
 ![Vault Issuer](vault-issuer.gif)
 
-{{% notice note "Install the private CA on machines" %}}
+{{% notice note "Installer la CA privée sur les machines" %}}
 Contrairement aux PKI publiques, où les certificats sont automatiquement approuvés par les logiciels clients, dans une PKI privée, les certificats doivent être approuvés manuellement par les utilisateurs ou déployés sur tous les appareils par l'administrateur de domaine​
 
 * [Ubuntu](https://ubuntu.com/server/docs/security-trust-store)
@@ -180,15 +180,16 @@ La solution proposée [**ici**](https://github.com/Smana/demo-cloud-native-ref/t
 
 * Un `bucket S3` où seront stockés les snapshots
 * Une `polique de rétention` pour ne conserver que les 30 dernières sauvegardes.
-* Le bucket est chiffré avec un `clé KMS` spécifique.
-* Un `external-secret` pour pouvoir récupérer les paramètres d'authentificatinon de l'Approle.
-* Une `cronjob` qui exécute le script disponible dans le repo et qui éffectue un snapshot tel que décrit dans la doc d'Hashicorp.
-* Un rôle `IRSA` qui donne les permissions au pod de stocker les snapshots sur S3.
+* Le bucket est chiffré avec une `clé KMS` spécifique.
+* Un `external-secret` pour pouvoir récupérer les paramètres d'authentificatinon de l'`Approle` spécifique à la _Cronjob_.
+* Une `Cronjob` qui exécute le script disponible dans le repo et qui éffectue un snapshot tel que décrit dans la doc d'Hashicorp.
+* Un rôle `IRSA` qui donne les permissions au pod d'écrire les snapshots sur S3.
 
 ## 🚀 En pratique avec Gateway API!
 
-L'objectif de cet article est de démontrer une utilisation concrète avec `Gateway-API` et, en fonction du protocole utilisé, [plusieurs options sont possibles](https://gateway-api.sigs.k8s.io/guides/tls/) pour sécuriser les connexions avec du TLS. Nous pouvons notamment faire du `Passthrough` et faire en sorte que la terminaison TLS se fasse sur l'upstream (géré directement par le pod). En revanche pour notre cas d'usage, nous allons utilisé le cas le plus commun: **HTTPS au niveau de la Gateway**.
-Voici un exemple simple car il suffit uniquement d'indiquer le secret Kubernetes contenant le certificat
+L'objectif de cet article est de démontrer une utilisation concrète avec `Gateway-API` et, en fonction du protocole utilisé, [plusieurs options sont possibles](https://gateway-api.sigs.k8s.io/guides/tls/) pour sécuriser les connexions avec du TLS. Nous pouvons notamment faire du `Passthrough` et faire en sorte que la terminaison TLS se fasse sur l'upstream (exposé directement par le pod). </br>
+En revanche pour notre cas d'usage, nous allons utiliser le cas le plus commun: **HTTPS au niveau de la Gateway**.
+Voici un exemple simple car il suffit uniquement d'indiquer le _secret_ Kubernetes contenant le certificat
 ```yaml
 listeners:
 - protocol: HTTPS
@@ -211,16 +212,14 @@ Voyons cela en détail, car il y a certains éléments à préparer afin de pouv
     </td>
     <td style="vertical-align:middle; padding-left:20px;">
        <a href="https://cert-manager.io/"> <strong>Cert-Manager</strong> </a> est un outil open source permettant de gérer les certificats TLS dans Kubernetes. </br>
-       Il s'agit en fait d'un opérateur Kubernetes qui est contrôlé par l'usage de CRDs (Custom Resources Definitions): il est en effet possible de générer des certificats en créant des resources de type <span style="color: red; font-family: 'Courier New', monospace;">certificate</span>. Cert-manager se charge ensuite de s'assurer qu'ils sont toujours valides et déclenche un renouvellement lorsque c'est nécessaire.</br>
+       Il s'agit, en fait, d'un opérateur Kubernetes qui est contrôlé par l'usage de CRDs (Custom Resources Definitions): il est en effet possible de générer des certificats en créant des resources de type <span style="color: red; font-family: 'Courier New', monospace;">certificate</span>. Cert-manager se charge ensuite de vérifier qu'ils sont toujours valides et déclenche un renouvellement lorsque c'est nécessaire.</br>
        Il peut être intégré avec un <a href="https://cert-manager.io/docs/configuration/issuers/">nombre grandissant</a> d'autorité de certifications comme <strong>Let's Encrypt</strong>, Venafi, Google, <strong>Vault</strong> ...
     </td>
   </tr>
 </table>
 {{% /notice %}}
 
-Comme évoqué précédemment il faut configurer de cert-manager avec Let's Encrypt se fait en déclarant un `Issuer`.
-Le `ClusterIssuer` est ni plus ni moins un `Issuer` qui peut être utilisé dans tous les namespaces lorsque qu'un `Issuer` est spécifique à un namaspace donné.
-
+Dans la mise en place de cert-manager avec Let's Encrypt, on utilise un `Issuer` pour configurer la génération de certificats dans un namespace spécifique. Par contre, un `ClusterIssuer` étend cette capacité à tous les namespaces du cluster, offrant ainsi une solution plus globale et flexible pour la gestion des certificats.
 
 [security/base/cert-manager/le-clusterissuer-prod.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/security/base/cert-manager/le-clusterissuer-prod.yaml)
 
@@ -244,11 +243,11 @@ spec:
             region: eu-west-3
 ```
 * Nous utilisons ici l'instance de prod de Let's Encrypt qui est soumise à certaines règles et il est recommandé de commencer vos tests sur l'**instance de staging**.
-* L'adresse email est utilisée pour recevoir des notifications, comme la nécessité de renouveler
+* L'adresse email est utilisée pour recevoir des **notifications**, comme la nécessité de renouveler
 * Une clé `ogenki-issuer-account-key` est générée et est utilisée pour s'authentifier auprès du serveur ACME.
 * Le mécanisme qui permet de prouver la légitimité d'une demande de certificat est faite grâce à une **résolution DNS**.
 
-A présent, comment pouvons-nous faire appel à cet `Issuer` depuis une resource `Gateway-API`? </br>
+A présent, comment pouvons-nous faire appel à ce `ClusterIssuer` depuis une resource `Gateway-API`? </br>
 Figurez-vous qu'il y a une intégration très simple par l'usage d'une **annotation** au niveau de la `Gateway`. Cette solution est expérimentale et requiert un paramètre spécifique lors du déploiment de cert-manager.
 
 [security/base/cert-manager/helmrelease.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/security/base/cert-manager/helmrelease.yaml)
@@ -288,7 +287,7 @@ spec:
           - name: platform-public-tls
 ```
 
-Lorsque la Gateway est créé, un certificat est généré. Ce certificat utilise le `ClusterIssuer` _letsencrypt_prod_ indiqué ci-dessus.
+Lorsque la Gateway est créé, un certificat est généré. Ce certificat utilise le `ClusterIssuer` _letsencrypt-prod_ indiqué ci-dessus.
 
 ```console
 kubectl describe certificate -n infrastructure platform-public-tls
@@ -324,7 +323,7 @@ Status:
 
 Enfin, au bout de quelques secondes, un secret Kubernetes est créé et contient le certificat. Il s'agit d'un secret de type TLS contenant les fichiers `tls.crt` `tls.key` et `ca.crt`
 
-{{% notice tip "view-cert plugin" %}}
+{{% notice tip "Le plugin view-cert" %}}
 
 Les certificats générés par cert-manager sont stockés dans des **secrets Kubernetes**. Bien qu'il soit possible de les extraire à coup de commandes `base64` et `openssl`. Pourquoi ne pas se simplifier la vie?
 Je suis un adepte de la ligne de commande et j'utilise pour ma part régulièrement le plugin [view-cert](https://github.com/lmolas/kubectl-view-cert) qui permet d'afficher une synthèse des secrets de type `tls`.
@@ -381,13 +380,13 @@ spec:
           key: secretId
 ```
 
-* Le serveur indiqué doit être accessible depuis les pods dans Kubernetes
+* L'URL indiquée est celle du serveur Vault. Elle doit être accessible depuis les pods dans Kubernetes
 * Le `path` dans Vault fait partie de la phase de [configuration de Vault](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/vault/management/roles.tf). Il s'agit du rôle autorisé à généré des certificats.
 * Nous utilisons ici une authentification via un [Approle](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/vault/management/docs/approle.md).
 
 Pour plus de détails sur l'ensemble des actions nécessaires à la configuration de Cert-Manager avec Vault, vous référer à [cette procédure](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/vault/management/docs/cert-manager.md).
 
-C'est ici que l'on constate la principale différence avec la méthode utilisée précédemment avec Let's Encrypt. En effet, l'annotation utilisée générait automatiquement une resource de type certificate. Avec Vault, la création du certificat doit se faire de façon explicite.
+La principale différence avec la méthode utilisée pour Let's Encrypt réside dans le faut que **le certificat doit être créé explicitement**. En effet, la méthode précédente permettait de le faire automatiquement avec une annotation.
 
 [infrastructure/base/gapi/platform-private-gateway-certificate.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/gapi/platform-private-gateway-certificate.yaml)
 ```yaml
@@ -412,7 +411,7 @@ spec:
 
 Comme on peut le voir, ce certificat pourra être utilisé pour accéder aux applications `weave-gitops`, `grafana` et `harbor`. Il a une durée de validité de 90 jours et sera renouvelé automatiquement 15 jours avant son expiration.
 
-Quelques secondes après la création de la resource `certificate`, celui-ci génère un _secret_ Kubernetes.
+Quelques secondes après la création de la resource `certificate`, un _secret_ Kubernetes est généré.
 
 ```console
 kubectl describe certificates -n infrastructure private-gateway-certificate
@@ -455,7 +454,7 @@ Events:
   Normal  Issuing    38m   cert-manager-certificates-issuing          The certificate has been successfully issued
 ```
 
-Il suffit donc d'utiliser ce secret dans la déclaration de la `Gateway` privée.
+Enfin, Il suffit d'utiliser ce secret dans la déclaration de la `Gateway` privée.
 
 [infrastructure/base/gapi/platform-private-gateway.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/gapi/platform-private-gateway.yaml)
 ```yaml {hl_lines=[9,14]}
