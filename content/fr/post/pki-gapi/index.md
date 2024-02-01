@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`TLS` avec Gateway API: Une gestion efficace et sécurisée des certificats publiques et privés"
-date = "2024-01-30"
+date = "2024-02-01"
 summary = "Dans cet article nous allons construire une stratégie de PKI solide permettant de gérer des certificats TLS publiques et privés en utilisant `Cert-Manager`, `Vault` et `Let's Encrypt`"
 featured = true
 codeMaxLines = 21
@@ -13,7 +13,7 @@ tags = [
 thumbnail= "thumbnail.png"
 +++
 
-Le **chiffrement TLS** est un standard incontournable dans la sécurisation des services et applications, que ce soit sur Internet ou au sein même de l'entreprise. Sur Internet, le recours à un certificat TLS, validé par une autorité de certification reconnue, est essentiel pour garantir la confidentialité et l'intégrité des échanges de données.
+Le **chiffrement TLS** est un standard incontournable dans la sécurisation des services et applications, que ce soit sur Internet ou au sein même de l'entreprise. Sur Internet, le recours à un certificat TLS, validé par une autorité de certification reconnue, est essentiel pour garantir la confidentialité des échanges de données.
 
 En ce qui concerne les communications internes, la PKI privée (**Private Public Key Infrastructure**) joue un rôle crucial dans la distribution et la validation des certificats nécessaires au chiffrement des communications au sein de l'entreprise, assurant ainsi une sécurité renforcée.
 
@@ -263,7 +263,7 @@ spec:
     featureGates: ExperimentalGatewayAPISupport=true
 ```
 
-Il est aussi nécessaire de donner les permissions au contrôleur Cert-manager d'interagir avec Route53 pour pouvoir compléter le challenge DNS. [Ici](https://github.com/Smana/demo-cloud-native-ref/blob/main/security/base/cert-manager/irsa.yaml) j'utilise une `Composition` Crossplane. (ℹ️ Si vous souhaitez creuser le sujet c'est [par ici](http://localhost:1313/fr/post/crossplane_composition_functions/).)
+Il est aussi nécessaire de donner les permissions au contrôleur Cert-manager d'interagir avec Route53 pour pouvoir compléter le challenge DNS. [Ici](https://github.com/Smana/demo-cloud-native-ref/blob/main/security/base/cert-manager/irsa.yaml) j'utilise une `Composition` Crossplane. (ℹ️ Si vous souhaitez creuser le sujet c'est [par ici](https://blog.ogenki.io/fr/post/crossplane_composition_functions/).)
 
 Puis il faut ajouter l'annotation dans la Gateway et indiquer le secret cible.
 
