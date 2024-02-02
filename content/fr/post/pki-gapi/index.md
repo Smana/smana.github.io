@@ -182,7 +182,7 @@ La solution proposée [**ici**](https://github.com/Smana/demo-cloud-native-ref/t
 * Une `polique de rétention` pour ne conserver que les 30 dernières sauvegardes.
 * Le bucket est chiffré avec une `clé KMS` spécifique.
 * Un `external-secret` pour pouvoir récupérer les paramètres d'authentificatinon de l'`Approle` spécifique à la _Cronjob_.
-* Une `Cronjob` qui exécute le script disponible dans le repo et qui éffectue un snapshot tel que décrit dans la doc d'Hashicorp.
+* Une `Cronjob` qui exécute [le script disponible dans le repo](https://github.com/Smana/demo-cloud-native-ref/blob/main/scripts/vault-snapshot.sh) et qui éffectue un snapshot tel que décrit dans la doc d'Hashicorp.
 * Un rôle `IRSA` qui donne les permissions au pod d'écrire les snapshots sur S3.
 
 ## 🚀 En pratique avec Gateway API!
