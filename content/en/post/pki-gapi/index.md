@@ -181,7 +181,7 @@ The solution proposed [**here**](https://github.com/Smana/demo-cloud-native-ref/
 * A `lifecycle policy` to keep only the last 30 backups.
 * The bucket is encrypted with a specific `KMS key`.
 * An `external-secret` to retrieve the authentication parameters of the `Approle` specific to the _Cronjob_.
-* A `Cronjob` that executes the script available in the repo and performs a snapshot as described in [Hashicorp's documentation](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-backup).
+* A `Cronjob` that executes [the script available in the repo](https://github.com/Smana/demo-cloud-native-ref/blob/main/scripts/vault-snapshot.sh) and performs a snapshot as described in [Hashicorp's documentation](https://developer.hashicorp.com/vault/tutorials/standard-procedures/sop-backup).
 * An `IRSA role` that grants the pod permissions to write the snapshots to S3.
 
 ## 🚀 TLS with Gateway API
