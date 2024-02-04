@@ -59,7 +59,7 @@ However, implementing such an infrastructure requires **careful attention** and 
 {{% notice tip "An opiniated Cloud Native platform" %}}
 All the actions performed in this post come from this [**git repository**](https://github.com/Smana/demo-cloud-native-ref)
 
-It contains the `Opentofu` code for deploying and configuring Vault as well as **numerous resources** that help me write my blog posts. Feel free to provide feedback or open issuese... 🙏
+It contains the `Opentofu` code for deploying and configuring Vault as well as **numerous resources** that help me write my blog posts. Feel free to provide feedback or open issues... 🙏
 {{% /notice %}}
 
 ### ✅ Requirements
@@ -189,7 +189,7 @@ The solution proposed [**here**](https://github.com/Smana/demo-cloud-native-ref/
 The aim of this post is to demonstrate practical usage with `Gateway-API` and, depending on the protocol used, [several options are available](https://gateway-api.sigs.k8s.io/guides/tls/) for securing connections with TLS. For instance, we can use `Passthrough` to set TLS termination at the upstream (directly exposed by the pod). </br>
 However, for our use case, we will use the most common scenario: **HTTPS at the Gateway level**.
 
-Basically we only need to specify a Kubernetes _secret_ that storing the certificate.
+Basically we only need to specify a Kubernetes _secret_ that stores the certificate.
 
 ```yaml
 listeners:
@@ -219,9 +219,6 @@ Let's look into this in detail, as there are a few preliminary steps in order to
   </tr>
 </table>
 {{% /notice %}}
-
-An Issuer allow to configure how
-In setting up cert-manager with Let's Encrypt, an `Issuer` is used to configure certificate generation within a specific namespace. On the other hand, a `ClusterIssuer` extends this capability to all namespaces within the cluster, thus offering a more global and flexible solution for certificate management.
 
 In order to configure Cert-manager with Let's Encrypt we'll create a `ClusterIssuer`. </br>
 ℹ️ In the context of cert-manager, an `Issuer` is a Kubernetes resource that generates and manages certificates within a specific namespace, while a `ClusterIssuer` is a global resource that operates at the cluster level and can manage certificates across all namespaces.
