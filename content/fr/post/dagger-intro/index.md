@@ -647,6 +647,8 @@ Afin de tester cela, nous allons lancer un job qui crée un conteneur en install
           args: container --packages "python3,py3-pip,go,rust,clang"
 ```
 
+ℹ️  Accéder au moteur Dagger distant se fait en utilisant la variable d'environnement `_EXPERIMENTAL_DAGGER_RUNNER_HOST`
+
 Lors de la première exécution, le job met **3min et 37secs**
 <center><img src="cache_first_run.png" height="600" alt=""></center>
 
