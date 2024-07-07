@@ -641,6 +641,8 @@ To test this, we will run a job that creates a container and installs many relat
           args: container --packages "python3,py3-pip,go,rust,clang"
 ```
 
+ℹ️ Accessing to the remote Dagger engine endpoint is controlled by the environment variable `_EXPERIMENTAL_DAGGER_RUNNER_HOST`
+
 During the first run, the job takes **3min and 37secs**.
 <center><img src="cache_first_run.png" height="600" alt="First run time"></center>
 
