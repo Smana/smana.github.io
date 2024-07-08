@@ -43,11 +43,11 @@ Basically, `Dagger` is a tool that allows us to define tasks using our **preferr
 There are two main components involved:
 
 * The **Dagger CLI**: Our main access point for interacting with various functions and modules, downloading them, and displaying their execution results.
-* The **Dagger engine**: All operations performed with the CLI go through a `GraphQL` API exposed by a Dagger engine. Each client initiates its own session with the Core API, which has basic `functions`. These can then be extended the ones provided by modules (more on that later on).
+* The **Dagger engine**: All operations performed with the CLI go through a `GraphQL` API exposed by a Dagger engine. Each client establishes its own session with the Core API, which offers basic `functions`. These functions can be extended using additional modules (which will be explained later).
 
 <center><img src="dagger-api.png" width=600 alt="Dagger API"></center>
 
-Let's start by installing the CLI. If you've read my previous articles, you know that I like to use [**asdf**](https://blog.ogenki.io/fr/post/asdf/asdf/).
+Let's start by **installing the CLI**. If you've read my previous articles, you know that I like to use [**asdf**](https://blog.ogenki.io/fr/post/asdf/asdf/).
 
 ```console
 asdf plugin-add dagger
@@ -63,14 +63,14 @@ dagger v0.11.9 (registry.dagger.io/engine) linux/amd64
 Let's dive right in and immediately execute a module provided by the community. Suppose we want to scan a git repo and a Docker image with [trivy](https://aquasecurity.github.io/trivy/v0.53/).
 
 {{% notice info "The Daggerverse" %}}
-The [**Daggerverse**](https://daggerverse.dev/) is a platform that allows anyone to **share** modules. When you have a need, you should check what others have already offered. </br>
-Try searching for example `golangci`, `ruff`, `gptscript`, `wolfi`...
+The [**Daggerverse**](https://daggerverse.dev/) is a platform that allows anyone to **share** modules. When you have a need, you should have a look at what is already available there. </br>
+Try by yourself, searching for example `golangci`, `ruff`, `gptscript`, `wolfi`...
 <center><img src="daggerverse.png" width=1300 alt="Daggerverse"></center>
 {{% /notice %}}
 
-We can check the **available functions** in the `module` using the `functions` argument.
-
 A `module` is a **collection of functions** that takes input parameters and returns a response in various forms: output text, terminal execution, service launch, etc. Also, note that all functions are **executed in containers**.
+
+We can check the **available functions** in the `module` using the `functions` argument.
 
 ```console
 TRIVY_MODULE="github.com/purpleclay/daggerverse/trivy@c3f44e0c8a396b2adf024bb862714037ae4cc8e7"
@@ -141,7 +141,7 @@ Total: 1 (CRITICAL: 1)
 
 That's already super cool to benefit from numerous sources 🤩! These modules can be used directly or become a valuable source of inspiration for our future pipelines.
 
-After this brief introduction, let's move on to real use cases by starting to add tasks/functions to an existing project.
+After this brief introduction, let's move on to real use cases by starting to add functions to an existing git repository.
 
 ## 🦋 Daggerize an existing project
 
@@ -305,7 +305,7 @@ The `Database()` function allows to run a Postrges container.
 	pgCtr := dag.Postgres(pgUser, pgPass, pgPortInt, opts).Database()
 ```
 
-Next, we need to create a link between these two containers. Below, we retrieve the information from the service exposed by the Postgres container in order to use it in our application.
+Finally, we need to create a link between these two containers. Below, we retrieve the information from the `service` exposed by the Postgres container in order to use it in our application.
 
 ```golang
 ...
@@ -354,7 +354,7 @@ Additionally, I recommend browsing the [**Cookbook**](https://docs.dagger.io/coo
 
 ## 🧩 The Kubeconform Module
 
-I started with a **real use case**: For several years, I have been using a [bash script](https://github.com/fluxcd/flux2-kustomize-helm-example/blob/main/scripts/validate.sh) to validate Kubernetes/Kustomize manifests and the [Flux](https://fluxcd.io/) configuration.
+The first module I wrote is based on a **real use case**: For several years, I have been using a [bash script](https://github.com/fluxcd/flux2-kustomize-helm-example/blob/main/scripts/validate.sh) to validate Kubernetes/Kustomize manifests and the [Flux](https://fluxcd.io/) configuration.
 The idea is to achieve the same results but also go a bit further...
 
 Initializing a module is done as follows:
@@ -372,7 +372,7 @@ Next, we need to decide on the input parameters. For example, I want to be able 
 ...
 ```
 
-The above comments are important: The description will be displayed to the user, and we can make this parameter optional by setting a default version.
+The above comments are important: The description will be displayed to the user, and we can make this parameter optional and set a default version.
 ```console
 dagger call -m github.com/Smana/daggerverse/kubeconform@v0.0.4 validate --help
 Validate the Kubernetes manifests in the provided directory and optional source CRDs directories
@@ -389,7 +389,7 @@ kubeconformBin := dag.Arc().
         WithName("kubeconform-linux-amd64.tar.gz")).File("kubeconform-linux-amd64/kubeconform")
 ```
 
-I use the [Arc](https://daggerverse.dev/mod/github.com/sagikazarmark/daggerverse/arc@b45dbd7448bb967aca4a538af9ce7f042abf0316) module to unzip a file retrieved with the `HTTP` function, and I only take the binary included in this archive. Pretty efficient!
+I use the [Arc](https://daggerverse.dev/mod/github.com/sagikazarmark/daggerverse/arc@b45dbd7448bb967aca4a538af9ce7f042abf0316) module to extract an archive retrieved with the `HTTP` function, and I only take the binary included in this archive. Pretty efficient!
 
 In this other example, I use the [Apko](https://daggerverse.dev/mod/github.com/vito/daggerverse/apko@09c1b5b172e58a8fd58ee790d81018cd478590fc) module to build
 ```go
@@ -427,7 +427,7 @@ Summary: 1 resource found in 1 file - Valid: 1, Invalid: 0, Errors: 0, Skipped: 
 Validation successful for ./mycluster-0/flux-config.yaml
 ```
 
-We can also increase the verbosity level. The highest level is `-vvv --debug`.
+For debugging purposes, we can increase the verbosity level as follows. The highest level is `-vvv --debug`.
 ```console
 dagger call validate --manifests ~/Sources/demo-cloud-native-ref/clusters --catalog -vvv --debug
 ...
@@ -498,7 +498,7 @@ We will see how to put this into practice with:
     <td style="vertical-align:middle; padding-left:80px;" width="70%">
 This <strong>CI on EKS</strong> solution is deployed using the repository <strong><a href="https://github.com/Smana/demo-cloud-native-ref">Cloud Native Ref</a></strong>.</br>
 I strongly encourage you to check it out, as I cover many topics related to Cloud Native technologies. The initial idea of this project is to be able to <strong>quickly start a platform</strong> from scratch that applies best practices in terms of automation, monitoring, security, etc.
-Comments and contributions are welcome 🙏
+Comments and contributions are welcome 🙏.
     </td>
   </tr>
 </table>
@@ -509,9 +509,9 @@ Here is how the CI components interact, with Dagger playing a **central role** t
 <center><img src="dagger-cache-kubernetes.png" height="600" alt=""></center>
 
 
-### 🤖 GitHub Actins and Self-Hosted Runners
+### 🤖 GitHub Actions and Self-Hosted Runners
 
-Dagger integrates well with most CI platforms. Indeed we just need to run a `dagger` command. In this article, we use the [Action](https://github.com/dagger/dagger-for-github) for GitHub Actions.
+Dagger integrates well with most CI platforms. Indeed we just need to run a `dagger` command. In this article, we use the [**Action**](https://github.com/dagger/dagger-for-github) for GitHub Actions.
 
 ```yaml
   kubernetes-validation:
@@ -560,7 +560,7 @@ spec:
 * `dind` indicates the mode used to launch the containers. ⚠️ However, be cautious in terms of security: Dagger must run as a **root user** and have elevated privileges in order to control containers, volumes, networks, etc. (More information [here](https://github.com/dagger/dagger/blob/main/core/docs/d7yxc-operator_manual.md#can-i-run-the-dagger-engine-as-a-rootless-container)).
 
 
-### ☸️ Considerations when running on EKS
+### ☸️ EKS Considerations
 
 There are several approaches when it comes to cache optimization, each with its own pros and cons. There are really interesting discussions about running Dagger at scale [here](https://github.com/dagger/dagger/issues/6486).
 I made some choices that I believe are a good compromise between availability and performance. Here are the main points:
@@ -615,9 +615,9 @@ kubectl exec -ti -n tooling dagger-engine-c746bd8b8-b2x6z -- /bin/sh
 
 * **Best Practices with Karpenter**: To optimize the availability of the Dagger engine, we configured it with a [Pod Disruption Budget](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#pod-disruption-budgets) and the annotation `karpenter.sh/do-not-disrupt: "true"`. Additionally, it is preferable to use `On-demand` instances, which we could consider reserving from AWS to obtain a discount.
 
-* **Network Policies**: Since the runners can execute any code, it is highly recommended to limit network traffic to the bare minimum, both for the self-hosted runners and the Dagger engine. Furthermore, this is worth noting that Dagger currently listens using plain HTTP.
+* **Network Policies**: Since the runners can execute any code, it is highly recommended to limit network traffic to the bare minimum, for both the self-hosted runners and the Dagger engine. Furthermore, this is worth noting that Dagger currently listens using plain HTTP.
 
-To test this, we will run a job that creates a container and installs many relatively large packages. The idea is for this to take minimal time.
+To test this, we will run a job that creates a container and installs many relatively heavy packages. The idea is to simulate a build which takes a few minutes.
 
 [.github/workflows/ci.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/.github/workflows/ci.yaml)
 
@@ -641,7 +641,7 @@ To test this, we will run a job that creates a container and installs many relat
           args: container --packages "python3,py3-pip,go,rust,clang"
 ```
 
-ℹ️ Accessing to the remote Dagger engine endpoint is controlled by the environment variable `_EXPERIMENTAL_DAGGER_RUNNER_HOST`
+ℹ️ Accessing the **remote** Dagger engine endpoint is controlled by the environment variable `_EXPERIMENTAL_DAGGER_RUNNER_HOST`
 
 During the first run, the job takes **3min and 37secs**.
 <center><img src="cache_first_run.png" height="600" alt="First run time"></center>
@@ -687,7 +687,7 @@ My local tests will also be accessible by the CI, and another developer taking o
 
 ## 💭 Final Thoughts
 
-This article introduced you to Dagger and its main functions that I have used. My experience was limited to the Golang SDK, but the experience should be similar with other languages. I learn new things every day. The initial learning curve isn't easy for those who, like me, are not developers, but the more I use it in real cases, the more comfortable I feel. I've even migrated the few [jobs in my repo](https://github.com/Smana/demo-cloud-native-ref/blob/main/.github/workflows/ci.yaml) to 100% on Dagger.
+This article introduced you to Dagger and its main features that I have used. My experience was limited to the Golang SDK, but the experience should be similar with other languages. I learn new things every day. The initial learning curve can be steep, especially for non-developers like me, but the more I use Dagger in real scenarios, the more comfortable I become. In fact, I've successfully migrated 100% of my [CI](https://github.com/Smana/demo-cloud-native-ref/blob/main/.github/workflows/ci.yaml) to Dagger.
 
 Dagger is a relatively new project that **evolves quickly**, supported by an ever-growing and active community. The scaling issues discussed in this article will likely be improved in the future.
 
