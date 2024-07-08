@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`Dagger`: The missing piece of the developer experience?"
-date = "2024-07-07"
+date = "2024-07-08"
 summary = "Explore how Dagger can improve automation and streamline your development pipelines. Learn about an effective cache sharing proposal using Self-Hosted GitHub Actions and EKS."
 featured = true
 codeMaxLines = 21
@@ -46,6 +46,17 @@ There are two main components involved:
 * The **Dagger engine**: All operations performed with the CLI go through a `GraphQL` API exposed by a Dagger engine. Each client establishes its own session with the Core API, which offers basic `functions`. These functions can be extended using additional modules (which will be explained later).
 
 <center><img src="dagger-api.png" width=600 alt="Dagger API"></center>
+
+{{% notice info "Local dagger engine" %}}
+
+The first time we run Dagger, it pulls and starts a local instance of the **Dagger engine**. It will therefore run a local API.
+
+```console
+docker ps
+CONTAINER ID   IMAGE                               COMMAND                  CREATED      STATUS       PORTS     NAMES
+3cec5bf51843   registry.dagger.io/engine:v0.11.9   "dagger-entrypoint.s…"   8 days ago   Up 2 hours             dagger-engine-ceb38152f96f1298
+```
+{{% /notice %}}
 
 Let's start by **installing the CLI**. If you've read my previous articles, you know that I like to use [**asdf**](https://blog.ogenki.io/fr/post/asdf/asdf/).
 
@@ -468,19 +479,13 @@ Finally, I was able to share it in the [Daggerverse](https://daggerverse.dev/mod
 
 <center><img src="github-actions-output.png" width=1200 alt="GitHub Actions Output"></center>
 
+Now that we have an overview of what Dagger is and how to use it, we will explore how to optimize its use in a business setting with a shared cache.
+
 ## 🚀 Rapid Iteration and Collaboration with a shared cache
 
 Using a cache allows you to avoid re-executing steps where the code hasn't changed. During the first run, all steps will be executed, but subsequent runs will only re-run the modified steps, saving a **significant amount of time**.
 
 Dagger allows caching, at **each run**, of file manipulation operations, container builds, test executions, code compilation, and volumes that must be explicitly defined in the code.
-
-By default, the Dagger engine is available locally and uses a local cache.
-
-```console
-docker ps
-CONTAINER ID   IMAGE                               COMMAND                  CREATED      STATUS       PORTS     NAMES
-3cec5bf51843   registry.dagger.io/engine:v0.11.9   "dagger-entrypoint.s…"   8 days ago   Up 2 hours             dagger-engine-ceb38152f96f1298
-```
 
 The following proposal aims to define a **shared and remote cache**, accessible to all collaborators as well as from the CI. The goal is to **speed up** subsequent executions, no matter where Dagger is run.
 

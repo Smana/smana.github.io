@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`Dagger`: la pièce manquante de l'expérience développeur?"
-date = "2024-07-07"
+date = "2024-07-08"
 summary = "Découverte de `Dagger` pour améliorer l'automatisation et simplifier les pipelines de développement. Self-Hosted `Github Actions` et `EKS` pour un partage efficace du cache."
 featured = true
 codeMaxLines = 21
@@ -514,6 +514,7 @@ Voici comment les composants de CI interagissent, avec Dagger jouant un **rôle 
 
 <center><img src="dagger-cache-kubernetes.png" height="600" alt=""></center>
 
+Maintenant que nous avons une vue d'ensemble de Dagger et de son utilisation, nous allons explorer comment optimiser son utilisation en entreprise en utilisant un cache partagé.
 
 ### 🤖 Github Self Hosted Runners: Accès au cache
 
