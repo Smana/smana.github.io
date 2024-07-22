@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`Dagger`: la pièce manquante de l'expérience développeur?"
-date = "2024-07-08"
+date = "2024-07-12"
 summary = "Découverte de `Dagger` pour améliorer l'automatisation et simplifier les pipelines de développement. Self-Hosted `Github Actions` et `EKS` pour un partage efficace du cache."
 featured = true
 codeMaxLines = 21
@@ -53,12 +53,12 @@ Commençons par installer la CLI. Si vous avez parcouru mes précédents article
 ```console
 asdf plugin-add dagger
 
-asdf install dagger 0.11.9
-Downloading dagger from https://github.com/dagger/dagger/releases/download/v0.11.9/dagger_v0.11.9_linux_amd64.tar.gz
+asdf install dagger 0.12.1
+Downloading dagger from https://github.com/dagger/dagger/releases/download/v0.12.1/dagger_v0.12.1_linux_amd64.tar.gz
 
-asdf global dagger 0.11.9
+asdf global dagger 0.12.1
 dagger version
-dagger v0.11.9 (registry.dagger.io/engine) linux/amd64
+dagger v0.12.1 (registry.dagger.io/engine) linux/amd64
 ```
 
 Entrons dans le vif du sujet, nous pouvons tout de suite exécuter un module fournie par la communauté. Supposons que l'on veuille scanner un repo git et une image Docker avec [trivy](https://aquasecurity.github.io/trivy/v0.53/).
@@ -119,9 +119,9 @@ Total: 1 (UNKNOWN: 0, LOW: 0, MEDIUM: 1, HIGH: 0, CRITICAL: 0)
 Oups! il semble qu'il y ait une vulnérabilité critique dans mon image 😨.
 
 ```console
-dagger call -m ${TRIVY_MODULE} image --ref smana/dagger-cli:v0.11.9 --severity CRITICAL
+dagger call -m ${TRIVY_MODULE} image --ref smana/dagger-cli:v0.12.1 --severity CRITICAL
 
-smana/dagger-cli:v0.11.9 (ubuntu 23.04)
+smana/dagger-cli:v0.12.1 (ubuntu 23.04)
 =======================================
 Total: 0 (CRITICAL: 0)
 
@@ -377,7 +377,7 @@ Il faut ensuite décider des paramètres d'entrée. Par exemple je souhaite pouv
 
 Les commentaires ci-dessus sont importants: La description sera affichée à l'utilisateur et nous pouvons faire en sorte que ce paramètre ne soit pas requis avec une version par défault.
 ```console
-dagger call -m github.com/Smana/daggerverse/kubeconform@v0.0.4 validate --help
+dagger call -m github.com/Smana/daggerverse/kubeconform@v0.1.0 validate --help
 Validate the Kubernetes manifests in the provided directory and optional source CRDs directories
 ...
       --version string        Kubeconform version to use for validation. (default "v0.6.6")
@@ -440,7 +440,7 @@ dagger call validate --manifests ~/Sources/demo-cloud-native-ref/clusters --cata
 09:32:07 DBG recording span span=telemetry.LogsSource/Subscribe id=b3fc48ec7900f581
 09:32:07 DBG recording span child span=telemetry.LogsSource/Subscribe parent=ae535768bb2be9d7 child=b3fc48ec7900f581
 09:32:07 DBG new end old="2024-07-06 09:32:07.436103273 +0200 CEST" new="2024-07-06 09:32:07.438699251 +0200 CEST"
-09:32:07 DBG recording span span="/home/smana/.asdf/installs/dagger/0.11.9/bin/dagger call -m github.com/Smana/daggerverse/kubeconform@v0.0.4 validate --manifests /home/smana/Sources/demo-cloud-native-ref/clusters --catalog -vvv --debug" id=ae535768bb2be9d7
+09:32:07 DBG recording span span="/home/smana/.asdf/installs/dagger/0.12.1/bin/dagger call -m github.com/Smana/daggerverse/kubeconform@v0.1.0 validate --manifests /home/smana/Sources/demo-cloud-native-ref/clusters --catalog -vvv --debug" id=ae535768bb2be9d7
 09:32:07 DBG frontend exporting logs logs=4
 09:32:07 DBG exporting log span=0xf62760 body=""
 09:32:07 DBG got EOF
@@ -452,16 +452,21 @@ dagger call validate --manifests ~/Sources/demo-cloud-native-ref/clusters --cata
       ✔ dbd62c92c3db105f exec docker start dagger-engine-ceb38152f96f1298 0.0s
       ┃ dagger-engine-ceb38152f96f1298
   ✔ 4db8303f1d7ec940 connecting to engine 0.1s
-  ┃ 09:32:03 DBG connecting runner=docker-image://registry.dagger.io/engine:v0.11.9 client=5fa0kn1nc4qlku1erer3868nj
-  ┃ 09:32:03 DBG subscribing to telemetry remote=docker-image://registry.dagger.io/engine:v0.11.9
+  ┃ 09:32:03 DBG connecting runner=docker-image://registry.dagger.io/engine:v0.12.1 client=5fa0kn1nc4qlku1erer3868nj
+  ┃ 09:32:03 DBG subscribing to telemetry remote=docker-image://registry.dagger.io/engine:v0.12.1
   ┃ 09:32:03 DBG subscribed to telemetry elapsed=19.095µs
 ```
 
-Il m'est aussi arrivé régulièrement d'ajouter des commandes dans le conteneur, par exemple pour vérifier le contenu d'un répertoire
+À partir de la version v0.12.x, Dagger propose un mode **interactif**. En utilisant le paramètre `-i` ou `--interactive`, il est possible de lancer automatiquement un terminal lorsque le code rencontre une erreur. Cela permet de réaliser des vérifications et des opérations directement dans le conteneur.
+
+De plus, il est possible d'ajouter l'exécution de `Terminal()` à n'importe quel endroit dans la définition du conteneur pour entrer en mode interactif à ce moment précis.
+
 ```golang
-	stdout, err := ctr.
-		WithExec([]string{"ls", "-l", "/work"}).
+...
+	stdout, err := ctr.WithExec(kubeconform_command).
+		Terminal().
 		Stdout(ctx)
+...
 ```
 
 Avec ce module j'ai pu ajouter aussi des fonctionnalités manquantes qui sont fort utiles:
@@ -485,7 +490,7 @@ Par défaut, le moteur Dagger est disponible en local, et utilise du cache local
 ```console
 docker ps
 CONTAINER ID   IMAGE                               COMMAND                  CREATED      STATUS       PORTS     NAMES
-3cec5bf51843   registry.dagger.io/engine:v0.11.9   "dagger-entrypoint.s…"   8 days ago   Up 2 hours             dagger-engine-ceb38152f96f1298
+3cec5bf51843   registry.dagger.io/engine:v0.12.1   "dagger-entrypoint.s…"   8 days ago   Up 2 hours             dagger-engine-ceb38152f96f1298
 ```
 
 La proposition suivante vise à définir un **cache partagé et distant**, accessible à tous les collaborateurs ainsi que depuis la CI. L'objectif est d'**accélérer** les exécutions ultérieures, peu importe où Dagger est exécuté.
@@ -529,11 +534,11 @@ Dagger s'intègre bien avec la plupart des solutions de CI. Il suffit en effet d
         uses: actions/checkout@v4
 
       - name: Validate Flux clusters manifests
-        uses: dagger/dagger-for-github@v5
+        uses: dagger/dagger-for-github@v6
         with:
           version: "latest"
           verb: call
-          module: github.com/Smana/daggerverse/kubeconform@kubeconform/v0.0.4
+          module: github.com/Smana/daggerverse/kubeconform@kubeconform/v0.1.0
           args: validate --manifests "./clusters" --catalog
 ```
 
@@ -633,14 +638,14 @@ Afin de tester cela, nous allons lancer un job qui crée un conteneur en install
     name: Testing in-cluster cache
     runs-on: dagger-gha-runner-scale-set
     container:
-      image: smana/dagger-cli:v0.11.9
+      image: smana/dagger-cli:v0.12.1
     env:
       _EXPERIMENTAL_DAGGER_RUNNER_HOST: "tcp://dagger-engine:8080"
       cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
 
     steps:
       - name: Simulate a build with heavy packages
-        uses: dagger/dagger-for-github@v5
+        uses: dagger/dagger-for-github@v6
         with:
           version: "latest"
           verb: call
