@@ -131,7 +131,7 @@ Les commentaires et contributions sont les bienvenues 🙏
 
 ### Le mode Single
 
-La méthode de déploiement choisie dans cet article fait usage du chart Helm [**victoria-metrics-k8s-stack**](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-k8s-stack). Voici un exemple de configuration [Flux](https://fluxcd.io/) pour un mode `Single`
+La méthode de déploiement choisie dans cet article fait usage du chart Helm [**victoria-metrics-k8s-stack**](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-k8s-stack) qui configure de nombreuses ressources (VictoriaMetrics, Grafana, Alertmanager, quelques dashboards...). Voici un extrait de configuration [Flux](https://fluxcd.io/) pour un mode `Single`
 
 [observability/base/victoria-metrics-k8s-stack/helmrelease-vmsingle.yaml](https://github.com/Smana/cloud-native-ref/blob/main/observability/base/victoria-metrics-k8s-stack/helmrelease-vmsingle.yaml)
 
@@ -265,6 +265,8 @@ Dans ce mode, on va **séparer les fonctions de lecture, écriture et de stockag
 L'intérêt principal de ce mode est évidemment de pouvoir adapter le **scaling** en fonction du besoin. Par exemple, si on a besoin de plus de capacité en écriture on va ajouter des replicas VMInsert.
 
 Le paramètre initial, qui permet d'avoir un niveau de redondance minimum est `replicationFactor` à `2`. Voici un extrait des _values_ Helm pour le mode cluster.
+
+[observability/base/victoria-metrics-k8s-stack/helmrelease-vmcluster.yaml](https://github.com/Smana/cloud-native-ref/blob/main/observability/base/victoria-metrics-k8s-stack/helmrelease-vmcluster.yaml)
 
 ```yaml
     vmcluster:
@@ -414,8 +416,8 @@ spec:
 
 ## 📈 Visualiser nos métriques avec l'opérateur Grafana
 
-Il est facile de deviner à quoi sert le Grafana Operator: Utiliser des ressources Kubernetes pour configurer Grafana 😝. Il permet de créer des déployer des instances Grafana, d'importer des dashboards de différentes manière (URL, JSON), de les classer dans des répertoires etc...
-Il s'agit d'une alternative au fait de tout définir dans le chart Helm et, selon moi, offre une meilleure lecture. Dans cet exemple, je regroupe l'ensemble des ressources relatives à la supervision de Cilium
+Il est facile de deviner à quoi sert le Grafana Operator: Utiliser des ressources Kubernetes pour configurer Grafana 😝. Il permet de déployer des instances Grafana, d'ajouter des datasources, d'importer des dashboards de différentes à partir de différentes sources (URL, JSON), de les classer dans des répertoires etc... </br>
+Il s'agit d'une alternative au fait de tout définir dans le chart Helm ou d'utiliser des configmaps et, selon moi, offre une meilleure lecture. Dans cet exemple, je regroupe l'ensemble des ressources relatives à la supervision de Cilium
 
 ```bash
 tree  infrastructure/base/cilium/
