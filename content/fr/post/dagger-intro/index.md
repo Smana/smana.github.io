@@ -187,7 +187,7 @@ La commande d'initialisation génère donc un fichier `main.go` qui contient des
 package main
 
 import (
-	"context"n mont
+	"context"
 )
 
 type GolangHelloworld struct{}

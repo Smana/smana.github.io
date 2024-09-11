@@ -196,7 +196,7 @@ The `init` command generates a `main.go` file containing example functions that 
 package main
 
 import (
-	"context"n mont
+	"context"
 )
 
 type GolangHelloworld struct{}
