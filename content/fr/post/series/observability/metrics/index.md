@@ -19,7 +19,7 @@ thumbnail= "thumbnail.png"
 {{% notice info "Comment se portent nos applications? 👁️" %}}
 Une fois que notre application est déployée, il est primordial de disposer d'indicateurs permettant d'identifier d'éventuels problèmes ainsi que suivre les évolutions de performance. Parmi ces éléments, les **métriques** et les **logs** jouent un rôle essentiel en fournissant des informations précieuses sur le fonctionnement de l'application. En complément, il est souvent utile de mettre en place un **tracing** détaillé pour suivre précisément toutes les actions réalisées par l'application.
 
-Dans cette [série d'articles](http://localhost:1313/fr/series/observability/), nous allons explorer les différents aspects liés à la supervision applicative. L'objectif étant d'analyser en détail l'état de nos applications, afin d'améliorer leur **disponibilité** et leurs **performances**, tout en garantissant une expérience utilisateur optimale.
+Dans cette [série d'articles](https://blog.ogenki.io/fr/tags/observability/), nous allons explorer les différents aspects liés à la supervision applicative. L'objectif étant d'analyser en détail l'état de nos applications, afin d'améliorer leur **disponibilité** et leurs **performances**, tout en garantissant une expérience utilisateur optimale.
 {{% /notice %}}
 
 Ce premier volet est consacré à **la collecte et la visualisation des métriques**. Nous allons déployer une solution performante et évolutive pour acheminer ces métriques vers un système de **stockage fiable et pérenne**. Puis nous allons voir comment les **visualiser** afin de les analyser.
@@ -42,7 +42,7 @@ Et quand on s'intéresse au domaine de la supervision, il est difficile de passe
 
 * **Value**: La `value` représente une donnée numérique recueillie à un moment donné pour une time series spécifique. Selon le [**type de métrique**](https://prometheus.io/docs/concepts/metric_types/), il s'agit d'une valeur qui peut être mesurée ou comptée afin de suivre l'évolution d'un indicateur dans le temps.
 
-* **Timestamp**: Indique **quand** la donnée a été collectée (format epoch à la milliseconde)
+* **Timestamp**: Indique **quand** la donnée a été collectée (format epoch à la milliseconde). S'il n'est pas présent, Il est ajouté au moment où la métrique est récupérée.
 
 Cette ligne complète représente ce que l'on appelle un `raw sample`.
 
@@ -76,7 +76,12 @@ promhttp_metric_handler_requests_total{code="200"} 257
 ...
 ```
 
-La commande curl était juste un exemple, La collecte est, en effet réalisée par un système dont la responsabilité est de **stoquer ces données** pour pouvoir ensuite les exploiter et les analyser. </br>
+La commande curl était juste un exemple, La collecte est, en effet réalisée par un système dont la responsabilité est de **stocker ces données** pour pouvoir ensuite les exploiter et les analyser. </br>
+
+<center><img src="scraping-overview.png" width=700 alt=""></center>
+
+ℹ️ Quand on utilise Prometheus, un composant supplémentaire est nécessaire pour pouvoir pousser des métriques depuis les applications: [PushGateway](https://github.com/prometheus/pushgateway).
+
 Dans cet article, j'ai choisi de vous faire découvrir `VictoriaMetrics`.
 
 ## ✨ VictoriaMetrics: Un héritier de Prometheus
@@ -112,7 +117,7 @@ Sur le site de VictoriaMetrics, on trouve de nombreux [témoignages et retours d
         </td>
         <td style="vertical-align:middle; padding-left:10px;" width="70%">
 
-Le reste de cet article est issu d'un ensemble de configurations que vous pouvez retrouver dans le repository <strong><a href="https://github.com/Smana/demo-cloud-native-ref">Cloud Native Ref</a></strong>.</br>
+Le reste de cet article est issu d'un ensemble de configurations que vous pouvez retrouver dans le repository <strong><a href="https://github.com/Smana/cloud-native-ref">Cloud Native Ref</a></strong>.</br>
 Il y est fait usage de nombreux opérateurs et notamment ceux pour [VictoriaMetrics](https://github.com/VictoriaMetrics/operator) et pour [Grafana](https://github.com/grafana/grafana-operator).
 
 L'ambition de ce projet est de pouvoir <strong>démarrer rapidement une plateforme complète</strong> qui applique les bonnes pratiques en terme d'automatisation, de supervision, de sécurité etc. </br>
@@ -128,7 +133,7 @@ Les commentaires et contributions sont les bienvenues 🙏
 
 La méthode de déploiement choisie dans cet article fait usage du chart Helm [**victoria-metrics-k8s-stack**](https://github.com/VictoriaMetrics/helm-charts/tree/master/charts/victoria-metrics-k8s-stack). Voici un exemple de configuration [Flux](https://fluxcd.io/) pour un mode `Single`
 
-[observability/base/victoria-metrics-k8s-stack/helmrelease-vmsingle.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/observability/base/victoria-metrics-k8s-stack/helmrelease-vmsingle.yaml)
+[observability/base/victoria-metrics-k8s-stack/helmrelease-vmsingle.yaml](https://github.com/Smana/cloud-native-ref/blob/main/observability/base/victoria-metrics-k8s-stack/helmrelease-vmsingle.yaml)
 
 ```yaml
 apiVersion: helm.toolkit.fluxcd.io/v2
@@ -166,7 +171,7 @@ Lorsque l'ensemble des manifests Kubernetes sont appliqués, on obtient l'archit
 
 <center><img src="vmsingle.png" width=1400 alt=""></center>
 
-* 🔒 **Accès privé**: Même si cela ne fait pas vraiment partie des composants liés à la collecte des métriques, j'ai souhaité mettre en avant la façon dont on accède aux différentes interfaces. J'ai en effet choisi de capitaliser sur [**Gateway API**](https://gateway-api.sigs.k8s.io/), que j'utilise depuis quelque temps et qui a fait l'objet de [précédents articles](https://blog.ogenki.io/tags/security/). Une alternative serait d'utiliser un composant de VictoriaMetrics, [VMAuth](https://docs.victoriametrics.com/vmauth/?highlight=vmauth), qui peut servir de proxy pour l'autorisation et le routage des accès mais Je n'ai pas retenu cette option pour le moment.
+* 🔒 **Accès privé**: Même si cela ne fait pas vraiment partie des composants liés à la collecte des métriques, j'ai souhaité mettre en avant la façon dont on accède aux différentes interfaces. J'ai en effet choisi de capitaliser sur [**Gateway API**](https://gateway-api.sigs.k8s.io/), que j'utilise depuis quelques temps et qui a fait l'objet de [précédents articles](https://blog.ogenki.io/tags/security/). Une alternative serait d'utiliser un composant de VictoriaMetrics, [VMAuth](https://docs.victoriametrics.com/vmauth/?highlight=vmauth), qui peut servir de proxy pour l'autorisation et le routage des accès mais Je n'ai pas retenu cette option pour le moment.
 
 
 * 👷 **VMAgent**: Un agent très léger, dont la fonction principale est de **récupérer les métriques** et de les acheminer vers une base de données compatible avec Prometheus.  Par ailleurs, cet agent peut appliquer **des filtres ou des transformations** aux métriques avant de les transmettre. En cas d'indisponibilité de la destination ou en cas de manque de ressources, il peut mettre en cache les données sur disque.
@@ -228,7 +233,7 @@ Comme mentionné plus tôt, dans la plupart des cas, le mode `Single` est largem
 
 Ma configuration permet de choisir entre l'un ou l'autre des modes:
 
-[observability/base/victoria-metrics-k8s-stack/kustomization.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/observability/base/victoria-metrics-k8s-stack/kustomization.yaml)
+[observability/base/victoria-metrics-k8s-stack/kustomization.yaml](https://github.com/Smana/cloud-native-ref/blob/main/observability/base/victoria-metrics-k8s-stack/kustomization.yaml)
 
 ```yaml
 resources:
