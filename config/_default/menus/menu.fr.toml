@@ -13,9 +13,9 @@ name = "LinkedIn"
 parent = "Liens"
 url = "https://www.linkedin.com/in/sma%C3%AFne-kahlouch-44374110/"
 [[main]]
-name = "Twitter"
-parent = "Liens"
-url = "https://twitter.com/_smana_"
+name = "Bluesky"
+parent = "Links"
+url = "https://bsky.app/profile/smana.dev"
 
 [[main]]
 name = "Apropos"
@@ -30,8 +30,8 @@ type = "social"
 url = "https://github.com/Smana"
 weight = 1
 [[social]]
-name = "twitter"
-url = "https://twitter.com/_smana_"
+name = "bluesky"
+url = "https://bsky.app/profile/smana.dev"
 weight = 2
 [[social]]
 name = "linkedin"
