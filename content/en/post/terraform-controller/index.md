@@ -13,6 +13,10 @@ tags = [
 thumbnail= "thumbnail.png"
 +++
 
+{{% notice info "Update 2024-11-23" %}}
+Weave Gitops is deprecated. Using the Headlamp plugin now for displaying Flux resources.
+{{% /notice %}}
+
 **Terraform** is probably the most used "Infrastructure As Code" tool for building, modifying, and versioning Cloud infrastructure changes.
 It is an Open Source project developed by Hashicorp that uses the [HCL](https://github.com/hashicorp/hcl) language to declare the desired state of Cloud resources.
 The state of the created resources is stored in a file called opentofu state.

@@ -13,6 +13,10 @@ tags = [
 thumbnail= "thumbnail.png"
 +++
 
+{{% notice info "Update 2024-11-23" %}}
+Ne plus utiliser Weave Gitops pour les ressources Flux. Il existe désormais un plugin Headlamp.
+{{% /notice %}}
+
 **Terraform** est probablement l'outil "Infrastructure As Code" le plus utilisé pour construire, modifier et versionner les changements d'infrastructure Cloud.
 Il s'agit d'un projet Open Source développé par Hashicorp et qui utilise le langage [HCL](https://github.com/hashicorp/hcl) pour déclarer l'état souhaité de ressources Cloud.
 L'état des ressources créées est stocké dans un fichier d'état (terraform state).
