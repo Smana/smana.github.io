@@ -53,9 +53,9 @@ Let's see how GAPI is used in practice with Cilium 🚀!
 
 ## :ballot_box_with_check: Prerequisites
 
-For the remainder of this article, we assume an EKS cluster has been deployed. If you're not using the [method suggested in the demo repo](https://github.com/Smana/cilium-gateway-api/tree/main/terraform/eks) as the basis for this article, there are a few **points to check** for GAPI to be usable.
+For the remainder of this article, we assume an EKS cluster has been deployed. If you're not using the [method suggested in the demo repo](https://github.com/Smana/cilium-gateway-api/tree/main/opentofu/eks) as the basis for this article, there are a few **points to check** for GAPI to be usable.
 
-ℹ️ The installation method described here is based on `Helm`, all the `values` can be viewed [here](https://github.com/Smana/cilium-gateway-api/blob/main/terraform/eks/helm_values/cilium.yaml).
+ℹ️ The installation method described here is based on `Helm`, all the `values` can be viewed [here](https://github.com/Smana/cilium-gateway-api/blob/main/opentofu/eks/helm_values/cilium.yaml).
 
 * **Install** the `CRDs` available in the [Gateway API](https://github.com/kubernetes-sigs/gateway-api/tree/main/config/crd) repository.
 {{% notice note Note %}}

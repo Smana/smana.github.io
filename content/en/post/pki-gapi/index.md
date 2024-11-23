@@ -86,10 +86,10 @@ To enhance the security of the certificate management system, it's recommended t
 
 * Generate the **certificate for the Vault server from the Intermediate CA**: This ensures a trust chain from the Root CA to the end-user certificates, through the Intermediate CA.
 
-By following the procedure described [**here**](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/vault/cluster/docs/pki_requirements.md), you should obtain the following files which will be used throughout the rest of this article. This is a suggestion based on `openssl`, and you may use the method that best suits you to achieve the same outcome.
+By following the procedure described [**here**](https://github.com/Smana/demo-cloud-native-ref/blob/main/opentofu/openbao/cluster/docs/pki_requirements.md), you should obtain the following files which will be used throughout the rest of this article. This is a suggestion based on `openssl`, and you may use the method that best suits you to achieve the same outcome.
 
 ```console
-cd terraform/vault/cluster
+cd opentofu/openbao/cluster
 
 ls .tls/*.pem
 .tls/bundle.pem  .tls/ca-chain.pem  .tls/intermediate-ca-key.pem  .tls/intermediate-ca.pem  .tls/root-ca-key.pem  .tls/root-ca.pem  .tls/vault-key.pem  .tls/vault.pem
@@ -114,7 +114,7 @@ There are several methods to deploy a Vault cluster, but I couldn't find one tha
 
 * **Vault Auto-Unseal feature**: This function is crucial given the ephemeral nature of our nodes. It minimizes downtime and eliminates the need for manual interventions for Vault unsealing.
 
-This article does not aim to describe all the steps, which are available in the [GitHub repo documentation](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/vault/cluster/docs/getting_started.md). Here is an example of `Opentofu` variables:
+This article does not aim to describe all the steps, which are available in the [GitHub repo documentation](https://github.com/Smana/demo-cloud-native-ref/blob/main/opentofu/openbao/cluster/docs/getting_started.md). Here is an example of `Opentofu` variables:
 
 ```hcl
 name                  = "ogenki-vault"
@@ -144,7 +144,7 @@ Deploying a complete platform is carried out sequentially, in **distinct steps**
 
 Obviously, supporting resources such as network components are required to deploy machines, then the Vault cluster can be installed and configured before considering the addition of other infrastructure elements, which will likely depend on the sensitive information stored in Vault.
 
-The Vault configuration is applied using the [Terraform provider](https://registry.terraform.io/providers/hashicorp/vault/latest/docs), which authenticates using a token generated from the Vault instance. The proposal [**here**](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/vault/management) demonstrates how to configure the PKI and allow internal applications to access to Vault's API, particularly on how to configure `Cert-Manager`.
+The Vault configuration is applied using the [Terraform provider](https://registry.terraform.io/providers/hashicorp/vault/latest/docs), which authenticates using a token generated from the Vault instance. The proposal [**here**](https://github.com/Smana/demo-cloud-native-ref/tree/main/opentofu/openbao/management) demonstrates how to configure the PKI and allow internal applications to access to Vault's API, particularly on how to configure `Cert-Manager`.
 
 Here are the organization's specific variables:
 
@@ -384,10 +384,10 @@ spec:
 ```
 
 * The URL specified is that of the Vault server. It must be accessible from the pods within Kubernetes.
-* The `path` in Vault is part of the [Vault configuration phase](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/vault/management/roles.tf). It refers to the role authorized to generate certificates.
-* Here, we are using authentication via an [Approle](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/vault/management/docs/approle.md).
+* The `path` in Vault is part of the [Vault configuration phase](https://github.com/Smana/demo-cloud-native-ref/blob/main/opentofu/openbao/management/roles.tf). It refers to the role authorized to generate certificates.
+* Here, we are using authentication via an [Approle](https://github.com/Smana/demo-cloud-native-ref/blob/main/opentofu/openbao/management/docs/approle.md).
 
-For more details on all the actions necessary for configuring Cert-Manager with Vault, refer to [this procedure](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/vault/management/docs/cert-manager.md).
+For more details on all the actions necessary for configuring Cert-Manager with Vault, refer to [this procedure](https://github.com/Smana/demo-cloud-native-ref/blob/main/opentofu/openbao/management/docs/cert-manager.md).
 
 The main difference with the method used for Let's Encrypt lies in the fact that **the certificate must be explicitly created**. Indeed, the previous method allowed for automatic creation with an annotation.
 

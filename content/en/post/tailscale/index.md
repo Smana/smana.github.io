@@ -110,7 +110,7 @@ We can then **reach Cloud subnets through Tailscale's VPN**.
 ### 🚀 Deploying a Subnet Router
 
 Let's dive in and deploy a _Subnet router_ on an AWS network!</br>
-Everything is done using the **Terraform** code present in the directory [terraform/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/network). We will analyze the Tailscale-specific configuration present in the [tailscale.tf](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/network/tailscale.tf) file before deploying.
+Everything is done using the **Terraform** code present in the directory [opentofu/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/opentofu/network). We will analyze the Tailscale-specific configuration present in the [tailscale.tf](https://github.com/Smana/demo-cloud-native-ref/blob/main/opentofu/network/tailscale.tf) file before deploying.
 
 #### The Terraform provider
 
@@ -247,7 +247,7 @@ module "tailscale_subnet_router" {
 
 Now that we've examined the various parameters, it's time to **start our Subnet router** 🚀 !! </br>
 
-First, you need to create a `variable.tfvars` file in the [terraform/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/network) directory.
+First, you need to create a `variable.tfvars` file in the [opentofu/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/opentofu/network) directory.
 
 ```hcl
 env                 = "dev"
@@ -380,7 +380,7 @@ In our setup, we already have a _Subnet router_ that routes the entire VPC netwo
 
 To access the Kubernetes API, it's essential to **authorize the Subnet router**. This is accomplished by setting the following rule for the source _security group_.
 
-[terraform/eks/main.tf](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/eks/main.tf#L44)
+[opentofu/eks/main.tf](https://github.com/Smana/demo-cloud-native-ref/blob/main/opentofu/eks/main.tf#L44)
 
 ```hcl
 module "eks" {

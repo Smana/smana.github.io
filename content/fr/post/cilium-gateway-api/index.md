@@ -55,9 +55,9 @@ Voyons comment cela s'utilise concrètement 🚀!
 
 ## :ballot_box_with_check: Prérequis
 
-Pour le reste de cet article nous considérons qu'un cluster EKS a été déployé. Si vous n'utilisez pas la [méthode proposée dans le repo de démo](https://github.com/Smana/cilium-gateway-api/tree/main/terraform/eks) servant de socle à cet article, il y a **certains points à valider** pour que GAPI puisse être utilisé.
+Pour le reste de cet article nous considérons qu'un cluster EKS a été déployé. Si vous n'utilisez pas la [méthode proposée dans le repo de démo](https://github.com/Smana/cilium-gateway-api/tree/main/opentofu/eks) servant de socle à cet article, il y a **certains points à valider** pour que GAPI puisse être utilisé.
 
-ℹ️ La méthode d'installation decrite ici se base sur `Helm`, l'ensemble des `values` peuvent être consultées [ici](https://github.com/Smana/cilium-gateway-api/blob/main/terraform/eks/helm_values/cilium.yaml).
+ℹ️ La méthode d'installation decrite ici se base sur `Helm`, l'ensemble des `values` peuvent être consultées [ici](https://github.com/Smana/cilium-gateway-api/blob/main/opentofu/eks/helm_values/cilium.yaml).
 
 * **Installer** les `CRDs` (resources personnalisés) disponibles dans le repository [Gateway API](https://github.com/kubernetes-sigs/gateway-api/tree/main/config/crd)
 {{% notice note Note %}}

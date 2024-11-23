@@ -13,9 +13,13 @@ tags = [
 thumbnail= "thumbnail.png"
 +++
 
+{{% notice info "Update 2024-11-23" %}}
+Weave Gitops is deprecated. Using the Headlamp plugin now for displaying Flux resources.
+{{% /notice %}}
+
 **Terraform** is probably the most used "Infrastructure As Code" tool for building, modifying, and versioning Cloud infrastructure changes.
 It is an Open Source project developed by Hashicorp that uses the [HCL](https://github.com/hashicorp/hcl) language to declare the desired state of Cloud resources.
-The state of the created resources is stored in a file called terraform state.
+The state of the created resources is stored in a file called opentofu state.
 
 Terraform can be considered a "semi-declarative" tool as there is no built-in **automatic reconciliation** feature. There are several solutions to address this issue, but generally speaking, a modification will be applied using `terraform apply`. The code is actually written using the HCL configuration files (declarative), but the execution is done imperatively.
 As a result, there can be a drift between the declared and actual state (for example, a colleague who would have changed something directly into the console 😉).
@@ -54,11 +58,11 @@ So we are going to create a **control plane** cluster using the `terraform` comm
 It is crucial that this cluster is resilient, secure, and supervised as it will be responsible for managing all the AWS resources created subsequently.
 {{% /notice %}}
 
-Without going into detail, the control plane cluster was created using [this code](https://github.com/Smana/demo-tf-controller/tree/main/terraform/controlplane). That said, it is important to note that all application deployment operations are done using Flux.
+Without going into detail, the control plane cluster was created using [this code](https://github.com/Smana/demo-tf-controller/tree/main/opentofu/controlplane). That said, it is important to note that all application deployment operations are done using Flux.
 
 {{% notice info Info %}}
 
-By following the instructions in the [README](https://github.com/Smana/demo-tf-controller/blob/main/terraform/controlplane/README.md), an EKS cluster will be created but not only! </br>
+By following the instructions in the [README](https://github.com/Smana/demo-tf-controller/blob/main/opentofu/controlplane/README.md), an EKS cluster will be created but not only! </br>
 Indeed, it is required to give permissions to the Terraform controller so it will able to apply infrastructure changes.
 Furthermore, Flux must be installed and configured to apply the configuration defined [here](https://github.com/Smana/demo-tf-controller/tree/main/clusters/controlplane-0).
 
@@ -163,12 +167,12 @@ In this demo, there are already a several AWS resources declared. Therefore, aft
 [![asciicast](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq.png)](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq?&speed=2)
 
 {{% notice info Info %}}
-Although the majority of operations are performed declaratively or via the CLIs `kubectl` and `flux`, another tool allows to manage Terraform resources: [tfctl](https://docs.gitops.weave.works/docs/terraform/tfctl/)
+Although the majority of operations are performed declaratively or via the CLIs `kubectl` and `flux`, another tool allows to manage Terraform resources: [tfctl](https://docs.gitops.weave.works/docs/opentofu/tfctl/)
 {{% /notice %}}
 
 ## 🚀 Apply a change
 
-One of the Terraform's [best practices](https://www.terraform-best-practices.com/) is to use **[modules](https://developer.hashicorp.com/terraform/language/modules)**.</br>
+One of the Terraform's [best practices](https://www.terraform-best-practices.com/) is to use **[modules](https://developer.hashicorp.com/opentofu/language/modules)**.</br>
 A module is a set of logically linked Terraform resources bundled into a single reusable unit. They allow to abstract complexity, take inputs, perform specific actions, and produce outputs.
 
 You can create your own modules and make them available as `Sources` or use the many modules shared and maintained by communities.</br>
@@ -191,7 +195,7 @@ spec:
 
 Then we can make use of this Source within a `Terraform` resource:
 
-[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/custom-resources/vpc/dev.yaml)
+[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/opentofu/custom-resources/vpc/dev.yaml)
 
 ```yaml
 apiVersion: infra.contrib.fluxcd.io/v1alpha2
@@ -350,7 +354,7 @@ We can also enable **automatic reconciliation**. To do this, set the `.spec.auto
 
 All IRSA resources are configured in this way:
 
-[external-secrets.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/irsa/base/external-secrets.yaml)
+[external-secrets.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/opentofu/irsa/base/external-secrets.yaml)
 ```yaml
 piVersion: infra.contrib.fluxcd.io/v1alpha2
 kind: Terraform
@@ -387,7 +391,7 @@ Here we want to be able to delete IRSA roles because they're tightly linked to a
 
 ### 🔄 Inputs/Outputs and modules dependencies
 
-When using Terraform, we often need to share data from one module to another. This is done using the [**outputs**](https://developer.hashicorp.com/terraform/language/values/outputs) that are defined within modules. </br>
+When using Terraform, we often need to share data from one module to another. This is done using the [**outputs**](https://developer.hashicorp.com/opentofu/language/values/outputs) that are defined within modules. </br>
 So we need a way to store them somewhere and import them into another module.
 
 Let's take again the given example above (`vpc-dev`). We can see at the bottom of the YAML file, the following block:
@@ -419,7 +423,7 @@ vpc-0c06a6d153b8cc4db
 
 Some of these are then used to create a dev EKS cluster. Note that you don't have to read them all, you can cherry pick a few chosen outputs from the secret:
 
-[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/custom-resources/vpc/dev.yaml)
+[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/opentofu/custom-resources/vpc/dev.yaml)
 ```yaml
 ...
   varsFrom:
@@ -546,7 +550,7 @@ I recently discovered the efficiency of this feature. Here is how I use it:
 
 The Terraform code that creates an EKS cluster also generates a `ConfigMap` that contains **cluster-specific variables** such as the cluster name, as well as all the parameters that vary between clusters.
 
-[flux.tf](https://github.com/Smana/demo-tf-controller/blob/main/terraform/controlplane/flux.tf#L36)
+[flux.tf](https://github.com/Smana/demo-tf-controller/blob/main/opentofu/controlplane/flux.tf#L36)
 
 ```hcl
 resource "kubernetes_config_map" "flux_clusters_vars" {
@@ -582,7 +586,7 @@ metadata:
 spec:
   prune: true
   interval: 4m0s
-  path: ./infrastructure/controlplane-0/terraform/custom-resources
+  path: ./infrastructure/controlplane-0/opentofu/custom-resources
   postBuild:
     substitute:
       domain_name: "cloud.ogenki.io"

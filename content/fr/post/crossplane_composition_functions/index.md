@@ -15,6 +15,10 @@ tags = [
 thumbnail= "thumbnail.png"
 +++
 
+{{% notice info "Update 2024-11-23" %}}
+J'utilise désormais [KCL (Kusion Configuration Language)](https://www.kcl-lang.io/) pour les compositions Crossplane.
+{{% /notice %}}
+
 Avec l'émergence du _[Platform engineering](https://thenewstack.io/how-is-platform-engineering-different-from-devops-and-sre/)_, on assiste à une évolution vers la création de solutions dites "**self-service**" à destination des développeurs. Cette approche permet une standardisation des pratiques DevOps, une meilleure expérience pour les développeurs, et une réduction de la charge cognitive liée à la gestion des outils.
 
 `Crossplane`, un projet [sous l'égide de la Cloud Native Computing Foundation (CNCF)](https://www.cncf.io/projects/crossplane/) vise à devenir le framework incontournable pour créer des plateformes Cloud Natives. Dans mon [premier article sur Crossplane](https://blog.ogenki.io/fr/post/crossplane_k3d/), j'ai présenté cet outil et expliqué comment il utilise les principes **GitOPs** pour l'infrastructure, permettant ainsi de créer un cluster `GKE`.
