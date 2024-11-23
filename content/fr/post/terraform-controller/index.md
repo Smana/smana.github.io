@@ -53,11 +53,11 @@ Nous allons donc créer un cluster **control plane** en utilisant la ligne de co
 Il est primordial que ce cluster soit résiliant, sécurisé et supervisé car il sera responsable de la gestion de l'ensemble des ressources AWS créées par la suite.
 {{% /notice %}}
 
-Sans entrer dans le détail, le cluster "control plane" a été créé un utilisant [ce code](https://github.com/Smana/demo-tf-controller/tree/main/terraform/controlplane). Celà-dit, il est important de noter que toutes les opérations de déploiement d'application se font en utilisant Flux.
+Sans entrer dans le détail, le cluster "control plane" a été créé un utilisant [ce code](https://github.com/Smana/demo-tf-controller/tree/main/opentofu/controlplane). Celà-dit, il est important de noter que toutes les opérations de déploiement d'application se font en utilisant Flux.
 
 {{% notice info Info %}}
 
-En suivant les instructions du [README](https://github.com/Smana/demo-tf-controller/blob/main/terraform/controlplane/README.md), un cluster EKS sera créé mais pas uniquement! </br>
+En suivant les instructions du [README](https://github.com/Smana/demo-tf-controller/blob/main/opentofu/controlplane/README.md), un cluster EKS sera créé mais pas uniquement! </br>
 Il faut en effet donner les permissions au controlleur Terraform pour appliquer les changements d'infrastructure.
 De plus, Flux doit être installé et configuré afin d'appliquer la configuration définie [ici](https://github.com/Smana/demo-tf-controller/tree/main/clusters/controlplane-0).
 
@@ -163,12 +163,12 @@ Dans le repo de demo il y a déjà un certain nombre de ressources AWS déclaré
 [![asciicast](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq.png)](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq?&speed=2)
 
 {{% notice info Info %}}
-Bien que la majorité des tâches puisse être réalisée de manière déclarative ou via les utilitaires de ligne de commande tels que `kubectl` et `flux`, un autre outil existe qui offre la possibilité d'interagir avec les ressources terraform : [tfctl](https://docs.gitops.weave.works/docs/terraform/tfctl/)
+Bien que la majorité des tâches puisse être réalisée de manière déclarative ou via les utilitaires de ligne de commande tels que `kubectl` et `flux`, un autre outil existe qui offre la possibilité d'interagir avec les ressources terraform : [tfctl](https://docs.gitops.weave.works/docs/opentofu/tfctl/)
 {{% /notice %}}
 
 ## 🚀 Appliquer un changement
 
-Parmis les [bonnes pratiques](https://www.terraform-best-practices.com/) avec Terraform, il y a l'usage de **[modules](https://developer.hashicorp.com/terraform/language/modules)**.</br>
+Parmis les [bonnes pratiques](https://www.terraform-best-practices.com/) avec Terraform, il y a l'usage de **[modules](https://developer.hashicorp.com/opentofu/language/modules)**.</br>
 Un module est un ensemble de ressources Terraform liées logigement afin d'obtenir une seule unité réutilisable. Cela permet d'abstraire la complexité, de prendre des entrées, effectuer des actions spécifiques et produire des sorties.
 
 Il est possible de créer ses propres modules et de les mettre à disposition dans des `Sources` ou d'utiliser les nombreux modules partagés et maintenus par les communautés.</br>
@@ -176,7 +176,7 @@ Il suffit alors d'indiquer quelques `variables` afin de l'adapter au contexte.
 
 Avec `tf-controller`, la première étape consiste donc à indiquer la `Source` du module. Ici nous allons configurer le socle réseau sur AWS (vpc, subnets...) avec le module [terraform-aws-vpc](https://github.com/terraform-aws-modules/terraform-aws-vpc).
 
-[sources/terraform-aws-vpc.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/custom-resources/sources/terraform-aws-vpc.yaml)
+[sources/terraform-aws-vpc.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/opentofu/custom-resources/sources/terraform-aws-vpc.yaml)
 
 ```yaml
 apiVersion: source.toolkit.fluxcd.io/v1
@@ -193,7 +193,7 @@ spec:
 
 Nous pouvons ensuite créer la ressource `Terraform` qui en fait usage:
 
-[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/custom-resources/vpc/dev.yaml)
+[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/opentofu/custom-resources/vpc/dev.yaml)
 
 ```yaml
 apiVersion: infra.contrib.fluxcd.io/v1alpha2
@@ -352,7 +352,7 @@ Nous pouvons aussi activer la **réconciliation** automatique. Pour ce faire il 
 
 Toutes les ressources IRSA sont configurées de la sorte:
 
-[external-secrets.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/irsa/base/external-secrets.yaml)
+[external-secrets.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/opentofu/irsa/base/external-secrets.yaml)
 
 ```yaml
 piVersion: infra.contrib.fluxcd.io/v1alpha2
@@ -391,7 +391,7 @@ Ici nous voulons la possibilité de supprimer les rôles IRSA. Ils sont en effet
 
 ### 🔄 Entrées et sorties: dépendances entre modules
 
-Lorsque qu'on utilise Terraform, on a souvent besoin de passer des données d'un module à l'autre. Généralement ce sont les [**outputs**](https://developer.hashicorp.com/terraform/language/values/outputs) du module qui exportent ces informations. Il faut donc un moyen de les importer dans un autre module.
+Lorsque qu'on utilise Terraform, on a souvent besoin de passer des données d'un module à l'autre. Généralement ce sont les [**outputs**](https://developer.hashicorp.com/opentofu/language/values/outputs) du module qui exportent ces informations. Il faut donc un moyen de les importer dans un autre module.
 
 Reprenons encore l'exemple donné ci-dessus (`vpc-dev`). Nous notons en bas du YAML la directive suivante:
 
@@ -422,7 +422,7 @@ vpc-0c06a6d153b8cc4db
 
 Certains de ces éléments d'informations sont ensuite utilisés pour créer un cluster EKS de dev:
 
-[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/terraform/custom-resources/vpc/dev.yaml)
+[vpc/dev.yaml](https://github.com/Smana/demo-tf-controller/blob/main/infrastructure/controlplane-0/opentofu/custom-resources/vpc/dev.yaml)
 
 ```yaml
 ...
@@ -553,7 +553,7 @@ J'ai découvert l'efficacité de cette fonctionnalité très récemment. Je vais
 Le code terraform qui crée un cluster EKS, génère aussi une `ConfigMap` qui contient les **variables propres au cluster**.
 On y retrouvera, bien sûr, le nom du cluster, mais aussi tous les paramètres qui varient entre les clusters et qui sont utilisés dans les manifests Kubernetes.
 
-[flux.tf](https://github.com/Smana/demo-tf-controller/blob/main/terraform/controlplane/flux.tf#L36)
+[flux.tf](https://github.com/Smana/demo-tf-controller/blob/main/opentofu/controlplane/flux.tf#L36)
 
 ```hcl
 resource "kubernetes_config_map" "flux_clusters_vars" {
@@ -589,7 +589,7 @@ metadata:
 spec:
   prune: true
   interval: 4m0s
-  path: ./infrastructure/controlplane-0/terraform/custom-resources
+  path: ./infrastructure/controlplane-0/opentofu/custom-resources
   postBuild:
     substitute:
       domain_name: "cloud.ogenki.io"

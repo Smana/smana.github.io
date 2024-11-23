@@ -112,7 +112,7 @@ Nous pouvons alors **router des sous réseaux du Clouder à travers le VPN de Ta
 ### 🚀 Déployer un Subnet router
 
 Entrons dans le vif du sujet et deployons un _Subnet router_ sur un réseau AWS!</br>
-Tout est fait en utilisant le code **Terraform** présent dans le répertoire [terraform/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/network). Nous allons analyser la configuration spécifique à Tailscale qui est présente dans le fichier [tailscale.tf](https://github.com/Smana/demo-cloud-native-ref/blob/main/terraform/network/tailscale.tf) avant de procéder au déploiement.
+Tout est fait en utilisant le code **Terraform** présent dans le répertoire [opentofu/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/opentofu/network). Nous allons analyser la configuration spécifique à Tailscale qui est présente dans le fichier [tailscale.tf](https://github.com/Smana/demo-cloud-native-ref/blob/main/opentofu/network/tailscale.tf) avant de procéder au déploiement.
 
 #### Le provider Terraform
 
@@ -246,7 +246,7 @@ module "tailscale_subnet_router" {
 
 Maintenant que nous avons analysé les différents paramètres, il est temps de **démarrer notre Subnet router** 🚀 !! </br>
 
-Il faut au préalable créer un fichier `variable.tfvars` dans le répertoire [terraform/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/terraform/network).
+Il faut au préalable créer un fichier `variable.tfvars` dans le répertoire [opentofu/network](https://github.com/Smana/demo-cloud-native-ref/tree/main/opentofu/network).
 
 ```hcl
 env                 = "dev"
