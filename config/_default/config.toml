@@ -5,7 +5,6 @@ baseurl = "https://blog.ogenki.io/" # Include trailing slash
 copyright = "Copyright © 2021–2023, Smana https://github.io/Smana"
 # canonifyurls = true
 enableEmoji = true
-paginate = 10
 #theme = ["github.com/chipzoller/hugo-clarity"]
 theme = "hugo-clarity"
 
@@ -23,3 +22,6 @@ tag = "tags"
 
 [outputs]
 home = ["HTML", "RSS", "JSON"]
+
+[pagination]
+pagerSize = 10
