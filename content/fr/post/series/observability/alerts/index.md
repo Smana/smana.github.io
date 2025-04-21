@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
 title = "`VictoriaMetrics` : Des alertes efficaces, de la théorie à la pratique 🛠️"
-date = "2024-10-12"
-summary = "Des `Core Web Vitals` aux `Golden Signals`, en passant par la configuration de notifications Slack, découvrez comment mettre en place des alertes efficaces avec VictoriaMetrics."
+date = "2025-04-21"
+summary = "Des `Core Web Vitals` aux `Golden Signals`, en passant par la configuration de notifications Slack, découvrez comment mettre en place des alertes efficaces avec l'opérateur VictoriaMetrics."
 featured = true
 codeMaxLines = 21
 usePageBundles = true
@@ -11,9 +11,7 @@ series = [
   "observability"
 ]
 tags = [
-    "observability",
-    "monitoring",
-    "alerting"
+    "observability"
 ]
 thumbnail= "thumbnail.png"
 +++
@@ -37,10 +35,8 @@ Lors d'un [précédent article](https://blog.ogenki.io/fr/post/series/observabil
 
 La suite de cet article suppose que vous avez déjà :
 
-* Une instance VictoriaMetrics fonctionnelle
-* Un cluster Kubernetes configuré
+* Une instance VictoriaMetrics fonctionnelle déployée sur Kubernetes
 * Un accès à un workspace Slack pour les notifications
-* Les permissions nécessaires pour configurer les alertes
 
 La mise en place d'alertes pertinentes est un élément crucial de toute stratégie d'observabilité. Cependant, définir des seuils appropriés et éviter la fatigue liée aux alertes nécessite une approche réfléchie et méthodique.
 
@@ -74,9 +70,11 @@ Les Core Web Vitals sont des métriques développées par Google pour évaluer l
 
 La performance d'un site web est considérée satisfaisante si elle atteint les seuils décrits ci-dessus au **75ᵉ percentile**, favorisant ainsi une bonne expérience utilisateur et, par conséquent, une meilleure rétention et un meilleur référencement ([SEO](https://en.wikipedia.org/wiki/Search_engine_optimization)).
 
-Cependant, l'ajout d'alertes spécifiques sur ces métriques doit être mûrement réfléchi. Contrairement aux indicateurs opérationnels classiques, tels que la disponibilité ou le taux d'erreurs, qui reflètent directement la stabilité du système, Les *Web Vitals* dépendent de **nombreux facteurs externes**, comme les conditions réseau des utilisateurs ou leurs appareils, rendant les seuils plus complexes à surveiller efficacement.
+{{% notice note "Attention aux alertes sur les Core Web Vitals" %}}
+L'ajout d'alertes spécifiques sur ces métriques doit être mûrement réfléchi. Contrairement aux indicateurs opérationnels classiques, tels que la disponibilité ou le taux d'erreurs, qui reflètent directement la stabilité du système, les *Web Vitals* dépendent de **nombreux facteurs externes**, comme les conditions réseau des utilisateurs ou leurs appareils, rendant les seuils plus complexes à surveiller efficacement.
 
-Pour éviter une surcharge d'alertes inutiles, ces alertes doivent uniquemement cibler des **dégradations significatives**. Par exemple, une augmentation soudaine du **CLS** (stabilité visuelle) ou une détérioration continue du **LCP** (temps de chargement) sur plusieurs jours peuvent indiquer des problèmes importants nécessitant une intervention.
+Pour éviter une surcharge d'alertes inutiles, ces alertes doivent uniquement cibler des **dégradations significatives**. Par exemple, une augmentation soudaine du **CLS** (stabilité visuelle) ou une détérioration continue du **LCP** (temps de chargement) sur plusieurs jours peuvent indiquer des problèmes importants nécessitant une intervention.
+{{% /notice %}}
 
 Enfin, ces alertes nécessitent des outils adaptés, comme le *RUM (Real User Monitoring)* pour les données réelles ou le *Synthetic Monitoring* pour des tests simulés, qui requièrent une solution spécifique non abordée dans cet article.
 
@@ -96,8 +94,6 @@ Les _Golden Signals_ sont un ensemble de **quatre indicateurs clés**, largement
 
 Ces Golden Signals sont essentiels car ils permettent de **concentrer la surveillance sur les aspects critiques** qui peuvent rapidement affecter l'expérience utilisateur ou la performance globale du système. Avec Prometheus, ces signaux sont souvent surveillés via des métriques spécifiques pour déclencher des alertes lorsque certains seuils sont dépassés.
 
-Vous l'aurez compris: Definir des alertes ça se réfléchit! Maintenant entrons dans le concret et voyons **comment définir des seuils à partir de nos métriques**.
-
 {{% notice info "D'autres méthodes et indicateurs" %}}
 J'ai évoqué ici 2 méthodologies qui, je trouve, sont un bon point de départ pour ajuster au mieux notre système d'alerting. Ceci-dit il en existe d'autres, chacune avec leurs spécificités. On peut ainsi citer [USE](https://www.brendangregg.com/usemethod.html) ou [RED](https://grafana.com/blog/2018/08/02/the-red-method-how-to-instrument-your-services/).
 
@@ -105,6 +101,8 @@ De même, au-delà des Core Web Vitals présentés plus haut, d'autres métrique
 
 Le choix des métriques à surveiller dépendra de votre contexte et de vos objectifs. L'essentiel est de garder à l'esprit qu'une bonne stratégie d'alerting repose sur un ensemble ciblé d'indicateurs pertinents 🎯
 {{% /notice %}}
+
+Vous l'aurez compris: Definir des alertes ça se réfléchit! Maintenant entrons dans le concret et voyons **comment définir des seuils à partir de nos métriques**.
 
 ## 💻 Exprimer des requêtes avec PromQL/MetricsQL
 
@@ -165,38 +163,13 @@ VictoriaMetrics propose deux composants essentiels pour la gestion des alertes :
 
 VMAlert est le composant qui évalue en continu les règles d'alerte définies. Il supporte deux types de règles :
 
-1. **Recording Rules** 📊
-   - Pré-calculent des expressions PromQL complexes
-   - Créent de nouvelles métriques (time series)
-   - Optimisent les performances des dashboards
-   - Exemple de recording rule :
-   ```yaml
-   groups:
-     - name: recording_rules
-       rules:
-         - record: job:http_requests_total:rate5m
-           expr: sum(rate(http_requests_total[5m])) by (job)
-   ```
+* **Recording Rules** 📊
+   Les recording rules permettent de pré-calculer des expressions PromQL complexes et de les stocker comme nouvelles métriques pour optimiser les performances.
 
-2. **Alerting Rules** 🚨
-   - Définissent les conditions de déclenchement des alertes
-   - Supportent des annotations pour enrichir les notifications
-   - Permettent la classification par labels
-   - Exemple d'alerte sur la latence :
-   ```yaml
-   groups:
-     - name: latency_alerts
-       rules:
-         - alert: HighLatency
-           expr: http_request_duration_seconds{quantile="0.9"} > 1
-           for: 5m
-           labels:
-             severity: warning
-           annotations:
-             summary: "Latence élevée détectée"
-             description: "La latence P90 dépasse 1s depuis 5 minutes"
-             runbook_url: "https://wiki.example.com/runbooks/high-latency"
-   ```
+* **Alerting Rules** 🚨
+   Les alerting rules définissent les conditions qui déclenchent des alertes lorsque certains seuils sont dépassés.
+
+Dans la suite de cet article, nous allons nous concentrer sur les alerting rules qui sont essentielles pour la détection proactive des problèmes.
 
 {{% notice tip "Des exemples concrets" %}}
 <table>
@@ -217,7 +190,7 @@ Les commentaires et contributions sont les bienvenues 🙏
 {{% /notice %}}
 
 
-### 💡 Déclarer une `VMRule`
+### Déclarer une règle d'alerting avec `VMRule`
 
 Nous avons vu précédemment que VictoriaMetrics fournit un opérateur Kubernetes qui permet de gérer les différents composants de manière déclarative. Parmi les ressources personnalisées (Custom Resources) disponibles, la `VMRule` permet de définir des règles d'alertes et d'enregistrement (recording rules).
 
@@ -279,313 +252,220 @@ Il est recommandé de suivre quelques **bonnes pratiques** pour donner le maximu
   - Le lien vers le **runbook** de troubleshooting Flux
   - Le lien vers le **dashboard Grafana** dédié
 
-5. **Expression PromQL Optimisée** 🔍
+5. **Requête PromQL** 🔍
    ```yaml
    expr: |
      max(gotk_reconcile_condition{status="False",type="Ready"}) by (exported_namespace, name, kind)
      + on(exported_namespace, name, kind)
      (max(gotk_reconcile_condition{status="Deleted"}) by (exported_namespace, name, kind)) * 2 == 1
    ```
-   Cette expression :
-   - Surveille les conditions de réconciliation en échec
-   - Prend en compte les ressources supprimées
-   - Agrège par namespace, nom et type de ressource
+   Cette alerte se déclenchera si Flux n'arrive pas à réconcilier une ressource ou si une ressource est supprimée alors qu'elle ne devrait pas l'être. Dans le détail:
+   - La métrique `gotk_reconcile_condition` expose l'état de santé des ressources Flux
+   - Le filtre `status="False",type="Ready"` identifie les ressources qui ne sont pas dans l'état "Ready"
+   - La deuxième partie de l'expression (`status="Deleted"`) détecte les ressources qui ont été supprimées
+   - L'opération `+ on(...) (...) * 2 == 1` combine ces conditions pour déclencher une alerte quand :
+     - Une ressource n'est pas "Ready" (première partie = 1)
+     - OU une ressource a été supprimée de façon inattendue (deuxième partie = 1)
+   - Le `max` et le `by` permettent de regrouper les alertes par namespace, nom et type de ressource
 
 ## 💬 Intégration avec Slack
 
-L'intégration avec Slack permet de recevoir les alertes directement dans vos canaux de communication. Voici comment la configurer de manière efficace.
+Nous pouvons envoyer ces alertes au travers de différents canaux ou outils. Nous pouvons citer Grafana OnCall, Opsgénie, Pagerduty ou simplement des emails et j'en passe...
+
+Dans notre exemple nous envoyons des notifications vers un canal Slack. Nous allons donc d'abord créer une application Slack et récupérer le token généré avant de configurer VictoriaMetrics.
 
 ### Configuration de l'Application Slack
 
 1. **Création de l'Application** 🔧
-   - Rendez-vous sur [https://api.slack.com/apps](https://api.slack.com/apps)
-   - Cliquez sur "Create New App"
-   - Choisissez "From scratch"
-   - Nommez votre application (ex: "AlertManager")
-   - Sélectionnez votre workspace
+   - Cela se fait sur [https://api.slack.com/apps](https://api.slack.com/apps)
+   - Cliquer sur "Create New App"
+   - Choisir "From scratch"
+   - Nommer l'application (ex: "AlertManager")
+   - Sélectionner le workspace cible
 
 2. **Configuration des Permissions** 🔑
-   Dans "OAuth & Permissions", ajoutez les scopes suivants :
+   Dans "OAuth & Permissions", ajouter les scopes suivants :
    - `chat:write` (Requis)
    - `chat:write.public` (Pour poster dans les canaux publics)
    - `channels:read` (Pour lister les canaux)
    - `groups:read` (Pour les groupes privés)
 
-3. **Installation et Token** 🎟️
-   - Installez l'application dans votre workspace
-   - Copiez le "Bot User OAuth Token" (commence par `xoxb-`)
-   - Stockez ce token de manière sécurisée dans Kubernetes :
+<center>
+  <video id="SlackPermissions" controls width="700" autoplay loop muted>
+    <source src="slack-permissions.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+</center>
 
-   ```yaml
-   apiVersion: v1
-   kind: Secret
-   metadata:
-     name: alertmanager-slack-token
-     namespace: monitoring
-   type: Opaque
-   stringData:
-     token: xoxb-your-token-here
-   ```
+3. **Installation et Token** 🎟️
+   - Installer l'application dans le workspace
+   - Copier le "Bot User OAuth Token" (commence par `xoxb-`)
+   - Stocker le token de manière sécurisée. Dans notre exemple, le secret est récupéré depuis AWS Secrets Manager en utilisant l'[opérateur External Secrets](https://external-secrets.io).
 
 ### Configuration d'AlertManager pour Slack
 
-1. **Configuration de Base** ⚙️
-   ```yaml
-   alertmanager:
-     config:
-       global:
-         slack_api_url: "https://slack.com/api/chat.postMessage"
-         resolve_timeout: 5m
+Le reste de la configuration se fait grâce à des values **Helm** afin de paramètrer AlertManager
 
-       route:
-         group_by: ['alertname', 'job', 'severity']
-         group_wait: 30s
-         group_interval: 5m
-         repeat_interval: 4h
-         receiver: 'slack-notifications'
+[observability/base/victoria-metrics-k8s-stack/vm-common-helm-values-configmap.yaml](https://github.com/Smana/cloud-native-ref/blob/main/observability/base/victoria-metrics-k8s-stack/vm-common-helm-values-configmap.yaml)
 
-       receivers:
-         - name: 'slack-notifications'
-           slack_configs:
-           - channel: '#alerts'
-             send_resolved: true
-             icon_emoji: ':bell:'
-             title: '{{ template "slack.title" . }}'
-             text: '{{ template "slack.text" . }}'
-   ```
+1. Référencer le point de montage du secret contenant le token
 
-2. **Templates Personnalisés** 📝
-   ```yaml
-   templates:
-     - name: slack.title
-       template: |
-         [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}
-     - name: slack.text
-       template: |
-         {{ range .Alerts }}
-         *Alert:* {{ .Labels.alertname }}
-         *Description:* {{ .Annotations.description }}
-         *Severity:* {{ .Labels.severity }}
-         *Started:* {{ .StartsAt | since }}
-         {{ if .Annotations.runbook }}*Runbook:* {{ .Annotations.runbook }}{{ end }}
-         {{ end }}
-   ```
+```yaml
+    alertmanager:
+      enabled: true
+      spec:
+        externalURL: "https://vmalertmanager-${cluster_name}.priv.${domain_name}"
+        secrets:
+          - "victoria-metrics-k8s-stack-alertmanager-slack-app"
+      config:
+        global:
+          slack_api_url: "https://slack.com/api/chat.postMessage"
+          http_config:
+            authorization:
+              credentials_file: /etc/vm/secrets/victoria-metrics-k8s-stack-alertmanager-slack-app/token
+```
+
+Le secret `victoria-metrics-k8s-stack-alertmanager-slack-app` contenant le token est récupéré depuis AWS Secrets Manager. Dans la configuration il faut référencer le point de montage de ce secret (`config.globl.http_config.authorization`)
+
+2. Explication du routage
+
+```yaml
+        route:
+          group_by:
+            - cluster
+            - alertname
+            - severity
+            - namespace
+          group_interval: 5m
+          group_wait: 30s
+          repeat_interval: 3h
+          receiver: "slack-monitoring"
+          routes:
+            - matchers:
+                - alertname =~ "InfoInhibitor|Watchdog|KubeCPUOvercommit"
+              receiver: "blackhole"
+        receivers:
+          - name: "blackhole"
+          - name: "slack-monitoring"
+```
+
+* **Groupement des alertes** : Le groupement des alertes est essentiel pour réduire le bruit et améliorer la lisibilité des notifications. Sans groupement, chaque alerte serait envoyée individuellement, ce qui pourrait rapidement devenir ingérable. Les critères de groupement choisis permettent une organisation logique:
+  * `group_by` défini les labels sur lesquels grouper les alertes.
+  * `group_wait`: Délai de 30s avant l'envoi initial d'une notification pour permettre le groupement
+  * `group_interval`: Intervalle de 5m entre les notifications pour un même groupe
+  * `repeat_interval`: Les alertes ne sont répétées que toutes les 3h pour éviter le spam
+
+* **Receivers**: Les receivers sont des composants d'AlertManager qui définissent comment et où envoyer les notifications d'alerte. Ils peuvent être configurés pour différents canaux de communication comme Slack, Email, PagerDuty, etc. Dans notre configuration:
+  * `slack-monitoring`: Receiver principal qui envoie les alertes vers un canal Slack spécifique avec un formatage personnalisé
+  * `blackhole`: Receiver spécial qui "absorbe" les alertes sans les transmettre nulle part, utile pour filtrer les alertes non pertinentes ou purement techniques
+
+{{% notice tip "Exemple de routage" %}}
+Selon l'organisation et les procédures en vigueur dans l'entreprise, nous pouvons définir un routage ciblé des alertes.
+Supposons, par exemple, que nous souhaitons router les alertes critiques des environnements de production et sécurité vers l'équipe d'astreinte :
+
+```yaml
+        - matchers:
+            - environment =~ "prod|security"
+            - team = "oncall"
+          receiver: "pagerduty"
+```
+{{% /notice %}}
+
+3. **Templates Personnalisés** 📝
+
+Ce bloc de configuration définit un receiver Slack pour AlertManager qui utilise les templates Monzo. [Les templates Monzo](https://gist.github.com/milesbxf/e2744fc90e9c41b47aa47925f8ff6512) sont un ensemble de templates de notification qui permettent de formater les alertes Slack de manière élégante et informative.
+
+```yaml
+    alertmanager:
+      config:
+        receivers:
+          - name: "slack-monitoring"
+            slack_configs:
+              - channel: "#alerts"
+                send_resolved: true
+                title: '{{ template "slack.monzo.title" . }}'
+                icon_emoji: '{{ template "slack.monzo.icon_emoji" . }}'
+                color: '{{ template "slack.monzo.color" . }}'
+                text: '{{ template "slack.monzo.text" . }}'
+                actions:
+                  - type: button
+                    text: "Runbook :green_book:"
+                    url: "{{ (index .Alerts 0).Annotations.runbook_url }}"
+                  - type: button
+                    text: "Query :mag:"
+                    url: "{{ (index .Alerts 0).GeneratorURL }}"
+                  - type: button
+                    text: "Dashboard :grafana:"
+                    url: "{{ (index .Alerts 0).Annotations.dashboard }}"
+                  - type: button
+                    text: "Silence :no_bell:"
+                    url: '{{ template "__alert_silence_link" . }}'
+                  - type: button
+                    text: '{{ template "slack.monzo.link_button_text" . }}'
+                    url: "{{ .CommonAnnotations.link_url }}"
+```
+Voici un exemple de notification générée avec ce format. Il permet notamment d'ajouter des boutons d'action pour visualiser le dashboard Grafana 📊, afficher le runbook 📚 ou mettre en silence l'alerte 🔕.
 
 <center><img src="alert.png" width=650 alt="Slack alert example"></center>
 
-### 🎨 Personnalisation Avancée des Notifications
 
-1. **Boutons d'Action** 🔘
-   ```yaml
-   slack_configs:
-     - actions:
-         - type: button
-           text: "Voir le Runbook 📚"
-           url: "{{ .CommonAnnotations.runbook_url }}"
-         - type: button
-           text: "Voir le Dashboard 📊"
-           url: "{{ .CommonAnnotations.dashboard_url }}"
-         - type: button
-           text: "Silence 🔕"
-           url: "{{ template "__alert_silence_link" . }}"
-   ```
+## 👀 Visualiser et interagir avec les alertes
 
-2. **Routage Intelligent** 🔀
-   ```yaml
-   route:
-     routes:
-       - match:
-           severity: critical
-         receiver: 'slack-critical'
-         continue: true
-       - match_re:
-           service: ^(frontend|backend)$
-         receiver: 'slack-apps'
-   ```
+La visualisation et la gestion des alertes sont des aspects essentiels d'un système d'alerting efficace. VictoriaMetrics et son écosystème offrent plusieurs options pour interagir avec vos alertes :
 
-## 🤖 Fonctionnalités Avancées
+### Alertmanager : La solution standard
 
-### Intégration avec Grafana OnCall
+`Alertmanager` est le composant standard qui permet de :
+- Visualiser l'état actuel des alertes
+- Configurer le routage des notifications
+- Gérer les silences (mise en pause temporaire d'alertes)
+- Consulter l'historique des alertes
 
-[Grafana OnCall](https://grafana.com/products/oncall/) permet d'améliorer la gestion des astreintes et des escalades d'incidents. Voici comment l'intégrer :
+<center><img src="alertmanager.png" width=750 alt="Alertmanager"></center>
 
-1. **Configuration de l'Intégration** 🔌
-   ```yaml
-   receivers:
-     - name: 'grafana-oncall'
-       webhook_configs:
-         - url: 'http://oncall:8080/api/v1/alert'
-           send_resolved: true
-   ```
+### VMUI : L'interface native de VictoriaMetrics
 
-2. **Définition des Rotations** 📅
-   - Configurez les équipes et les rotations dans Grafana OnCall
-   - Associez les alertes aux équipes via les labels
+`VMUI` offre une interface simplifiée pour :
+- Consulter les alertes actives
+- Visualiser les règles d'alertes
+- Afficher les métriques associées
 
-### AI Runbooks 📚
+<center><img src="vmalert.png" width=800 alt="VMAlert"></center>
 
-Les AI Runbooks permettent d'automatiser la résolution des incidents en utilisant l'intelligence artificielle :
+### Grafana Alerting : Une solution complète
 
-1. **Intégration avec un LLM** 🧠
-   ```yaml
-   annotations:
-     runbook_ai: |
-       {
-         "model": "gpt-4",
-         "context": "Application Java Spring Boot",
-         "previous_incidents": "link_to_similar_incidents",
-         "suggested_actions": [
-           "Vérifier les logs applicatifs",
-           "Analyser l'utilisation mémoire",
-           "Redémarrer le service si nécessaire"
-         ]
-       }
-   ```
+Bien que nous utilisions Alertmanager pour la définition et le routage des alertes, `Grafana Alerting` offre une solution alternative complète qui permet de :
+- Centraliser la gestion des alertes
+- Visualiser les alertes dans le contexte des dashboards
+- Configurer des règles d'alertes directement depuis l'interface
+- Gérer les silences et les notifications
 
-2. **Automatisation des Actions** 🤖
-   ```yaml
-   - alert: HighMemoryUsage
-     expr: container_memory_usage_bytes > 2e9
-     for: 5m
-     annotations:
-       runbook_ai_action: |
-         1. Collecter les dumps mémoire
-         2. Analyser avec AI Memory Analyzer
-         3. Suggérer des optimisations
-   ```
+<center><img src="grafana-alerts.png" width=800 alt="Grafana Alerting"></center>
 
-### Métriques sur les Alertes 📊
-
-Surveillez la qualité de vos alertes avec des métriques dédiées :
-
-```yaml
-- record: alert_quality_metrics
-  expr: |
-    sum(rate(alertmanager_notifications_total[24h])) by (integration)
-    /
-    sum(rate(alertmanager_notifications_failed_total[24h])) by (integration)
-```
-
-
-## 🔧 Troubleshooting et Maintenance
-
-### Diagnostic des Problèmes Courants
-
-1. **Alertes Non Déclenchées** 🤔
-   - Vérifiez l'état de VMAlert :
-     ```bash
-     kubectl get pods -n monitoring -l app=vmalert
-     kubectl logs -n monitoring -l app=vmalert
-     ```
-   - Validez vos expressions PromQL sur VictoriaMetrics UI
-   - Contrôlez les timestamps des dernières métriques reçues
-
-2. **Notifications Non Reçues** 📫
-   - Vérifiez l'état d'AlertManager :
-     ```bash
-     kubectl get pods -n monitoring -l app=alertmanager
-     ```
-   - Consultez les logs pour les erreurs de connexion :
-     ```bash
-     kubectl logs -n monitoring -l app=alertmanager | grep "error"
-     ```
-   - Testez la connectivité Slack avec une alerte de test
-
-3. **Faux Positifs Fréquents** ⚠️
-   - Ajustez les seuils et les durées (`for`)
-   - Utilisez des expressions plus robustes :
-     ```yaml
-     - alert: HighErrorRate
-       expr: |
-         (
-           sum(rate(http_requests_total{status=~"5.."}[5m]))
-           /
-           sum(rate(http_requests_total[5m])) > 0.05
-         )
-       for: 5m
-     ```
-   - Implémentez des conditions de préqualification
-
-### Maintenance et Bonnes Pratiques
-
-1. **Revue Périodique** 📊
-   - Analysez les métriques d'alertes mensuellement
-   - Identifiez les alertes les plus fréquentes
-   - Ajustez les seuils selon les retours d'expérience
-
-2. **Documentation** 📝
-   - Maintenez un catalogue d'alertes à jour
-   - Documentez les procédures de résolution
-   - Partagez les retours d'expérience
-
-3. **Tests et Validation** ✅
-   ```yaml
-   - alert: TestAlert
-     expr: vector(1)
-     labels:
-       severity: info
-       type: test
-     annotations:
-       summary: "Alerte de test"
-       description: "Cette alerte permet de valider la chaîne de notification"
-   ```
+{{% notice tip "Choisir la bonne interface" %}}
+Le choix de l'interface dépend de vos besoins spécifiques :
+- Alertmanager est idéal pour la gestion opérationnelle des alertes
+- VMUI est parfait pour une vue rapide et simple
+- Grafana Alerting est recommandé si vous souhaitez une solution intégrée avec vos dashboards
+{{% /notice %}}
 
 ## 🎯 Conclusion
 
-La mise en place d'alertes efficaces avec VictoriaMetrics nécessite une approche méthodique et réfléchie. Nous avons vu comment :
+La définition d'alertes pertinentes est un élément clé de toute stratégie d'observabilité. L'opérateur VictoriaMetrics, avec ses ressources personnalisées Kubernetes comme `VMRule`, simplifie grandement la mise en place d'un système d'alerting efficace. La configuration déclarative permet de définir rapidement des règles d'alerte complexes tout en maintenant une excellente lisibilité et maintenabilité du code.
 
-1. **Définir des Alertes Pertinentes** 📋
-   - Utiliser les Core Web Vitals pour la performance utilisateur
-   - S'appuyer sur les Golden Signals pour la santé système
-   - Éviter la fatigue d'alertes avec des seuils appropriés
-
-2. **Configurer l'Infrastructure** ⚙️
-   - Mettre en place VMAlert pour l'évaluation des règles
-   - Configurer AlertManager pour la gestion des notifications
-   - Intégrer Slack pour la communication d'équipe
-
-3. **Optimiser et Maintenir** 🔄
-   - Utiliser les recording rules pour les calculs complexes
-   - Implémenter des templates personnalisés
-   - Maintenir une documentation à jour
-
-### Prochaines Étapes Suggérées
-
-Pour aller plus loin dans votre implémentation :
-
-1. **Automatisation** 🤖
-   - Déploiement des règles via GitOps
-   - Intégration avec des outils d'IA pour l'analyse
-   - Automatisation des tests d'alertes
-
-2. **Monitoring Avancé** 📈
-   - Implémentation de SLOs basés sur les alertes
-   - Corrélation avec les logs et le tracing
-   - Dashboards dédiés au suivi des alertes
-
-3. **Organisation** 👥
-   - Définition des processus d'escalade
-   - Formation des équipes
-   - Revues post-incident systématiques
-
-La supervision proactive via des alertes bien configurées est un élément clé de toute stratégie d'observabilité. En suivant les bonnes pratiques et en utilisant les outils appropriés, vous pouvez construire un système d'alerting robuste et efficace qui vous permettra d'identifier et de résoudre les problèmes avant qu'ils n'impactent vos utilisateurs.
+Cependant, la configuration technique des alertes, même avec des outils aussi puissants que VictoriaMetrics, ne suffit pas à elle seule. Une stratégie d'alerting efficace doit s'intégrer dans un cadre organisationnel plus large :
+- Définition claire des procédures d'astreinte
+- Identification des équipes responsables de la surveillance
+- Mise en place de runbooks et procédures de réponse aux incidents
+- Adaptation des canaux de notification selon la criticité et le contexte
 
 {{% notice tip "Pour aller plus loin 🚀" %}}
 Découvrez comment intégrer ces alertes avec d'autres composants de votre stack d'observabilité dans les prochains articles de cette série, notamment la corrélation avec les logs et le tracing distribué.
 {{% /notice %}}
-
 
 ## 🔖 References
 
 * https://web.dev/articles/vitals
 * https://medium.com/@romanhavronenko/victoriametrics-promql-compliance-d4318203f51e
 * https://victoriametrics.com/blog/alerting-recording-rules-alertmanager/
-
-
-* Grafana oncall
-* AI runbooks
-
-
-https://docs.victoriametrics.com/vmalert/
-VMAlert, ruler evaluation des alertes en fonction de seuils.
-Alertmanage notifications
+* https://docs.victoriametrics.com/vmalert/
