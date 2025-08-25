@@ -3,7 +3,6 @@ author = "Smaine Kahlouch"
 title = "`Dagger`: la pièce manquante de l'expérience développeur?"
 date = "2024-07-12"
 summary = "Découverte de `Dagger` pour améliorer l'automatisation et simplifier les pipelines de développement. Self-Hosted `Github Actions` et `EKS` pour un partage efficace du cache."
-featured = true
 codeMaxLines = 21
 usePageBundles = true
 toc = true

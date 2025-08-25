@@ -3,7 +3,6 @@ author = "Smaine Kahlouch"
 title = "`Dagger`: The missing piece of the developer experience?"
 date = "2024-07-12"
 summary = "Explore how Dagger can improve automation and streamline your development pipelines. Learn about an effective cache sharing proposal using Self-Hosted GitHub Actions and EKS."
-featured = true
 codeMaxLines = 21
 usePageBundles = true
 toc = true

@@ -3,7 +3,6 @@ author = "Smaine Kahlouch"
 title = "Aller plus loin avec `Crossplane`: Compositions et fonctions"
 date = "2023-12-23"
 summary = "Découvrez comment l'emploi de concepts avancés de Crossplane dans un exemple concret pourrait signaler une étape clé pour le projet. Est-ce le changement que nous attendions ?"
-featured = true
 codeMaxLines = 21
 usePageBundles = true
 toc = true
