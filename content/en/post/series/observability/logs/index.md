@@ -69,6 +69,8 @@ A log in VictoriaLogs is typically a **JSON object**. Every log must contain the
 -   `_time`: The timestamp of the log.
 -   `_stream`: A set of labels (key-value) that uniquely identify the log source.
 
+💡 In addition to these fields, any other field can be added to the JSON to simplify and optimize search for relevant information according to the context (We will see some examples later).
+
 {{% notice info "The Importance of the Stream" %}}
 The `_stream` field in VictoriaLogs optimizes compression and ensures ultra-fast search thanks to the contiguous storage of logs sharing the same labels.
 
@@ -134,7 +136,8 @@ Now that we have an overview of how VictoriaLogs works, I'll propose an installa
 
 VictoriaLogs can be installed in 2 ways:
 
-* A `Single` mode which has the advantage of being very simple because a single binary handles all operations. This is the **preferred** mode because it's simple to operate. If you have a powerful machine with enough resources to meet your needs, this mode will always be more performant as it doesn't require network transfers between the different components of the cluster mode.
+* A `Single` mode which has the advantage of being very simple because a single binary handles all operations. This is the **preferred** mode because it's simple to operate. If you have a powerful machine with enough resources to meet your needs, this mode will always be more performant as it doesn't require network transfers between the different components of the cluster mode.</br>
+💡 To ensure high availability, we can also deploy 2 `Single` instances as described [here](https://docs.victoriametrics.com/victorialogs/#single-mode).
 
 * The `Cluster` mode is used for very high loads and when horizontal scaling is needed (when a single machine is not sufficient to meet the demand). Since this is the mode that provides the most flexibility for scaling, we will explore it in this article.
 
@@ -629,25 +632,25 @@ As you might have guessed, despite the solution being relatively young, I would 
 
 ## 🔖 References
 
-#### 📚 Official Documentation and Resources
+📚 **Official Documentation and Resources**
 
 -   [Official VictoriaLogs Documentation](https://docs.victoriametrics.com/victorialogs/)
 -   [VictoriaMetrics Blog](https://victoriametrics.com/blog/)
 -   [VictoriaLogs Roadmap](https://docs.victoriametrics.com/victorialogs/roadmap/) - Upcoming features
 -   [LogsQL Playground](https://play-vmlogs.victoriametrics.com) - Practice the LogsQL language
 
-#### 🔍 Comparisons and Performance Analyses
+🔍 **Comparisons and Performance Analyses**
 
 -   [VictoriaLogs vs Loki](https://www.truefoundry.com/blog/victorialogs-vs-loki) - Detailed comparative analysis
 -   [VictoriaLogs: The Space-Efficient Alternative to Elasticsearch](https://medium.com/@kienlt.qn/victorialogs-the-space-efficient-alternative-to-elasticsearch-for-log-management-b9948f4ef05c)
 -   [ClickBench](https://benchmark.clickhouse.com/) - Performance benchmarks
 
-#### 🛠️ Tools and Integrations
+🛠️ **Tools and Integrations**
 
 -   [Support for Kubernetes events in Vector](https://github.com/vectordotdev/vector/issues/1293) - Ongoing GitHub issue
 -   [Kubernetes Event Exporter](https://github.com/resmoio/kubernetes-event-exporter) - Persisting K8s events
 
-#### 💬 Community and Support
+💬 **Community and Support**
 
 -   [VictoriaMetrics Slack](https://victoriametrics.slack.com/) - #victorialogs channel
 -   [VictoriaLogs GitHub Issues](https://github.com/VictoriaMetrics/VictoriaLogs/issues) - Report bugs or request features
