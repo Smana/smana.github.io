@@ -15,7 +15,7 @@ thumbnail= "thumbnail.png"
 {{% notice info "How are our applications performing? 👁️" %}}
 Once our application is deployed, it is essential to have indicators that help identify potential issues and track performance changes. Among these sources of information, **metrics** and **logs** play an essential role by providing valuable insights into the application's operation. Additionally, it is often useful to implement detailed **tracing** to accurately track all actions performed within the application.
 
-In this [series of blog posts](https://blog.ogenki.io/fr/tags/observability/), we will explore the various areas of application monitoring. The goal is to thoroughly analyze the state of our applications, in order to improve their **availability** and **performance**, while ensuring an optimal user experience.
+In this [series of blog posts](https://blog.ogenki.io/tags/observability/), we will explore the various areas of application monitoring. The goal is to thoroughly analyze the state of our applications, in order to improve their **availability** and **performance**, while ensuring an optimal user experience.
 {{% /notice %}}
 
 Too often, logs management means complex solutions and slow queries. Yet **logs** are an essential pillar for understanding, diagnosing, and improving our applications performance and health.
