@@ -17,15 +17,17 @@ tags = [
 thumbnail= "thumbnail.png"
 +++
 
-Having basic observability when running PostgreSQL in production isn't optional. Whether it's tracking the [Golden Signals](https://blog.ogenki.io/post/series/observability/alerts/#-the-golden-signals), monitoring slow queries, or analyzing connection patterns, this often requires juggling multiple tools, configuring various exporters, and manually extracting queries for analysis.
+Having basic observability when running PostgreSQL in production isn't optional. Whether it's tracking the [Golden Signals](https://blog.ogenki.io/post/series/observability/alerts/#-the-golden-signals), monitoring slow queries, or analyzing connection patterns, this often requires plumbing multiple tools together, configuring various exporters, and manually extracting queries for analysis.
 
 ❓ What if we could achieve **complete production-grade monitoring with minimal configuration**?
 
-In this article, we'll explore how to enhance CloudNativePG's already robust monitoring with simple, effective, and easy-to-use query performance analysis capabilities—leveraging the power of tools at our disposal: Vector, VictoriaMetrics, and VictoriaLogs.
+In this article, we'll explore how to enhance CloudNativePG's already robust monitoring with simple, effective, and easy-to-use query performance analysis capabilities—leveraging the power of tools at our disposal: `Vector`, `VictoriaMetrics`, and `VictoriaLogs`.
 
 ## 📊 Included with CloudNativePG
 
-When you deploy a PostgreSQL cluster with CNPG, you get **a wealth of metrics and comprehensive Grafana dashboards** out of the box. The operator exposes metrics via a dedicated endpoint on each PostgreSQL instance with the following information:
+When you deploy a PostgreSQL cluster with CNPG, the operator **exposes comprehensive metrics** via a dedicated endpoint on each PostgreSQL instance (port 9187). While Grafana dashboards are not included by default, CloudNativePG provides **official dashboard templates** that can be deployed declaratively.
+
+The metrics exposed include:
 
 * **Database Operations**: Transaction rates, queries per second, tuple statistics
 * **Replication Status**: Lag, streaming state, synchronization metrics
@@ -53,7 +55,7 @@ Comments and contributions are welcome 🙏
 
 ### Collecting Metrics with VictoriaMetrics
 
-CloudNativePG automatically exposes metrics on each PostgreSQL pod. To enable their collection, simply activate monitoring in the Helm chart:
+CloudNativePG automatically exposes metrics on each PostgreSQL pod. Collecting them is enabled by setting this Helm value:
 
 ```yaml
 # CloudNativePG Helm chart
@@ -67,7 +69,7 @@ This simple configuration creates a `PodMonitor` (Prometheus Operator resource) 
 The VictoriaMetrics operator automatically converts Prometheus Operator resources (`PodMonitor`, `ServiceMonitor`, etc.) into their VictoriaMetrics equivalents. This transparent conversion allows using CloudNativePG without modification, while benefiting from VictoriaMetrics as the storage backend.
 {{% /notice %}}
 
-### Essential Metrics to Monitor
+### Main Metrics to Monitor
 
 CloudNativePG exposes metrics that align perfectly with the [Golden Signals](https://blog.ogenki.io/en/post/series/observability/alerts/#-the-golden-signals) methodology discussed in previous articles:
 
@@ -121,7 +123,7 @@ spec:
   url: "https://grafana.com/api/dashboards/20417/revisions/4/download"
 ```
 
-The dashboard provides comprehensive views of our PostgreSQL clusters, including replication lag, query performance, and resource utilization.
+The dashboard provides detailed views of our PostgreSQL clusters, including replication lag, query performance, and resource utilization.
 
 <center><img src="grafana_cnpg.png" width=1000 alt="CloudNativePG Grafana"></center>
 
@@ -169,7 +171,8 @@ Our solution leverages two PostgreSQL extensions and a configuration parameter, 
 * **Vector**: Parses PostgreSQL logs and extracts execution plans
 * **Grafana**: Visualizes performance data and enables plan history exploration
 
-The essential link between all these elements is the **correlation between metrics and logs** using the query identifier. This allows us to:
+The key is the link between all these elements: the **correlation between metrics and logs** using the query identifier. This allows us to:
+
 1. See that a query is slow (from metrics)
 2. Click to view its execution plan history (from logs)
 3. Identify plan changes that caused performance regressions
@@ -178,13 +181,13 @@ I've called this feature "**Performance Insights**". Any resemblance to an exist
 
 ### Enabling Performance Insights
 
-Thanks to CloudNativePG's "[Managed Extensions](https://cloudnative-pg.io/documentation/1.27/postgresql_conf/#managed-extensions)" feature (available since v1.23), enabling comprehensive query monitoring is remarkably simple.
+Thanks to CloudNativePG's "[Managed Extensions](https://cloudnative-pg.io/documentation/1.27/postgresql_conf/#managed-extensions)" feature, enabling PostgreSQL extensons is very easy.
 
 ### 🏗️ Platform Engineering: The Right Level of Abstraction
 
 One of the key principles of platform engineering is providing the right level of abstraction to application developers. They shouldn't need to understand PostgreSQL internals or memorize 15+ PostgreSQL-specific configuration parameters.
 
-This is where **Crossplane compositions** excel. In the Cloud Native Ref project, we use Crossplane with KCL (Kubernetes Configuration Language) to create a higher-level abstraction called `SQLInstance`.
+This is where **Crossplane compositions** shine. In the Cloud Native Ref project, we use Crossplane with KCL (Kubernetes Configuration Language) to create a higher-level abstraction called `SQLInstance`.
 
 **Without Composition** (Raw CNPG Cluster):
 ```yaml
@@ -208,7 +211,7 @@ spec:
       auto_explain.log_min_duration: "1000"
       auto_explain.log_analyze: "on"
       auto_explain.log_buffers: "on"
-      auto_explain.log_timing: "off"
+      auto_explain.log_timing: "off"  # Optimization to reduce overhead (PostgreSQL default: on)
       auto_explain.log_triggers: "on"
       auto_explain.log_verbose: "on"
       auto_explain.log_nested_statements: "on"
@@ -240,7 +243,7 @@ spec:
       logStatement: none      # Optional: none (default) / ddl / mod / all
 ```
 
-The [Crossplane composition](https://github.com/Smana/cloud-native-ref/tree/main/infrastructure/base/crossplane/configuration/kcl/cloudnativepg) **SQLInstance** handles all the complexity.
+The Crossplane composition [**SQLInstance**](https://github.com/Smana/cloud-native-ref/tree/main/infrastructure/base/crossplane/configuration/kcl/cloudnativepg) handles all the complexity.
 
 This composition approach provides several benefits:
 
@@ -251,7 +254,7 @@ This composition approach provides several benefits:
 5. **Discoverability**: Developers can browse available options (`performanceInsights: true`) rather than memorizing parameter names
 
 {{% notice tip "Platform Engineering Principle" %}}
-The best abstractions **hide complexity without limiting power**. Developers get performance insights with simple parameters, while the platform team retains the ability to fine-tune the underlying PostgreSQL configuration for advanced use cases.
+The best abstractions **hide complexity without limiting power**. Developers get performance insights with simple parameters, while the platform team is still able to fine-tune the underlying PostgreSQL configuration for advanced use cases.
 {{% /notice %}}
 
 ### Understanding the Configuration
@@ -259,25 +262,27 @@ The best abstractions **hide complexity without limiting power**. Developers get
 Let's break down what each component does:
 
 **pg_stat_statements**: This extension tracks execution statistics for all SQL statements executed by a server. It records:
+
 * Total execution time and number of calls
 * Rows processed and returned
 * Buffer hits and reads
 * Query planning time
 
 **auto_explain**: Automatically logs execution plans for queries exceeding a duration threshold. Key parameters include:
+
 * `log_format: json`: Structured output for parsing
 * `log_min_duration: 1000`: Capture queries taking more than 1 second (default)
 * `log_analyze: on`: Include actual row counts (includes ANALYZE data from the actual execution)
-* `sample_rate: 0.2`: Sample 20% of slow queries to reduce overhead (default)
+* `sample_rate: 0.2`: Sample 20% of slow queries to reduce overhead (composition default; PostgreSQL default is 1.0)
 
 **compute_query_id**: The correlation key that ties everything together. This generates a unique identifier for each query that appears in both pg_stat_statements metrics and auto_explain logs.
 
-{{% notice info "Default Values" %}}
-By default, the composition uses production-safe values:
-- `sampleRate: 0.2` → 20% sampling of slow queries
-- `minDuration: 1000ms` → Capture queries taking more than 1 second
+{{% notice info "Composition Default Values" %}}
+The SQLInstance composition sets production-safe defaults (different from PostgreSQL defaults):
+- `sampleRate: 0.2` → 20% sampling (PostgreSQL default: 1.0 = 100%)
+- `minDuration: 1000ms` → Queries > 1 second (PostgreSQL default: -1 = disabled)
 
-For **debugging**, increase these values:
+For **debugging**, you can override these:
 - `sampleRate: 1.0` → 100% of slow queries
 - `minDuration: 0` → All queries, even the fastest ones
 {{% /notice %}}
@@ -374,6 +379,8 @@ This immediately suggests the need for an index on the `email` column.
 
 Understanding complex execution plans from logs can be challenging. This is where **[pev2](https://github.com/dalibo/pev2)** (PostgreSQL Explain Visualizer 2) becomes very useful. It's a web tool that transforms JSON execution plans into interactive, visual diagrams.
 
+To ensure sensitive query data never leaves the network, pev2 is self-hosted in the cluster via the [App](https://github.com/Smana/cloud-native-ref/tree/main/infrastructure/base/crossplane/configuration/kcl/app) composition. This once again demonstrates the **platform abstraction level**: deploying a static web tool uses the same declarative API as a complete application with a database.
+
 ```yaml
 apiVersion: cloud.ogenki.io/v1alpha1
 kind: App
@@ -387,19 +394,17 @@ spec:
 
   resources:
     requests:
-      cpu: "10m" # Minimal CPU for static content
-      memory: "32Mi" # Small memory footprint
+      cpu: "10m"
+      memory: "32Mi"
     limits:
-      cpu: "300m" # Cap to prevent runaway
-      memory: "128Mi" # Limit memory usage
+      cpu: "300m"
+      memory: "128Mi"
 
   # Accessible only via Tailscale VPN at: https://pev2.priv.cloud.ogenki.io
   route:
     enabled: true
     hostname: "pev2" # Results in: pev2.priv.cloud.ogenki.io
 ```
-
-To ensure sensitive query data never leaves the network, pev2 is self-hosted in the cluster via the [App](https://github.com/Smana/cloud-native-ref/tree/main/infrastructure/base/crossplane/configuration/kcl/app) composition. This once again demonstrates the **platform abstraction level**: deploying a static web tool uses the same declarative API as a complete application with a database.
 
 ### Analyzing with Grafana
 
@@ -463,12 +468,12 @@ We've built in this article a complete PostgreSQL performance analysis system th
 
 This is, once again, a demonstration of the **power of available open source tools**. CloudNativePG with added extensions, VictoriaMetrics and VictoriaLogs efficiently store metrics and logs, Vector parses and structures data, and Grafana offers unified visualization. This Kubernetes-native approach is portable and gives complete control.
 
-The abstraction provided by **Crossplane** further amplifies this ease. Thanks to the `App` and `SQLInstance` compositions, enabling Performance Insights boils down to `performanceInsights.enabled: true` with a few tuning parameters (`sampleRate`, `minDuration`). Developers don't need to understand PostgreSQL internals or Vector—the platform masks the complexity. This same declarative API deploys both a complete database and a static web tool like pev2, demonstrating the consistency of the abstraction level.
+Furthermore the `App` and `SQLInstance` Crossplane compositions allow to enable _Performance Insights_ only by setting `performanceInsights.enabled: true` with a few tuning parameters (`sampleRate`, `minDuration`). Developers don't need to understand PostgreSQL internals or Vector—the platform masks the complexity. This same declarative API deploys both a complete database and a static web tool like pev2, demonstrating the consistency of the abstraction level.
 
 The [cloud-native-ref](https://github.com/Smana/cloud-native-ref) project brings all these pieces together and shows how Gateway API, Tailscale, Crossplane/KCL, and the VictoriaMetrics ecosystem assemble to create a complete observability platform.
 
 {{% notice note "Performance Consideration" %}}
-Enabling Performance Insights involves a measured overhead of **3-4% CPU** and **~200-250MB memory** with default values:
+Enabling Performance Insights involves an estimated overhead of **3-4% CPU** and **~200-250MB memory** with default values:
 - `pg_stat_statements`: ~1% CPU, 50-100MB RAM
 - `auto_explain` (sample_rate=0.2, log_timing=off): ~1% CPU, 50-100MB RAM
 - `Vector` parsing: <1% CPU, ~128MB RAM
