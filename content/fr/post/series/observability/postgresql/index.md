@@ -25,7 +25,9 @@ Dans cet article, nous allons explorer comment aller plus loin en ajoutant à un
 
 ## 📊 Fourni avec CloudNativePG
 
-Lorsque vous déployez un cluster PostgreSQL avec CNPG, une **multitude de métriques ainsi que des dashboards Grafana** très complets sont mis à disposition. L'opérateur expose des métriques via un endpoint dédié sur chaque instance PostgreSQL avec les informations suivantes :
+Lorsque vous déployez un cluster PostgreSQL avec CNPG, l'opérateur **expose des métriques complètes** via un endpoint dédié sur chaque instance PostgreSQL (port 9187). Bien que les dashboards Grafana ne soient pas inclus par défaut, CloudNativePG fournit des **templates de dashboards officiels** qui peuvent être déployés de manière déclarative.
+
+Les métriques exposées incluent :
 
 * **Opérations de Base de Données** : Taux de transactions, requêtes par seconde, statistiques des tuples
 * **État de Réplication** : Lag, état du streaming, métriques de synchronisation
@@ -178,7 +180,7 @@ J'ai appelé cette fonctionnalité "**Performance Insights**". Toute ressemblanc
 
 ### Activer Performance Insights
 
-Grâce aux "[Managed Extensions](https://cloudnative-pg.io/documentation/1.27/postgresql_conf/#managed-extensions)" de CloudNativePG (disponible depuis la v1.23), activer la supervision complète des requêtes est hyper simple.
+Grâce aux "[Managed Extensions](https://cloudnative-pg.io/documentation/1.27/postgresql_conf/#managed-extensions)" de CloudNativePG, activer la supervision complète des requêtes est hyper simple.
 
 ### 🏗️ Platform Engineering : Le Bon Niveau d'Abstraction
 
@@ -208,7 +210,7 @@ spec:
       auto_explain.log_min_duration: "1000"
       auto_explain.log_analyze: "on"
       auto_explain.log_buffers: "on"
-      auto_explain.log_timing: "off"
+      auto_explain.log_timing: "off"  # Optimisation pour réduire l'overhead (PostgreSQL par défaut: on)
       auto_explain.log_triggers: "on"
       auto_explain.log_verbose: "on"
       auto_explain.log_nested_statements: "on"
@@ -268,16 +270,16 @@ Détaillons ce que fait chaque composant :
 * `log_format: json` : Sortie structurée pour le parsing
 * `log_min_duration: 1000` : Capturer les requêtes prenant plus d'1 seconde
 * `log_analyze: on` : Inclure les comptages de lignes réels (exécute la requête)
-* `sample_rate: 0.2` : Échantillonnage de 20% des requêtes lentes pour réduire l'overhead (défaut)
+* `sample_rate: 0.2` : Échantillonnage de 20% des requêtes lentes pour réduire l'overhead (défaut de la composition; PostgreSQL par défaut: 1.0)
 
 **compute_query_id** : La clé de corrélation qui lie tout ensemble. Cela génère un identifiant unique pour chaque requête qui apparaît à la fois dans les métriques pg_stat_statements et les logs auto_explain.
 
-{{% notice info "Valeurs par Défaut" %}}
-Par défaut, la composition utilise des valeurs sûres pour la production :
-- `sampleRate: 0.2` → 20% d'échantillonnage des requêtes lentes
-- `minDuration: 1000ms` → Capture des requêtes prenant plus d'1 seconde
+{{% notice info "Valeurs par Défaut de la Composition" %}}
+La composition SQLInstance définit des valeurs sûres pour la production (différentes des défauts PostgreSQL) :
+- `sampleRate: 0.2` → 20% d'échantillonnage (PostgreSQL par défaut: 1.0 = 100%)
+- `minDuration: 1000ms` → Requêtes > 1 seconde (PostgreSQL par défaut: -1 = désactivé)
 
-Pour le **debugging**, augmentez ces valeurs :
+Pour le **debugging**, vous pouvez les modifier :
 - `sampleRate: 1.0` → 100% des requêtes lentes
 - `minDuration: 0` → Toutes les requêtes, même les plus rapides
 {{% /notice %}}
@@ -468,7 +470,7 @@ L'abstraction apportée par **Crossplane** amplifie encore cette facilité. Grâ
 Le projet [cloud-native-ref](https://github.com/Smana/cloud-native-ref) rassemble toutes ces pièces et montre comment Gateway API, Tailscale, Crossplane/KCL, et l'écosystème VictoriaMetrics s'assemblent pour créer une plateforme d'observabilité complète.
 
 {{% notice note "Considération de Performance" %}}
-L'activation de Performance Insights implique un overhead mesuré de **3-4% CPU** et **~200-250MB de mémoire** avec les valeurs par défaut :
+L'activation de Performance Insights implique un overhead estimé de **3-4% CPU** et **~200-250MB de mémoire** avec les valeurs par défaut :
 - `pg_stat_statements` : ~1% CPU, 50-100MB RAM
 - `auto_explain` (sample_rate=0.2, log_timing=off) : ~1% CPU, 50-100MB RAM
 - `Vector` parsing : <1% CPU, ~128MB RAM
