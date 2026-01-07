@@ -1,3 +1,7 @@
+[tableOfContents]
+startLevel = 2
+endLevel = 2
+
 [goldmark]
 [goldmark.renderer]
 hardWraps = false 

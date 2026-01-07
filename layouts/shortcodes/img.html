@@ -1,0 +1,35 @@
+{{- $src := .Get "src" -}}
+{{- $alt := .Get "alt" | default "" -}}
+{{- $width := .Get "width" -}}
+{{- $cap := .Get "caption" -}}
+
+{{- /* Get the image resource for proper figure/picture structure */ -}}
+{{- $image := "" -}}
+{{- if .Page.Resources -}}
+  {{- $image = .Page.Resources.GetMatch $src -}}
+{{- end -}}
+
+<figure style="text-align: center;">
+  <picture>
+    <img
+      loading="lazy"
+      decoding="async"
+      alt="{{ $alt }}"
+      {{- with $image }}
+      class="image_figure image_internal image_processed"
+      width="{{ .Width }}"
+      height="{{ .Height }}"
+      src="{{ .RelPermalink | absURL }}"
+      {{- else }}
+      class="image_figure image_internal image_unprocessed"
+      src="{{ $src | absURL }}"
+      {{- end }}
+      {{- with $width }}
+      style="max-width: {{ . }}px; display: block; margin: 0 auto;"
+      {{- end }}
+    />
+  </picture>
+  {{- with $cap }}
+  <figcaption>{{ . | markdownify }}</figcaption>
+  {{- end }}
+</figure>
