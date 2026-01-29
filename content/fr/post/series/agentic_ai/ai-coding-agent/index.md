@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`Agentic Coding` : concepts et cas concrets appliqués au Platform Engineering"
-date = "2026-01-08"
+date = "2026-01-29"
 summary = "Explorer l'**agentic coding** à travers `Claude Code` : des fondamentaux (tokens, MCPs, skills) aux cas pratiques, avec un regard enthousiaste mais lucide sur cette nouvelle façon de travailler."
 featured = true
 codeMaxLines = 30
@@ -77,10 +77,10 @@ Consultez [swebench.com](https://www.swebench.com/) pour les derniers résultats
 
 En pratique, les meilleurs modèles actuels sont tous suffisamment performants pour la plupart des tâches de _Platform Engineering_.
 
-{{% notice info "Opus 4.5, un game changer" %}}
-Boris Cherny, créateur de Claude Code, [expliquait](https://xcancel.com/bcherny/status/2007179832300581177) qu'il utilise exclusivement Opus 4.5 avec thinking — malgré sa lenteur par rapport à Sonnet, le fait de moins devoir le guider le rend plus rapide au final.
+{{% notice info "L'importance du choix de modèle" %}}
+Boris Cherny, créateur de Claude Code, [indiquait](https://x.com/bcherny/status/2007179832300581177) qu'il utilise exclusivement Opus 4.5 avec thinking — malgré sa lenteur par rapport à Sonnet, le fait de moins devoir le guider le rend plus productif au final.
 
-Je me retrouve complètement dans ce constat. En ce qui me concerne, je n'utilise plus que ce modèle et cela convient parfaitement à mon usage quotidien.
+Mon expérience va dans le même sens : avec un modèle plus capable, on passe moins de temps à reformuler et corriger, ce qui compense largement la latence supplémentaire.
 {{% /notice %}}
 
 ### Pourquoi Claude Code ?
@@ -224,11 +224,11 @@ Utilisez `/tasks` pour voir l'état des tâches en cours. Pratique pour suivre o
 
 ---
 
-## :rocket: Cas concrets de platform engineering
+## :rocket: Cas concrets pour le Platform Engineering/SRE
 
 Assez de théorie ! Passons à ce qui nous intéresse vraiment : comment Claude Code peut nous aider au quotidien. Je vais vous partager deux cas concrets et détaillés qui illustrent la puissance des MCPs et du workflow avec Claude.
 
-### :mag: Cas 1 : Supervision complète de Karpenter avec les MCPs
+### :mag: Supervision complète de Karpenter avec les MCPs
 
 Ce cas illustre parfaitement la puissance de la **boucle agentique** présentée en introduction. Grâce aux MCPs, Claude dispose d'un contexte complet sur mon environnement (métriques, logs, documentation à jour, état du cluster) et peut **itérer de manière autonome** : créer des ressources, les déployer, valider visuellement le résultat, puis corriger si nécessaire.
 
@@ -311,9 +311,9 @@ Cette capacité à interagir avec ma plateforme, à identifier les erreurs et in
 
 ---
 
-### :building_construction: Cas 2 : La spec comme source de vérité — offrir un nouveau service
+### :building_construction: La spec comme source de vérité — offrir un nouveau service
 
-Ce deuxième cas illustre la création d'une **composition Crossplane** — l'abstraction qui permet aux équipes produit de consommer des services cloud via une API Kubernetes simple. C'est le cœur du **Platform Engineering** : transformer la complexité infrastructure en self-service.
+J'ai pu aborder à plusieurs reprises dans mes précédents articles l'intérêt de Crossplane pour offrir le bon niveau d'abstraction aux utilisateurs de la plateforme. Ce deuxième cas met justement en pratique cette approche : créer une **composition Crossplane** avec l'aide de l'agent. C'est l'un des principes clés du **Platform Engineering** — proposer du self-service adapté au contexte, tout en gardant la maîtrise de l'infrastructure sous-jacente.
 
 {{% notice info "Qu'est-ce que le Spec-Driven Development (SDD) ?" %}}
 Le **Spec-Driven Development** est un paradigme où les spécifications — et non le code — servent d'artefact principal. À l'ère de l'IA agentique, le SDD fournit les garde-fous nécessaires pour éviter le "Vibe Coding" (prompting non structuré) et garantir que les agents produisent du code maintenable.
@@ -330,7 +330,7 @@ Pour ceux qui baignent dans Kubernetes, on peut faire un parallèle 😉 : la sp
 {{% /notice %}}
 
 {{% notice tip "Ma variante SDD pour le Platform Engineering" %}}
-Pour [cloud-native-ref](https://github.com/Smana/cloud-native-ref), j'ai créé une variante inspirée de GitHub Spec Kit, adaptée aux contraintes du Platform Engineering.
+Pour [cloud-native-ref](https://github.com/Smana/cloud-native-ref), j'ai créé une variante inspirée de GitHub Spec Kit que je fais évoluer progressivement. J'avoue que c'est assez expérimental pour le moment, mais les résultats sont déjà impressionnants.
 
 **🛡️ Platform Constitution** — Les principes non-négociables sont codifiés dans une [constitution](https://github.com/Smana/cloud-native-ref/blob/main/docs/specs/constitution.md) : préfixe `xplane-*` pour le scoping IAM, zero-trust networking obligatoire, secrets via External Secrets uniquement. Claude vérifie chaque spec et implémentation contre ces règles.
 
@@ -343,7 +343,7 @@ Pour [cloud-native-ref](https://github.com/Smana/cloud-native-ref), j'ai créé 
 | **Security** | Zero-trust, least privilege, secrets externalisés |
 | **SRE** | Health probes, observabilité, modes de failure |
 
-**⚡ Skills Claude Code** — Le workflow est orchestré par des [skills](/post/claude-code/#skills--obtenir-de-nouveaux-pouvoirs) (voir section précédente) qui automatisent chaque étape :
+**⚡ Skills Claude Code** — Le workflow est orchestré par des [skills](/fr/post/series/agentic_ai/ai-coding-agent/#skills--obtenir-de-nouveaux-pouvoirs) (voir section précédente) qui automatisent chaque étape :
 
 | Skill | Action |
 |-------|--------|
@@ -357,7 +357,7 @@ Pour [cloud-native-ref](https://github.com/Smana/cloud-native-ref), j'ai créé 
 
 #### Pourquoi le SDD pour le Platform Engineering ?
 
-Créer une composition Crossplane n'est pas un simple script — c'est concevoir une **API pour vos utilisateurs**. Chaque décision a des implications durables :
+Créer une composition Crossplane n'est pas un simple script — c'est concevoir une **API pour nos utilisateurs**. Chaque décision a des implications durables :
 
 | Décision | Impact |
 |----------|--------|
@@ -368,15 +368,15 @@ Créer une composition Crossplane n'est pas un simple script — c'est concevoir
 
 Le SDD force à **réfléchir avant de coder** et à **documenter les décisions** — exactement ce dont on a besoin pour une API de plateforme.
 
-#### Le cas d'usage : une composition Queue
+#### Notre objectif: proposer une composition Queue
 
 L'équipe produit a besoin d'un système de queuing pour leurs applications. Selon le contexte, ils veulent pouvoir choisir entre :
-- **Kafka (via Strimzi)** : pour les cas nécessitant du streaming, de la rétention longue, ou du replay
+- **Kafka (via [Strimzi](https://strimzi.io/))** : pour les cas nécessitant du streaming, de la rétention longue, ou du replay
 - **AWS SQS** : pour les cas simples, serverless, avec intégration native AWS
 
 Plutôt que de leur demander de configurer Strimzi ou SQS directement (dizaines de paramètres), on va leur exposer une **API simple et unifiée**.
 
-#### Étape 1 : Créer la spec avec `/spec`
+#### Étape 1 : Créer la spec avec `/spec` 📝
 
 Le skill `/spec` est le point d'entrée du workflow. Il crée automatiquement :
 - Une **GitHub Issue** avec le label `spec:draft` pour le suivi et les discussions
@@ -386,33 +386,27 @@ Le skill `/spec` est le point d'entrée du workflow. Il crée automatiquement :
 /spec composition "Add queuing composition supporting Strimzi (Kafka) or SQS"
 ```
 
-{{< img src="sdd_spec.png" alt="Création de la spec" width="850" >}}
+{{< img src="sdd_spec.png" width="950" >}}
 
 Claude analyse le contexte du projet (compositions existantes, constitution, ADRs) et pré-remplit la spec avec un **initial design**. Il identifie également les **points de clarification** — ici 3 questions clés sur le scope et l'authentification.
 
-L'issue GitHub sert d'**ancre immuable** pour les discussions, tandis que le fichier spec contient le design détaillé.
+L'issue GitHub sert de **point de référence centralisé** — c'est là que se déroulent les discussions et que l'on retrouve l'historique des décisions — tandis que le fichier spec, lui, évolue avec le design détaillé.
 
-#### Étape 2 : Clarifier les choix de design avec `/clarify`
+#### Étape 2 : Clarifier les choix de design avec `/clarify` 🤔
 
 La spec générée contient des marqueurs `[NEEDS CLARIFICATION]` pour les décisions que Claude ne peut pas prendre seul. Le skill `/clarify` les présente sous forme de **questions structurées avec options** :
 
-{{< img src="sdd_clarify_1.png" alt="Clarification des choix" width="850" >}}
+{{< img src="sdd_clarify_1.png" width="950" >}}
 
-Chaque question propose des options analysées selon **4 perspectives** (PM, Platform Engineer, Security, SRE) avec une recommandation. Je navigue entre les onglets pour répondre à chaque clarification.
+Chaque question propose des options analysées selon **4 perspectives** (PM, Platform Engineer, Security, SRE) avec une recommandation. Il suffit de choisir en naviguant parmi les options proposées.
 
 Une fois toutes les clarifications résolues, Claude met à jour la spec avec un résumé des décisions :
 
-{{< img src="sdd_clarify_2.png" alt="Résumé des décisions" width="850" >}}
-
-| # | Question | Décision |
-|---|----------|----------|
-| 1 | Kafka scope | Topics only (clusterRef required) |
-| 2 | Kafka auth | SASL/SCRAM only |
-| 3 | SQS scope | Same-account only |
+{{< img src="sdd_clarify_2.png" width="900" >}}
 
 Ces décisions sont **documentées dans la spec** — dans 6 mois, quand quelqu'un demandera "pourquoi pas de mTLS ?", la réponse sera là.
 
-#### Étape 3 : Valider et implémenter
+#### Étape 3 : Valider et implémenter ⚙️
 
 Avant de commencer l'implémentation, le skill `/validate` vérifie la complétude de la spec :
 - Toutes les sections requises sont présentes
@@ -420,15 +414,15 @@ Avant de commencer l'implémentation, le skill `/validate` vérifie la complétu
 - L'issue GitHub est liée
 - La constitution du projet est référencée
 
-Une fois validée, je demande à Claude d'implémenter la spec. Il entre en **plan mode** et lance des agents d'exploration en parallèle pour comprendre les patterns existants :
+Une fois validée, je peux lancer l’implémentation. Claude entre en **plan mode** et lance des agents d'exploration **en parallèle** pour comprendre les patterns existants :
 
-{{< img src="sdd_implement_1.png" alt="Exploration parallèle" width="850" >}}
+{{< img src="sdd_implement_1.png" width="1100" >}}
 
 Claude explore les compositions existantes (`SQLInstance`, `EKS Pod Identity`, la configuration Strimzi) pour comprendre les conventions du projet **avant d'écrire une seule ligne de code**.
 
 L'implémentation génère les ressources appropriées selon le backend choisi :
 
-{{< img src="sdd_implement_summary.png" alt="Ressources créées par backend" width="500" >}}
+{{< img src="sdd_implement_summary.png" width="450" >}}
 
 Pour **chaque backend**, la composition crée les ressources nécessaires tout en respectant les conventions du projet :
 - Préfixe `xplane-*` pour toutes les ressources (convention IAM)
@@ -436,11 +430,11 @@ Pour **chaque backend**, la composition crée les ressources nécessaires tout e
 - `ExternalSecret` pour les credentials (pas de secrets en dur)
 - `VMServiceScrape` pour l'observabilité
 
-#### Étape 4 : Validation finale
+#### Étape 4 : Validation finale 🛂
 
 Le skill `/validate` vérifie non seulement la spec mais aussi l'**implémentation** :
 
-{{< img src="sdd_validation.png" alt="Validation finale" width="700" >}}
+{{< img src="sdd_validation.png" width="800" >}}
 
 La validation couvre :
 - **Spec** : Sections présentes, clarifications résolues, issue liée
@@ -449,7 +443,7 @@ La validation couvre :
 
 Les items "N/A" (tests E2E, documentation, failure modes) sont clairement identifiés comme optionnels pour ce type de composition.
 
-#### Résultat : l'API utilisateur finale
+#### Résultat : l'API utilisateur finale 🎉
 
 Le développeur peut maintenant déclarer son besoin en quelques lignes :
 
@@ -492,49 +486,22 @@ Dans les deux cas, la plateforme gère automatiquement :
 - La sécurité réseau (CiliumNetworkPolicy)
 - L'injection des credentials dans le namespace de l'application
 
-{{% notice tip "Ce que le SDD apporte concrètement" %}}
-Sans SDD, j'aurais probablement :
-- Commencé à coder directement, découvert des edge cases en cours de route
-- Oublié de documenter pourquoi "topics only" plutôt que "full cluster"
-- Implémenté des features inutiles (mTLS, cross-account) "au cas où"
-- Créé une API incohérente avec les compositions existantes
+Sans le SDD, je me serais probablement lancé directement dans l'écriture de la composition Crossplane, sans prendre le recul nécessaire pour adopter une **véritable approche produit** ni **approfondir les spécifications**. Et malgré cela, la mise à disposition de ce nouveau service m'aurait pris bien plus de temps.
 
-Avec SDD :
-- Les **décisions sont documentées** avant l'implémentation
-- Les **4 perspectives** (PM, Platform, Security, SRE) sont systématiquement couvertes
-- L'API est **cohérente** avec l'existant (Claude a exploré les patterns)
-- La PR référence la spec — le reviewer comprend le contexte
-{{% /notice %}}
+En structurant la réflexion en amont, **chaque décision est documentée** et justifiée avant la première ligne de code. Les quatre perspectives (PM, Platform, Security, SRE) garantissent qu'aucun angle n'est oublié, et la PR finale référence la spec : le reviewer a tout le contexte nécessaire.
 
----
-
-## :bulb: Optimiser son utilisation
-
-{{% notice info "Article dédié" %}}
-Les tips d'optimisation (CLAUDE.md, hooks, gestion du contexte, worktrees, plugins...) ont été regroupés dans un article dédié : [Claude Code : Optimisation et bonnes pratiques](/fr/post/series/agentic_ai/ai-coding-tips/).
-{{% /notice %}}
-
----
 
 ## :thought_balloon: Dernières remarques
 
 Nous avons pu explorer grâce à cet article l'IA agentique et comment ses principes peuvent être utiles au quotidien. Un agent ayant accès à un contexte enrichi (`CLAUDE.md`, skills, MCPs...) peut **vraiment** être très efficace : qualité au rendez-vous et surtout, une rapidité impressionnante ! Le workflow SDD permet également, pour les projets plus complexes, de formaliser son intention et de mieux cadrer l'agent.
 
-| Aspect | Avant Claude Code | Avec Claude Code |
-|--------|-------------------|------------------|
-| Debugging Cilium | 2h de lecture de logs | 15 min avec contexte |
-| Refactoring Terraform | Journée entière | 2h avec review |
-| Écriture de doc | Procrastination | Généré + relu = 30 min |
-| Onboarding nouveau repo | Plusieurs jours | Quelques heures |
-
 ### Points de vigilance
 
-En revanche, cela amène de nombreuses réflexions. Une [étude METR](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/) a trouvé un résultat surprenant : les développeurs utilisant l'IA prennent **19% plus de temps** pour compléter des tâches, alors qu'ils *croient* avoir été plus rapides de 24%. Voici quelques leçons que j'en tire :
+Cela dit, aussi impressionnants soient les résultats, il est important de garder un **regard lucide**. Voici quelques leçons que j'en tire après plusieurs mois d'utilisation :
 
 * **Éviter la dépendance et continuer à apprendre** — reviewer systématiquement les specs et le code généré, comprendre *pourquoi* cette solution
 * **Se forcer à travailler sans IA** — je m'impose un rythme d'au moins 2 sessions par semaine "à l'ancienne"
 * **Utiliser l'IA comme professeur** — lui demander d'expliquer son raisonnement et ses choix, c'est un excellent moyen d'apprendre
-* **Demander la solution la plus simple** — selon une [étude Qodo](https://www.qodo.ai/reports/state-of-ai-code-quality/), le code IA génère 4× plus de code dupliqué
 
 {{% notice warning "Confidentialité et code propriétaire" %}}
 Si vous travaillez sur du code sensible ou propriétaire :
@@ -545,15 +512,17 @@ Si vous travaillez sur du code sensible ou propriétaire :
 Consultez la [documentation sur la confidentialité](https://www.anthropic.com/policies/privacy) pour plus de détails.
 {{% /notice %}}
 
+### :bulb: Optimiser son utilisation
+
+{{% notice info "Article dédié" %}}
+Les tips d'optimisation (CLAUDE.md, hooks, gestion du contexte, worktrees, plugins...) ont été regroupés dans un article dédié : [Claude Code : Optimisation et bonnes pratiques](/fr/post/series/agentic_ai/ai-coding-tips/).
+{{% /notice %}}
+
 ### Mes prochaines étapes
 
 C'est une préoccupation que je partage avec beaucoup de développeurs : **que se passe-t-il si Anthropic change les règles du jeu ?** Cette crainte s'est d'ailleurs matérialisée début janvier 2026, lorsqu'Anthropic a [bloqué sans préavis](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses) l'accès à Claude via des outils tiers comme [OpenCode](https://github.com/opencode-ai/opencode).
 
-De par ma sensibilité pour l'open source, j'ai pour objectif d'explorer les alternatives ouvertes. **[Mistral Vibe](https://mistral.ai/news/devstral-2-vibe-cli)** avec Devstral 2 (72.2% SWE-bench) et **[OpenCode](https://opencode.ai/)** (multi-provider, modèles locaux via Ollama) sont en haut de ma liste. L'idée n'est pas forcément de remplacer Claude Code — qui reste excellent — mais d'avoir une solution de repli et de contribuer à un écosystème plus ouvert.
-
-{{% notice info "Rejoignez la discussion" %}}
-J'aimerais beaucoup avoir vos retours d'expérience ! N'hésitez pas à me contacter ou à ouvrir une issue sur le [repo cloud-native-ref](https://github.com/Smana/cloud-native-ref).
-{{% /notice %}}
+De par ma sensibilité pour l'open source, j'envisage d'explorer les alternatives ouvertes: **[Mistral Vibe](https://mistral.ai/news/devstral-2-vibe-cli)** avec Devstral 2 (72.2% SWE-bench) et **[OpenCode](https://opencode.ai/)** (multi-provider, modèles locaux via Ollama) par exemple.
 
 ---
 

@@ -7,7 +7,6 @@ featured = true
 codeMaxLines = 30
 usePageBundles = true
 toc = true
-draft = true
 series = ["Agentic AI"]
 aliases = ["/fr/post/ai-coding-tips/"]
 tags = ["ai", "devxp", "tooling"]
