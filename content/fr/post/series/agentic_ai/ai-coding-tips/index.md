@@ -105,7 +105,7 @@ Les **hooks** sont des commandes shell exécutées automatiquement en réponse �
 
 ### La notification quand Claude attend
 
-Le premier hook que j'ai configuré — et celui que je recommande à tout le monde — c'est la **notification desktop**. Quand Claude termine une tâche ou attend votre validation, vous recevez une notification système. Fini de checker le terminal toutes les 30 secondes.
+Le premier hook que j'ai configuré — et celui que je recommande à tout le monde — c'est la **notification desktop**. Quand Claude termine une tâche ou attend votre validation, vous recevez une notification système accompagnée d'un son. Fini de checker le terminal toutes les 30 secondes.
 
 Configuration dans `~/.claude/settings.json` :
 
@@ -118,7 +118,7 @@ Configuration dans `~/.claude/settings.json` :
         "hooks": [
           {
             "type": "command",
-            "command": "notify-send 'Claude Code' \"$CLAUDE_NOTIFICATION\" --icon=dialog-information"
+            "command": "notify-send 'Claude Code' \"$CLAUDE_NOTIFICATION\" --icon=dialog-information && paplay /usr/share/sounds/freedesktop/stereo/complete.oga"
           }
         ]
       }
@@ -127,7 +127,7 @@ Configuration dans `~/.claude/settings.json` :
 }
 ```
 
-Sous Linux, `notify-send` est fourni par le paquet `libnotify`. D'autres mécanismes existent pour macOS (`osascript`) ou d'autres environnements — consultez la [doc des hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) pour les alternatives.
+Sous Linux, `notify-send` est fourni par le paquet `libnotify` et `paplay` par `pulseaudio-utils` (ou `pipewire-pulse`). D'autres mécanismes existent pour macOS (`osascript`) ou d'autres environnements — consultez la [doc des hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) pour les alternatives.
 
 ### Les autres possibilités
 
@@ -264,7 +264,7 @@ Chaque instance a son propre contexte. C'est idéal pour les tâches indépendan
 
 En pratique, j'alterne entre deux modes : parfois en terminal pur — vieille habitude — et parfois en mode hybride avec **Cursor** pour l'édition et **Claude Code** dans le terminal. Le workflow hybride est clairement plus confortable, et je m'y mets de plus en plus.
 
-{{< img src="cursor+claude.png" alt="Cursor + Claude Code" width="1000" >}}
+{{< img src="cursor+claude.png" alt="Cursor + Claude Code" width="1200" >}}
 
 | Besoin | Outil | Pourquoi |
 |--------|-------|----------|
