@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
-title = "`Claude Code` : Optimisation et bonnes pratiques pour le Platform Engineer"
-date = "2026-01-28"
-summary = "Tips avancés pour tirer le meilleur de Claude Code : CLAUDE.md, hooks, gestion du contexte, workflows multi-sessions, plugins, anti-patterns à éviter et intégration CI/CD."
+title = "Quelques mois avec `Claude Code` : tips et workflows qui m'ont été utiles"
+date = "2026-01-29"
+summary = "CLAUDE.md, hooks, gestion du contexte, worktrees, plugins, anti-patterns : tout ce que j'aurais aimé savoir dès le début."
 featured = true
 codeMaxLines = 30
 usePageBundles = true
@@ -17,13 +17,17 @@ thumbnail = "thumbnail.png"
 Cet article fait suite à [Agentic Coding : concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/), où nous avons exploré les fondamentaux de l'IA agentique — tokens, MCPs, Skills, Tasks — et deux cas pratiques détaillés. **Ici, on passe à la pratique avancée** : comment tirer le maximum de Claude Code au quotidien.
 {{% /notice %}}
 
-Après plusieurs mois d'utilisation intensive de Claude Code, certains patterns se dégagent clairement. Entre les sessions perdues faute de contexte, les hooks qui auraient pu tout automatiser, et les mauvaises habitudes qui font perdre un temps fou — voici les **tips et workflows qui ont transformé ma façon de travailler**.
+Comme pour tout outil qu'on adopte, c'est avec le temps qu'on affine sa façon de l'utiliser. À force d'itérer sur ma config et mes workflows, j'ai trouvé un rythme efficace avec Claude Code. Je partage ici ce qui fonctionne pour moi.
+
+{{% notice info "Article vivant" %}}
+Cet article sera mis à jour au fil de mes découvertes et de l'évolution des outils. N'hésitez pas à revenir de temps en temps pour y trouver de nouveaux tips.
+{{% /notice %}}
 
 ---
 
-## :scroll: CLAUDE.md : le cerveau persistant
+## :scroll: CLAUDE.md : la mémoire persistante
 
-Le fichier `CLAUDE.md` est le **premier levier d'optimisation**. C'est de la mémoire persistante : des instructions injectées automatiquement dans chaque conversation. Si vous n'en avez pas encore, c'est la première chose à mettre en place.
+Le fichier `CLAUDE.md` est le **premier levier d'optimisation**. Ce sont des instructions injectées automatiquement dans chaque conversation. Si vous n'en avez pas encore, c'est la première chose à mettre en place.
 
 ### Hiérarchie de chargement
 
@@ -48,6 +52,42 @@ Voici ce que contient le `CLAUDE.md` de [cloud-native-ref](https://github.com/Sm
 - **Erreurs fréquentes** — les pièges que Claude retombe dedans si on ne le prévient pas (ex: mauvais namespace par défaut, format des labels)
 
 Ce que je n'y mets **pas** : la documentation exhaustive (c'est le rôle des [Skills](/fr/post/series/agentic_ai/ai-coding-agent/#skills--obtenir-de-nouveaux-pouvoirs)), les exemples de code longs (je référence les fichiers existants), et les instructions évidentes que Claude connaît déjà.
+
+Voici un extrait condensé du `CLAUDE.md` de [cloud-native-ref](https://github.com/Smana/cloud-native-ref) pour illustrer :
+
+```markdown
+## Common Commands
+
+### Terramate Operations
+# Deploy entire platform
+terramate script run deploy
+# Preview changes across all stacks
+terramate script run preview
+# Check for configuration drift
+terramate script run drift detect
+
+## Crossplane Resources
+- **Resource naming**: All Crossplane-managed resources prefixed with `xplane-`
+
+## KCL Formatting Rules
+**CRITICAL**: Always run `kcl fmt` before committing KCL code. The CI enforces strict formatting.
+
+### Avoid Mutation Pattern (Issue #285)
+Mutating dictionaries after creation causes function-kcl to create duplicate resources.
+   # ❌ WRONG - Mutation causes DUPLICATES
+   _deployment = { ... }
+   _deployment.metadata.annotations["key"] = "value"  # MUTATION!
+
+   # ✅ CORRECT - Use inline conditionals
+   _deployment = {
+       metadata.annotations = {
+           if _ready:
+               "krm.kcl.dev/ready" = "True"
+       }
+   }
+```
+
+On y retrouve les trois ingrédients essentiels : les **commandes de build/deploy** en premier (pour que Claude sache valider son travail), les **conventions de nommage**, et les **pièges spécifiques** que Claude reproduirait sans cesse si on ne le prévenait pas.
 
 {{% notice warning "Règle des ~500 lignes" %}}
 Chaque token de `CLAUDE.md` est chargé à **chaque conversation**. Un fichier trop long gaspille du contexte précieux. Visez ~500 lignes maximum et déplacez les instructions spécialisées vers des **Skills** qui ne se chargent qu'à la demande.
@@ -87,7 +127,7 @@ Configuration dans `~/.claude/settings.json` :
 }
 ```
 
-Sous Linux, `notify-send` est fourni par le paquet `libnotify`. Sur macOS, remplacez par `osascript -e 'display notification "..."'`.
+Sous Linux, `notify-send` est fourni par le paquet `libnotify`. D'autres mécanismes existent pour macOS (`osascript`) ou d'autres environnements — consultez la [doc des hooks](https://docs.anthropic.com/en/docs/claude-code/hooks) pour les alternatives.
 
 ### Les autres possibilités
 
@@ -222,7 +262,7 @@ Chaque instance a son propre contexte. C'est idéal pour les tâches indépendan
 
 ## :desktop_computer: Workflow hybride IDE + Claude Code
 
-C'est l'approche que j'utilise au quotidien : **Cursor** pour l'édition et la visualisation, **Claude Code** pour les tâches agentiques dans le terminal.
+En pratique, j'alterne entre deux modes : parfois en terminal pur — vieille habitude — et parfois en mode hybride avec **Cursor** pour l'édition et **Claude Code** dans le terminal. Le workflow hybride est clairement plus confortable, et je m'y mets de plus en plus.
 
 {{< img src="cursor+claude.png" alt="Cursor + Claude Code" width="1000" >}}
 
@@ -231,7 +271,7 @@ C'est l'approche que j'utilise au quotidien : **Cursor** pour l'édition et la v
 | Édition rapide, autocomplete | Cursor | Latence minimale, vous restez dans le flow |
 | Refactoring, debugging multi-fichiers | Claude Code | Raisonnement profond, boucles autonomes |
 
-**Le vrai gain** : Claude modifie via le terminal, et je valide les diffs dans l'interface Cursor — bien plus lisible que `git diff`. Les changements apparaissent en temps réel dans l'éditeur, ce qui permet de suivre ce que Claude fait et d'intervenir rapidement si quelque chose ne va pas.
+**Ce que j'apprécie dans le mode hybride** : Claude modifie via le terminal, et je valide les diffs dans l'interface Cursor — bien plus lisible que `git diff`. Les changements apparaissent en temps réel dans l'éditeur, ce qui permet de suivre ce que Claude fait et d'intervenir rapidement si besoin.
 
 ---
 
@@ -243,23 +283,21 @@ Claude Code dispose d'un écosystème de **plugins** qui étendent ses capacité
 
 Le plugin **[code-simplifier](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier)** est développé par Anthropic et utilisé en interne par l'équipe Claude Code. Il nettoie automatiquement le code généré par l'IA tout en préservant la fonctionnalité.
 
-J'utilise systématiquement le code-simplifier **avant de créer une PR** après une session intensive. Il tourne sur Opus et peut significativement réduire la dette technique introduite par le code IA — code dupliqué, structures inutilement complexes, style incohérent.
+J'ai découvert ce plugin récemment et je compte m'efforcer de l'utiliser systématiquement **avant de créer une PR** après une session intensive. Il tourne sur Opus et devrait aider à réduire la dette technique introduite par le code IA — code dupliqué, structures inutilement complexes, style incohérent.
 
 ### Claude-Mem : mémoire persistante entre sessions
 
 Le plugin **[claude-mem](https://github.com/thedotmack/claude-mem)** capture automatiquement le contexte de vos sessions et le réinjecte dans les sessions futures. Plus besoin de réexpliquer votre projet à chaque nouvelle conversation.
 
-**Ce que j'apprécie particulièrement :**
-- **Capture automatique** : Enregistre les actions Claude (tool usage, décisions)
-- **Recherche sémantique** : Skill `mem-search` pour retrouver des informations passées
-- **Interface web** : Dashboard sur `http://localhost:37777`
-- **Workflow 3-layer** : Optimise la consommation de tokens (~10x d'économie)
+**Ses deux atouts principaux :**
+- **Recherche sémantique** : retrouver facilement une information d'une session passée via le skill `mem-search`
+- **Optimisation de la consommation de tokens** : un workflow 3-layer qui réduit significativement l'usage (~10x d'économie)
 
 Exemples d'utilisation :
 
-  - "Search my memories for when I debugged Karpenter"
-  - "Find what I learned about OpenBao PKI last week"
-  - "Look up my previous work on the App composition"
+  - "Cherche dans mes sessions quand j'ai debuggé Karpenter"
+  - "Retrouve ce que j'ai appris sur OpenBao PKI la semaine dernière"
+  - "Regarde mon travail précédent sur la composition App"
 
 {{% notice warning "Considérations de confidentialité" %}}
 Claude-mem stocke localement les données de session. Pour les projets sensibles, utilisez les tags `<private>` pour exclure des informations de la capture.
@@ -269,104 +307,27 @@ Claude-mem stocke localement les données de session. Pour les projets sensibles
 
 ## :warning: Anti-patterns
 
-Après plusieurs mois d'utilisation, voici les pièges dans lesquels je suis tombé — et que j'ai appris à éviter :
+Voici les pièges dans lesquels je suis tombé — et que j'ai appris à éviter :
 
 | Anti-pattern | Symptôme | Solution |
 |--------------|----------|----------|
 | **Kitchen sink session** | Mélanger debugging, feature, refactoring dans une même session | `/clear` entre chaque tâche distincte |
 | **Spirale de corrections** | Claude corrige un bug, en crée un autre, boucle sans fin | Arrêter, `/clear`, reformuler avec plus de contexte |
-| **CLAUDE.md obèse** | Context consommé dès le départ, réponses dégradées | Viser ~500 lignes, déplacer le reste vers les Skills |
+| **CLAUDE.md trop gros** | Context consommé dès le départ, réponses dégradées | Viser ~500 lignes, déplacer le reste vers les Skills |
 | **Trust-then-verify gap** | Accepter le code sans review, découvrir les bugs en prod | Toujours lire le diff avant de commit |
 | **Exploration infinie** | Claude parcourt tout le codebase au lieu d'agir | Donner des fichiers/chemins précis dans le prompt |
 
 {{% notice tip "Le piège le plus insidieux" %}}
-La **spirale de corrections** est de loin le plus dangereux. Quand Claude boucle sur un même problème après 2-3 tentatives, c'est le signe qu'il lui manque du contexte. J'ai appris à mes dépens que mieux vaut `/clear` et reformuler avec les informations manquantes plutôt que de le laisser tourner. Le coût en tokens (et en frustration) est exponentiel.
+La **spirale de corrections** est de loin le plus dangereux. Exemple vécu : Claude devait ajouter une `CiliumNetworkPolicy` à une composition Crossplane. Premier essai, mauvais sélecteur d'endpoint. Il corrige, mais casse le format KCL. Il re-corrige le format, mais revient au mauvais sélecteur initial. Au bout de 5 itérations et ~40K tokens consommés, j'ai fait `/clear` et reformulé en 3 lignes en précisant le namespace cible et un exemple de policy existante. Résultat correct du premier coup. La leçon : quand Claude boucle après 2-3 tentatives, c'est le signe qu'il lui manque du **contexte**, pas de la persévérance. Mieux vaut couper et reformuler que de le laisser tourner.
 {{% /notice %}}
-
----
-
-## :bulb: Ce qui fonctionne bien vs vigilance
-
-| Ce que Claude fait bien | Vigilance requise | Pourquoi |
-|------------------------|--------------------|---------:|
-| Debugging avec contexte | Création from scratch | Sans contexte existant, les hallucinations augmentent |
-| Conversion de formats | Sécurité / PKI | Les erreurs crypto sont silencieuses et critiques |
-| Refactoring répétitif | Ressources cloud coûteuses | Un `apply` mal placé peut coûter cher |
-| Analyse de dépendances | Breaking changes | Claude ne connaît pas vos contrats implicites |
-| Génération de tests | Tests de performance | Les benchmarks nécessitent une validation humaine |
-| Documentation technique | Choix d'architecture | Les décisions structurantes méritent un HITL |
-
----
-
-## :gear: Intégration CI/CD
-
-Claude Code s'intègre dans les pipelines CI/CD grâce au mode headless et à l'action GitHub officielle. C'est là que l'investissement dans les Skills et CLAUDE.md paye : les mêmes conventions que vous utilisez en local sont appliquées automatiquement en CI.
-
-### GitHub Actions : `claude-code-action`
-
-L'action [claude-code-action](https://github.com/anthropics/claude-code-action) permet d'automatiser des workflows directement dans GitHub :
-
-```yaml
-name: Claude Code Review
-on:
-  pull_request:
-    types: [opened, synchronize]
-
-jobs:
-  review:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          prompt: |
-            Review this PR for:
-            - Security vulnerabilities
-            - Performance issues
-            - Kubernetes best practices
-            Post your findings as PR comments.
-```
-
-### Mode headless pour scripts custom
-
-Le flag `-p` combiné avec `--output-format json` permet d'intégrer Claude dans n'importe quel script :
-
-```bash
-# Exemple : review automatique de PR
-PR_DIFF=$(gh pr diff $PR_NUMBER)
-REVIEW=$(claude -p "Review ce diff pour les problèmes de sécurité : $PR_DIFF" \
-  --output-format json \
-  --max-turns 5)
-echo "$REVIEW" | jq -r '.result' | gh pr comment $PR_NUMBER --body -
-```
-
-### Workflows automatisables
-
-| Workflow | Déclencheur | Prompt type |
-|----------|-------------|-------------|
-| **PR Review** | `pull_request.opened` | "Review for security, performance, K8s best practices" |
-| **Issue Triage** | `issues.opened` | "Classify this issue, suggest labels and priority" |
-| **Release Notes** | `release.created` | "Generate changelog from commits since last release" |
-| **Security Audit** | `schedule` (cron) | "Scan for outdated dependencies and known CVEs" |
 
 ---
 
 ## :checkered_flag: Conclusion
 
-Si je devais résumer les tips essentiels de cet article :
+Au fil du temps, je me sens de plus en plus à l'aise avec Claude Code, et le gain de productivité est réel. Mais il s'accompagne d'une crainte que je n'arrive pas à évacuer complètement : celle de perdre le contrôle — sur le code produit, sur les décisions prises, sur la compréhension de ce qui tourne en production.
 
-- **`CLAUDE.md` concis et itéré** — c'est votre levier #1, traitez-le comme un prompt de production
-- **Un hook notification** — le minimum vital pour ne pas perdre du temps à attendre
-- **`/clear` entre les tâches** — la règle la plus simple et la plus impactante
-- **Tool Search activé** — indispensable dès que vous avez plusieurs MCPs
-- **Worktrees pour paralléliser** — une branche = une session = un contexte propre
-- **Toujours lire le diff** — même quand "ça a l'air bon"
-
-L'IA agentique est un outil puissant, mais comme tout outil, c'est la maîtrise des bonnes pratiques qui fait la différence entre un gain réel de productivité et une perte de temps déguisée.
-
-{{% notice info "Retour à l'article 1" %}}
-Pour revoir les fondamentaux (boucle agentique, tokens, MCPs, Skills, Tasks) et les cas concrets de Platform Engineering, consultez [Agentic Coding : concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/).
-{{% /notice %}}
+Ces interrogations, mais aussi les méthodes qui me permettent d'être le maître de la situation, je les aborde dans le premier article de cette série. Si vous voulez revenir aux fondamentaux ou comprendre d'où viennent ces réflexions, je vous le conseille vivement : [Agentic Coding : concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/).
 
 ---
 
@@ -384,7 +345,6 @@ Pour revoir les fondamentaux (boucle agentique, tokens, MCPs, Skills, Tasks) et 
 ### Plugins et outils
 - [Code-Simplifier](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier) — Nettoyage de code IA (Anthropic)
 - [Claude-Mem](https://github.com/thedotmack/claude-mem) — Mémoire persistante entre sessions
-- [claude-code-action](https://github.com/anthropics/claude-code-action) — GitHub Actions officielle
 
 ### Article précédent
 - [Agentic Coding : concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/) — Partie 1 de la série Agentic AI

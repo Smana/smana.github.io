@@ -29,7 +29,7 @@ Mais surtout, je vais tenter de vous démontrer par des cas concrets que cette n
 * Découvrir les concepts clés : tokens, MCPs, skills, agents
 * **Cas concrets** d'utilisation dans le platform engineering
 * Réflexions sur les limites, pièges à éviter et alternatives
-* Pour les tips d'optimisation avancés, consultez l'[article dédié](/fr/post/series/agentic_ai/ai-coding-tips/)
+* Pour les tips et workflows découverts au fil de mon utilisation, consultez l'[article dédié](/fr/post/series/agentic_ai/ai-coding-tips/)
 
 {{% notice tip "Le repo de référence" %}}
 <table>
@@ -42,11 +42,15 @@ Les exemples qui suivent sont issus de mon travail sur le repository <strong><a 
 </table>
 {{% /notice %}}
 
+{{% notice info "Déjà familier avec les concepts ?" %}}
+Si vous connaissez déjà les fondamentaux des coding agents, des tokens et des MCPs, passez directement aux [cas concrets pour le Platform Engineering](#-cas-concrets-pour-le-platform-engineeringsre).
+{{% /notice %}}
+
 ---
 
 ## :brain: L'intérêt des _Coding Agents_?
 
-### Qu'est-ce qui différencie un agent d'un chatbot ?
+### Le fonctionnement d’un agent
 
 Vous utilisez probablement déjà ChatGPT, LeChat ou Gemini pour poser des questions. C'est cool, mais ça reste du **one-shot** : vous posez une question, vous obtenez une réponse dont la pertinence dépendra de la qualité de votre prompt.
 
@@ -515,7 +519,7 @@ Consultez la [documentation sur la confidentialité](https://www.anthropic.com/p
 ### :bulb: Optimiser son utilisation
 
 {{% notice info "Article dédié" %}}
-Les tips d'optimisation (CLAUDE.md, hooks, gestion du contexte, worktrees, plugins...) ont été regroupés dans un article dédié : [Claude Code : Optimisation et bonnes pratiques](/fr/post/series/agentic_ai/ai-coding-tips/).
+Les tips et workflows découverts au fil de mon utilisation (CLAUDE.md, hooks, gestion du contexte, worktrees, plugins...) ont été regroupés dans un article dédié : [Quelques mois avec Claude Code : tips et workflows qui m'ont été utiles](/fr/post/series/agentic_ai/ai-coding-tips/).
 {{% /notice %}}
 
 ### Mes prochaines étapes
