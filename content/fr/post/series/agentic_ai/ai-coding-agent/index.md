@@ -82,7 +82,9 @@ Consultez [swebench.com](https://www.swebench.com/) pour les derniers résultats
 En pratique, les meilleurs modèles actuels sont tous suffisamment performants pour la plupart des tâches de _Platform Engineering_.
 
 {{% notice info "L'importance du choix de modèle" %}}
-Boris Cherny, créateur de Claude Code, [indiquait](https://x.com/bcherny/status/2007179832300581177) qu'il utilise exclusivement Opus 4.5 avec thinking — malgré sa lenteur par rapport à Sonnet, le fait de moins devoir le guider le rend plus productif au final.
+Boris Cherny, créateur de Claude Code, a partagé son point de vue sur le choix du modèle :
+
+{{< img src="boris-opus4.5.png" alt="Boris Cherny sur X à propos d'Opus 4.5 avec thinking" width="600" >}}
 
 Mon expérience va dans le même sens : avec un modèle plus capable, on passe moins de temps à reformuler et corriger, ce qui compense largement la latence supplémentaire.
 {{% /notice %}}

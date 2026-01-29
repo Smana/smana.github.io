@@ -29,7 +29,7 @@ Most importantly, I'll try to demonstrate through concrete examples that this ne
 * Discover the key concepts: tokens, MCPs, skills, agents
 * **Hands-on use cases** in Platform Engineering
 * Thoughts on limitations, pitfalls to avoid, and alternatives
-* For tips and workflows I've picked up along the way, check the [dedicated article](/en/post/series/agentic_ai/ai-coding-tips/)
+* For tips and workflows I've picked up along the way, check the [dedicated article](/post/series/agentic_ai/ai-coding-tips/)
 
 {{% notice tip "The reference repo" %}}
 <table>
@@ -56,7 +56,7 @@ You probably already use ChatGPT, LeChat or Gemini to ask questions. That's grea
 
 A **coding agent** works differently. It runs tools in a loop to achieve a goal. This is called an [**agentic loop**](https://simonwillison.net/2025/Sep/30/designing-agentic-loops/).
 
-{{< img src="agentic-loop.png" alt="Agentic loop" width="580" >}}
+{{< img src="agentic-loop.png" width="580" >}}
 
 The cycle is simple: **reason → act → observe → repeat**. The agent calls a tool, analyzes the result, then decides on the next action. That's why it needs access to the **output of each action** — a compilation error, a failing test, an unexpected result. This ability to react and **iterate autonomously** on our local environment is what sets it apart from a simple chatbot.
 
@@ -73,7 +73,7 @@ New models and versions appear at a breakneck pace. However, you need to be care
 
 The [**SWE-bench Verified**](https://www.swebench.com/) benchmark has become the reference for evaluating model capabilities in software development. It measures the ability to solve real bugs from GitHub repositories and helps guide our choices.
 
-{{< img src="swe-bench-leaderboard.png" alt="SWE-bench Verified Leaderboard" width="900" >}}
+{{< img src="swe-bench-leaderboard.png" width="900" >}}
 
 {{% notice warning "These numbers change fast!" %}}
 Check [swebench.com](https://www.swebench.com/) for the latest results. At the time of writing, Claude Opus 4.5 leads with **74.4%**, closely followed by Gemini 3 Pro (**74.2%**).
@@ -82,9 +82,12 @@ Check [swebench.com](https://www.swebench.com/) for the latest results. At the t
 In practice, today's top models are all capable enough for most _Platform Engineering_ tasks.
 
 {{% notice info "Why model choice matters" %}}
-Boris Cherny, creator of Claude Code, [mentioned](https://x.com/bcherny/status/2007179832300581177) that he exclusively uses Opus 4.5 with thinking — despite being slower than Sonnet, the fact that he needs to guide it less makes him more productive overall.
+Boris Cherny, creator of Claude Code, shared his take on model selection:
+
+{{< img src="boris-opus4.5.png" width="600" >}}
 
 My experience aligns: with a more capable model, you spend less time rephrasing and correcting, which more than compensates for the extra latency.
+
 {{% /notice %}}
 
 ### Why Claude Code?
@@ -120,7 +123,7 @@ The **context window** (200K tokens for Claude) represents the model's "working 
 /context
 ```
 
-{{< img src="cmd_context.png" alt="Context visualization with /context" width="650" >}}
+{{< img src="cmd_context.png" width="650" >}}
 
 This view breaks down context usage across different components:
 
@@ -152,7 +155,7 @@ There are many MCP servers available. Here are the ones I use regularly to inter
 
 | MCP | What it does | Concrete example |
 |-----|-------------|------------------|
-| **[context7](https://github.com/upstash/context7)** | Up-to-date docs for libs/frameworks | "Use context7 for the Cilium 1.16 docs" → avoids hallucinations on changed APIs |
+| **[context7](https://github.com/upstash/context7)** | Up-to-date docs for libs/frameworks | "Use context7 for the Cilium 1.18 docs" → avoids hallucinations on changed APIs |
 | **[flux](https://fluxcd.control-plane.io/mcp/)** | Debug GitOps, reconciliation state | "Why is my HelmRelease stuck?" → Claude inspects Flux state directly |
 | **[victoriametrics](https://github.com/VictoriaMetrics-Community/mcp-victoriametrics)** | PromQL queries, metric exploration | "What Karpenter metrics are available?" → lists and queries in real time |
 | **[victorialogs](https://github.com/VictoriaMetrics-Community/mcp-victorialogs)** | LogsQL queries, log analysis | "Find Crossplane errors from the last 2 hours" → root cause analysis |
@@ -167,7 +170,7 @@ MCPs can be configured globally (`~/.claude/mcp.json`) or per project (`.mcp.jso
 
 {{< img src="skill-acquired-notif.png" width="450" >}}
 
-This is probably the feature that generates the most excitement in the community — and rightly so, it really lets you extend the agent's capabilities! A **skill** is a Markdown file (`.claude/skills/*/SKILL.md`) that lets you inject project-specific **conventions**, **patterns**, and **procedures**.
+This is probably the feature that generates the most excitement in the community — and for a good reason, it really lets you extend the agent's capabilities! A **skill** is a Markdown file (`.claude/skills/*/SKILL.md`) that lets you inject project-specific **conventions**, **patterns**, and **procedures**.
 
 In practice? You define once how to create a clean PR, how to validate a Crossplane composition, or how to debug a Cilium issue — and Claude applies those rules in every situation. It's **encapsulated know-how** that you can share with your team.
 
@@ -276,7 +279,7 @@ Create a complete observability system for Karpenter: alerts + unified dashboard
 
 Claude analyzes the prompt and automatically generates a **structured plan** broken into sub-tasks. This decomposition lets you track progress and ensures each step is completed before moving to the next.
 
-{{< img src="karpenter_plan.png" alt="Plan generated by Claude Code" width="600" >}}
+{{< img src="karpenter_plan.png" width="600" >}}
 
 Here you can see the 4 identified tasks: create VMRule alerts, build the unified dashboard, validate with kubectl and Chrome, then finalize with commit and PR.
 
@@ -284,7 +287,7 @@ Here you can see the 4 identified tasks: create VMRule alerts, build the unified
 
 This is where the **power of MCPs** becomes apparent. Claude uses **several simultaneously** to gather full context:
 
-{{< img src="karpenter_mcp.png" alt="MCP calls" width="1200" >}}
+{{< img src="karpenter_mcp.png" width="1200" >}}
 
 - **context7**: Retrieves Grafana v11+ documentation for alerting rules and dashboard JSON format
 - **victoriametrics**: Lists all `karpenter_*` metrics available in my cluster
@@ -315,7 +318,7 @@ The ability to interact with my platform, identify errors and inconsistencies, t
 
 ---
 
-### :building_construction: The spec as source of truth — delivering a new service
+### :building_construction: The spec as source of truth — building a new self-service capability
 
 I've discussed in several previous articles the value of Crossplane for providing the right level of abstraction to platform users. This second use case puts that approach into practice: creating a **Crossplane composition** with the agent's help. This is one of the key principles of **Platform Engineering** — offering self-service tailored to the context while maintaining control over the underlying infrastructure.
 
@@ -356,7 +359,7 @@ For [cloud-native-ref](https://github.com/Smana/cloud-native-ref), I created a v
 | `/validate` | Checks completeness before implementation |
 | `/create-pr` | Creates the PR with automatic spec reference |
 
-{{< img src="sdd_workflow.png" alt="SDD Workflow" width="700" >}}
+{{< img src="sdd_workflow.png" width="700" >}}
 {{% /notice %}}
 
 #### Why SDD for Platform Engineering?
@@ -519,7 +522,7 @@ See the [privacy documentation](https://www.anthropic.com/policies/privacy) for 
 ### :bulb: Getting the most out of it
 
 {{% notice info "Dedicated article" %}}
-Tips and workflows I've picked up along the way (CLAUDE.md, hooks, context management, worktrees, plugins...) have been compiled in a dedicated article: [A few months with Claude Code: tips and workflows that helped me](/en/post/series/agentic_ai/ai-coding-tips/).
+Tips and workflows I've picked up along the way (CLAUDE.md, hooks, context management, worktrees, plugins...) have been compiled in a dedicated article: [A few months with Claude Code: tips and workflows that helped me](/post/series/agentic_ai/ai-coding-tips/).
 {{% /notice %}}
 
 ### My next steps
