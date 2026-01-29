@@ -25,7 +25,7 @@
       src="{{ $src | absURL }}"
       {{- end }}
       {{- with $width }}
-      style="max-width: {{ . }}px; display: block; margin: 0 auto;"
+      style="max-width: min({{ . }}px, 100%); display: block; margin: 0 auto;"
       {{- end }}
     />
   </picture>

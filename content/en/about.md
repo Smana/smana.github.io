@@ -1,20 +1,19 @@
 +++
 title = "About"
-summary = "Who's behind this blog post?"
+summary = "Who's behind this blog?"
 date = "2022-07-18"
 author = "Smana"
 +++
 
 ## Who am I?
 
-I'm a senior Site Reliability Engineer with a particular interest in Linux containers and cloud technologies.
-I worked in different companies (small startups and large scale) and I've been working in different areas in order to improve the reliability, availability of the platform as well as the developer experience.
-I helped several companies in their transition to the Cloud. I was leading SRE/DevOps teams (diverse profiles with developers and SREs) and I really enjoy seeing them engaged in the same direction.
+I'm a **senior system / SRE engineer**. I have a particular interest in Linux containers, Cloud Native technologies, and more recently in **artificial intelligence applied to software engineering**, especially AI-assisted coding using agent-based systems. Throughout my career, I've had the opportunity to work with a variety of companies, from dynamic startups to large organizations, where I've helped improve platform reliability and availability while enhancing the developer experience. My journey includes supporting several companies in their transition to Cloud solutions. I've also **led SRE/DevOps teams** made up of diverse profiles, including developers and SRE engineers, with the shared goal of driving towards common objectives.
 
-As side activities, I am an organizer of the Cloud Native Computing meetup in Paris and the [Kubernetes Community Days France](https://www.kcdfrance.fr/).
+Beyond my professional work, I'm involved in organizing the Cloud Native Computing meetup in Paris, the [Kubernetes Community Days France](https://www.kcdfrance.fr/) and the [Cloud Native Days France](https://cloudnativedays.fr/), reflecting my ongoing commitment to the Cloud ecosystem.
 
-Hobbies: Reading SF books, Kick Boxing, Surfing/Skating/Inline Roller
+Hobbies: Reading SF books, Kickboxing, Surfing, Longboarding and Inline Skating.
+
 
 <center><img src="about.png" width="250" /></center>
 
-_The cute thumbnails have been generetad with DALL-E_
+_The cool thumbnails for each article were generated with DALL-E and [Nano Banana](https://gemini.google/lu/overview/image-generation) (Google)_
