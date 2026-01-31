@@ -166,6 +166,22 @@ The `/clear` command resets the context to zero. When to use it?
 
 I've made a habit of starting every new task with a `/clear`. It seems counterintuitive (you lose context), but in practice it's much more effective than a polluted context.
 
+### `/statusline`: a permanent dashboard
+
+Rather than manually running `/context`, you can set up a **permanent status bar** at the bottom of the terminal. The `/statusline` command accepts a natural language prompt to customize the display. Here's what I use:
+
+```
+/statusline show current directory, git branch, and context usage percentage.
+Use ANSI colors: green for directory, cyan for git branch, yellow for context
+percentage. Use unicode separators and icons like ⎇ for branch
+```
+
+{{< img src="statusline.png" width="550" >}}
+
+At a glance, you see the **current directory**, the **active git branch**, and the **context usage percentage** — three essential pieces of information to know where you stand without breaking your flow. Especially useful when juggling multiple worktrees or when you want to anticipate a `/compact`.
+
+This is just my configuration — the prompt is free-form, so you can adapt it to display what matters most to you.
+
 ### Tool Search: when MCPs eat your context
 
 The problem: each enabled MCP injects its **tool definitions** into the context. With 6-7 configured MCPs (common in platform engineering), that can represent over **10% of your window** — consumed before you even start working.
