@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "A few months with `Claude Code`: tips and workflows that helped me"
-date = "2026-01-29"
+date = "2026-02-08"
 summary = "CLAUDE.md, hooks, context management, worktrees, plugins, anti-patterns: everything I wish I'd known from the start."
 featured = true
 codeMaxLines = 30
@@ -143,7 +143,7 @@ I won't detail every variant here — the [official hooks documentation](https:/
 
 ## :brain: Mastering the context window
 
-The context window (200K tokens) is **the most critical resource**. Once saturated, old information gets compressed and quality degrades. This is THE topic that makes the difference between an efficient user and someone who "loses" Claude after 20 minutes.
+The context window (200K tokens, up to 1M in beta) is **the most critical resource**. Once saturated, old information gets compressed and quality degrades. This is THE topic that makes the difference between an efficient user and someone who "loses" Claude after 20 minutes.
 
 ### `/compact` with custom instructions
 
@@ -274,6 +274,46 @@ wait
 
 Each instance has its own context. This is ideal for independent tasks that don't require interaction.
 
+### Teams: letting agents work together
+
+The `-p` approach works great for independent tasks, but sometimes you need agents that **talk to each other**. That's what teams are for — Claude spawns **multiple agents that share a task list**, exchange messages, and can wait on each other's results.
+
+This is probably the `Opus 4.6` killer feature: you parallelize work, get better performance, and each agent has its own context instead of cramming everything into one session.
+
+{{% notice note "Experimental feature" %}}
+Agent teams are still in **research preview**. To enable them, add this to your `settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "teammateMode": "tmux"
+}
+```
+
+The `teammateMode` controls how agents are displayed: `"tmux"` opens each agent in a separate pane (requires tmux), `"in-process"` runs them all in the same terminal, and `"auto"` (default) picks automatically based on your environment.
+{{% /notice %}}
+
+To illustrate the concept, I tried this on a deliberately simple case: analyzing a Crossplane composition. The example is basic, but real-world use cases are plentiful : Troubleshooting an incident by parallelizing log, metrics, and config analysis, creating a new service by splitting code, tests, and documentation across agents, or running a multi-component security audit.
+
+Here, instead of reading the code, then the examples, then writing a summary (all sequentially in the same session), let's create a team as follows:
+
+```
+Create a team of 3 agents to analyze the Crossplane App composition.
+1. code-reader: Read main.k and summarize what resources it creates
+2. example-reader: Read all example files and list the configuration options
+3. doc-writer: Wait for the other two, then write a combined summary
+```
+
+Here's what it looks like in practice: three tmux panes running side by side — the two readers analyzing the code and examples in parallel, while the doc-writer waits for their output before producing the final summary.
+
+{{< img src="teams.png" alt="Claude Code Teams - 3 agents working in tmux panes" width="1200" >}}
+
+{{% notice tip "When teams are worth it" %}}
+Teams shine when you have **independent work that needs to come together** — read/analyze/summarize, build/test/document, that kind of thing. For purely sequential tasks, a single session with `/clear` between steps is simpler.
+{{% /notice %}}
+
 ---
 
 ## :desktop_computer: Hybrid IDE + Claude Code workflow
@@ -350,8 +390,7 @@ These questions, as well as the methods that help me stay in control, are covere
 ## :bookmark: References
 
 ### Official documentation
-- [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) — Anthropic Engineering
-- [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) — Official guide
+- [Claude Code Documentation](https://code.claude.com/docs/en/overview) — Official guide
 - [Hooks Documentation](https://docs.anthropic.com/en/docs/claude-code/hooks) — Hooks configuration
 
 ### Community guides

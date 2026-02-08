@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`Agentic Coding`: concepts and hands-on Platform Engineering use cases"
-date = "2026-01-29"
+date = "2026-02-06"
 summary = "Exploring **agentic coding** through `Claude Code`: from fundamentals (tokens, MCPs, skills) to real-world use cases, with an enthusiastic yet honest take on this new way of working."
 featured = true
 codeMaxLines = 30
@@ -62,7 +62,7 @@ The cycle is simple: **reason → act → observe → repeat**. The agent calls 
 
 A coding agent combines several components:
 
-* **LLM**: The "brain" that reasons (Claude Opus 4.5, Gemini 3 Pro, Devstral 2...)
+* **LLM**: The "brain" that reasons (Claude Opus 4.6, Gemini 3 Pro, Devstral 2...)
 * **Tools**: Available actions (read/write files, execute commands, search the web...)
 * **Memory**: Preserved context (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`... depending on the tool, plus conversation history)
 * **Planning**: The ability to break down a complex task into sub-steps
@@ -73,16 +73,16 @@ New models and versions appear at a breakneck pace. However, you need to be care
 
 The [**SWE-bench Verified**](https://www.swebench.com/) benchmark has become the reference for evaluating model capabilities in software development. It measures the ability to solve real bugs from GitHub repositories and helps guide our choices.
 
-{{< img src="swe-bench-leaderboard.png" width="900" >}}
+{{< img src="swe-bench-leaderboard.png" width="750" >}}
 
 {{% notice warning "These numbers change fast!" %}}
-Check [swebench.com](https://www.swebench.com/) for the latest results. At the time of writing, Claude Opus 4.5 leads with **74.4%**, closely followed by Gemini 3 Pro (**74.2%**).
+Check [vals.ai](https://www.vals.ai/benchmarks/swebench) for the latest independent results. At the time of writing, Claude Opus 4.6 leads with **79.2%**, closely followed by Gemini 3 Flash (**76.2%**) and GPT-5.2 (**75.4%**).
 {{% /notice %}}
 
 In practice, today's top models are all capable enough for most _Platform Engineering_ tasks.
 
 {{% notice info "Why model choice matters" %}}
-Boris Cherny, creator of Claude Code, shared his take on model selection:
+Boris Cherny, creator of Claude Code, shared his take on model selection (about Opus 4.5 — the reasoning still holds):
 
 {{< img src="boris-opus4.5.png" width="600" >}}
 
@@ -96,7 +96,7 @@ There are many coding agent options out there. Here are a few examples:
 
 | Tool | Type | Strengths |
 |------|------|-----------|
-| [**Claude Code**](https://docs.anthropic.com/en/docs/claude-code) | Terminal | 200K context, high SWE-bench score, hooks & MCP |
+| [**Claude Code**](https://code.claude.com/docs/en/overview) | Terminal | 200K context (1M in beta), high SWE-bench score, hooks & MCP |
 | [**opencode**](https://opencode.ai/) | Terminal | **Open source**, multi-provider, local models (Ollama) |
 | [**Cursor**](https://cursor.sh/) | IDE | Visual workflow, Composer mode |
 | [**Antigravity**](https://antigravity.google/) | IDE | Parallel agents, Manager view |
@@ -109,7 +109,7 @@ I started with Cursor, then switched to Claude Code — probably because of my *
 
 ## :books: Essential Claude Code concepts
 
-This section cuts straight to the point: **tokens, MCPs, Skills, and Tasks**. I'll skip the initial setup (the [official docs](https://docs.anthropic.com/en/docs/claude-code) cover that well) and subagents — that's internal plumbing; what matters is what you can *build* with them. Most of these concepts **also apply to other coding agents**.
+This section cuts straight to the point: **tokens, MCPs, Skills, and Tasks**. I'll skip the initial setup (the [official docs](https://code.claude.com/docs/en/overview) cover that well) and subagents — that's internal plumbing; what matters is what you can *build* with them. Most of these concepts **also apply to other coding agents**.
 
 ### Tokens and context window
 
@@ -117,7 +117,7 @@ This section cuts straight to the point: **tokens, MCPs, Skills, and Tasks**. I'
 
 A **token** is the basic unit the model processes — roughly 4 characters in English, 2-3 in French. Why does this matter? Because **everything costs tokens**: input, output, and context.
 
-The **context window** (200K tokens for Claude) represents the model's "working memory". The `/context` command lets you see how this space is used:
+The **context window** (200K tokens for Claude, up to 1M in beta) represents the model's "working memory". The `/context` command lets you see how this space is used:
 
 ```console
 /context
@@ -332,7 +332,7 @@ For those steeped in Kubernetes, here's an analogy 😉: the spec defines the **
 | Framework | Key strength | Ideal use case |
 |-----------|-------------|----------------|
 | **[GitHub Spec Kit](https://github.com/github/spec-kit)** | Native GitHub/Copilot integration | Greenfield projects, structured workflow |
-| **[BMAD](https://github.com/bmad-sim/bmad-method)** | Multi-agent teams (PM, Architect, Dev) | Complex multi-repo systems |
+| **[BMAD](https://github.com/bmad-code-org/BMAD-METHOD)** | Multi-agent teams (PM, Architect, Dev) | Complex multi-repo systems |
 | **[OpenSpec](https://github.com/Fission-AI/OpenSpec)** | Lightweight, change-focused | Brownfield projects, rapid iteration |
 {{% /notice %}}
 
@@ -516,7 +516,7 @@ If you work with sensitive or proprietary code:
 - Request the **Zero-Data-Retention** (ZDR) option if needed
 - **Never** use the Free/Pro plan for confidential code
 
-See the [privacy documentation](https://www.anthropic.com/policies/privacy) for more details.
+See the [privacy documentation](https://www.anthropic.com/legal/privacy) for more details.
 {{% /notice %}}
 
 ### :bulb: Getting the most out of it
@@ -527,22 +527,21 @@ Tips and workflows I've picked up along the way (CLAUDE.md, hooks, context manag
 
 ### My next steps
 
-This is a concern I share with many developers: **what happens if Anthropic changes the rules of the game?** This fear actually materialized in early January 2026, when Anthropic [blocked without warning](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses) access to Claude through third-party tools like [OpenCode](https://github.com/opencode-ai/opencode).
+This is a concern I share with many developers: **what happens if Anthropic changes the rules of the game?** This fear actually materialized in early January 2026, when Anthropic [blocked without warning](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses) access to Claude through third-party tools like [OpenCode](https://github.com/charmbracelet/crush).
 
-Given my affinity for open source, I'm looking at exploring open alternatives: **[Mistral Vibe](https://mistral.ai/news/devstral-2-vibe-cli)** with Devstral 2 (72.2% SWE-bench) and **[OpenCode](https://opencode.ai/)** (multi-provider, local models via Ollama) for instance.
+Given my affinity for open source, I'm looking at exploring open alternatives: **[Mistral Vibe](https://mistral.ai/news/devstral-2-vibe-cli)** with Devstral 2 (72.2% SWE-bench) and **[Crush](https://github.com/charmbracelet/crush)** (formerly OpenCode) (multi-provider, local models via Ollama) for instance.
 
 ---
 
 ## :bookmark: References
 
 ### Guides and best practices
-- [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) — Anthropic Engineering
 - [How I Use Every Claude Code Feature](https://blog.sshh.io/p/how-i-use-every-claude-code-feature) — Comprehensive guide by sshh
 
 ### Spec-Driven Development
 - [GitHub Spec Kit](https://github.com/github/spec-kit) — GitHub's SDD toolkit
 - [OpenSpec](https://github.com/Fission-AI/OpenSpec) — Lightweight SDD for brownfield projects
-- [BMAD Method](https://github.com/bmad-sim/bmad-method) — Multi-agent SDD
+- [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD) — Multi-agent SDD
 
 ### Plugins, Skills and MCPs
 - [Code-Simplifier](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier) — AI code cleanup
