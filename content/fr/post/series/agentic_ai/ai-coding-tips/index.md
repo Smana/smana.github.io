@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "Quelques mois avec `Claude Code` : tips et workflows qui m'ont été utiles"
-date = "2026-01-29"
+date = "2026-02-08"
 summary = "CLAUDE.md, hooks, gestion du contexte, worktrees, plugins, anti-patterns : tout ce que j'aurais aimé savoir dès le début."
 featured = true
 codeMaxLines = 30
@@ -143,7 +143,7 @@ Je ne détaille pas ici chaque variante — la [doc officielle des hooks](https:
 
 ## :brain: Maîtriser la fenêtre de contexte
 
-La fenêtre de contexte (200K tokens) est **la ressource la plus critique**. Une fois saturée, les informations anciennes sont compressées et la qualité se dégrade. C'est LE sujet qui fait la différence entre un utilisateur efficace et quelqu'un qui "perd" Claude au bout de 20 minutes.
+La fenêtre de contexte (200K tokens, jusqu'à 1M en bêta) est **la ressource la plus critique**. Une fois saturée, les informations anciennes sont compressées et la qualité se dégrade. C'est LE sujet qui fait la différence entre un utilisateur efficace et quelqu'un qui "perd" Claude au bout de 20 minutes.
 
 ### `/compact` avec instructions custom
 
@@ -274,6 +274,42 @@ wait
 
 Chaque instance a son propre contexte. C'est idéal pour les tâches indépendantes qui ne nécessitent pas d'interaction.
 
+### Teams : faire collaborer des agents
+
+L'approche `-p` fonctionne très bien pour des tâches indépendantes, mais parfois on a besoin d'agents qui **communiquent entre eux**. C'est le rôle des teams — Claude lance **plusieurs agents qui partagent une liste de tâches**, échangent des messages, et peuvent attendre les résultats des autres. Pour moi, c'est la killer feature d'`Opus 4.6` : on parallélise le travail, on gagne en performance, et chaque agent a son propre contexte au lieu de tout entasser dans une seule session.
+
+{{% notice warning "Feature expérimentale" %}}
+Les agent teams sont encore en **research preview**. Pour les activer, ajoutez ceci dans votre `settings.json` :
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "teammateMode": "tmux"
+}
+```
+
+Le `teammateMode` contrôle comment les agents sont affichés : `"tmux"` ouvre chaque agent dans un pane séparé (nécessite tmux), `"in-process"` les fait tourner dans le même terminal, et `"auto"` (par défaut) choisit automatiquement selon votre environnement.
+{{% /notice %}}
+
+Pour illustrer le principe, j'ai testé ça sur un cas volontairement simple : analyser une composition Crossplane. L'exemple est basique, mais les cas d'usage réels sont nombreux — troubleshooting d'un incident en parallélisant l'analyse des logs, métriques et configs, création d'un nouveau service en répartissant code, tests et documentation entre agents, ou encore audit de sécurité multi-composants. Ici, plutôt que de lire le code, puis les exemples, puis rédiger une synthèse — le tout séquentiellement dans la même session — j'ai simplement demandé :
+
+```
+Create a team of 3 agents to analyze the Crossplane App composition.
+1. code-reader: Read main.k and summarize what resources it creates
+2. example-reader: Read all example files and list the configuration options
+3. doc-writer: Wait for the other two, then write a combined summary
+```
+
+Voici ce que ça donne en pratique : trois panes tmux côte à côte — les deux readers analysent le code et les exemples en parallèle, pendant que le doc-writer attend leur sortie avant de produire la synthèse finale.
+
+{{< img src="teams.png" alt="Claude Code Teams - 3 agents travaillant dans des panes tmux" width="1200" >}}
+
+{{% notice tip "Quand les teams valent le coup" %}}
+Les teams brillent quand vous avez du **travail indépendant qui doit converger** — lire/analyser/synthétiser, construire/tester/documenter, ce genre de chose. Pour des tâches purement séquentielles, une session unique avec `/clear` entre les étapes reste plus simple.
+{{% /notice %}}
+
 ---
 
 ## :desktop_computer: Workflow hybride IDE + Claude Code
@@ -350,8 +386,7 @@ Ces interrogations, mais aussi les méthodes qui me permettent d'être le maîtr
 ## :bookmark: Références
 
 ### Documentation officielle
-- [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) — Anthropic Engineering
-- [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code) — Guide officiel
+- [Claude Code Documentation](https://code.claude.com/docs/en/overview) — Guide officiel
 - [Hooks Documentation](https://docs.anthropic.com/en/docs/claude-code/hooks) — Configuration des hooks
 
 ### Guides communautaires

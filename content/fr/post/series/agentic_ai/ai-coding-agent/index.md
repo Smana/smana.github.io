@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`Agentic Coding` : concepts et cas concrets appliqués au Platform Engineering"
-date = "2026-01-29"
+date = "2026-02-06"
 summary = "Explorer l'**agentic coding** à travers `Claude Code` : des fondamentaux (tokens, MCPs, skills) aux cas pratiques, avec un regard enthousiaste mais lucide sur cette nouvelle façon de travailler."
 featured = true
 codeMaxLines = 30
@@ -56,13 +56,13 @@ Vous utilisez probablement déjà ChatGPT, LeChat ou Gemini pour poser des quest
 
 Un **coding agent** fonctionne différemment. Il exécute des outils en boucle pour atteindre un objectif. C'est ce qu'on appelle une [**boucle agentique**](https://simonwillison.net/2025/Sep/30/designing-agentic-loops/).
 
-{{< img src="agentic-loop.png" alt="Agentic loop" width="580" >}}
+{{< img src="agentic-loop.png" width="580" >}}
 
 Le cycle est simple : **raisonner → agir → observer → répéter**. L'agent appelle un outil, analyse le résultat, puis décide de la prochaine action. Il est donc essentiel qu'il ait accès au **retour de chaque action** — une erreur de compilation, un test qui échoue, une sortie inattendue. Cette capacité à réagir et **itérer de manière autonome** sur notre environnement local est ce qui fait toute la différence avec un simple chatbot.
 
 Un coding agent combine plusieurs composants :
 
-* **LLM** : Le "cerveau" qui raisonne (Claude Opus 4.5, Gemini 3 Pro, Devstral 2...)
+* **LLM** : Le "cerveau" qui raisonne (Claude Opus 4.6, Gemini 3 Pro, Devstral 2...)
 * **Tools** : Les actions possibles (lire/écrire des fichiers, exécuter des commandes, chercher sur le web...)
 * **Memory** : Le contexte conservé (fichiers `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`... selon l'outil, plus l'historique de conversation)
 * **Planning** : La capacité à décomposer une tâche complexe en sous-étapes
@@ -73,18 +73,18 @@ De nouveaux modèles ainsi que de nouvelles versions apparaissent à une vitesse
 
 Le benchmark [**SWE-bench Verified**](https://www.swebench.com/) est devenu la référence pour évaluer les capacités des modèles en développement logiciel. Il mesure la capacité à résoudre de vrais bugs issus de repositories GitHub et permet de nous aider à faire notre choix.
 
-{{< img src="swe-bench-leaderboard.png" alt="Leaderboard SWE-bench Verified" width="900" >}}
+{{< img src="swe-bench-leaderboard.png" width="750" >}}
 
 {{% notice warning "Ces chiffres évoluent très vite !" %}}
-Consultez [swebench.com](https://www.swebench.com/) pour les derniers résultats. Au moment de la rédaction, Claude Opus 4.5 mène avec **74.4%**, talonné par Gemini 3 Pro (**74.2%**).
+Consultez [vals.ai](https://www.vals.ai/benchmarks/swebench) pour les derniers résultats indépendants. Au moment de la rédaction, Claude Opus 4.6 mène avec **79.2%**, talonné par Gemini 3 Flash (**76.2%**) et GPT-5.2 (**75.4%**).
 {{% /notice %}}
 
 En pratique, les meilleurs modèles actuels sont tous suffisamment performants pour la plupart des tâches de _Platform Engineering_.
 
 {{% notice info "L'importance du choix de modèle" %}}
-Boris Cherny, créateur de Claude Code, a partagé son point de vue sur le choix du modèle :
+Boris Cherny, créateur de Claude Code, a partagé son point de vue sur le choix du modèle (à propos d'Opus 4.5 — le raisonnement reste valable) :
 
-{{< img src="boris-opus4.5.png" alt="Boris Cherny sur X à propos d'Opus 4.5 avec thinking" width="600" >}}
+{{< img src="boris-opus4.5.png" width="600" >}}
 
 Mon expérience va dans le même sens : avec un modèle plus capable, on passe moins de temps à reformuler et corriger, ce qui compense largement la latence supplémentaire.
 {{% /notice %}}
@@ -95,7 +95,7 @@ Il existe de nombreuses options de coding agents, dont voici quelques exemples :
 
 | Outil | Type | Forces |
 |-------|------|--------|
-| [**Claude Code**](https://docs.anthropic.com/en/docs/claude-code) | Terminal | Context 200K, SWE-bench élevé, hooks & MCP |
+| [**Claude Code**](https://code.claude.com/docs/en/overview) | Terminal | Context 200K (1M en bêta), SWE-bench élevé, hooks & MCP |
 | [**opencode**](https://opencode.ai/) | Terminal | **Open source**, multi-provider, modèles locaux (Ollama) |
 | [**Cursor**](https://cursor.sh/) | IDE | Workflow visuel, Composer mode |
 | [**Antigravity**](https://antigravity.google/) | IDE | Agents parallèles, Manager view |
@@ -108,7 +108,7 @@ J'ai utilisé Cursor dans un premier temps, puis je suis passé à Claude Code. 
 
 ## :books: Les concepts essentiels de Claude Code
 
-Cette section va droit à l'essentiel : **tokens, MCPs, Skills et Tasks**. Je passe sur la config initiale (la [doc officielle](https://docs.anthropic.com/en/docs/claude-code) fait ça très bien) et sur les subagents — c'est de la mécanique interne, ce qui compte c'est ce qu'on peut *construire* avec. La plupart de ces concepts **s'appliquent aussi à d'autres coding agents**.
+Cette section va droit à l'essentiel : **tokens, MCPs, Skills et Tasks**. Je passe sur la config initiale (la [doc officielle](https://code.claude.com/docs/en/overview) fait ça très bien) et sur les subagents — c'est de la mécanique interne, ce qui compte c'est ce qu'on peut *construire* avec. La plupart de ces concepts **s'appliquent aussi à d'autres coding agents**.
 
 ### Tokens et fenêtre de contexte
 
@@ -116,13 +116,13 @@ Cette section va droit à l'essentiel : **tokens, MCPs, Skills et Tasks**. Je pa
 
 Un **token** est l'unité de base que le modèle traite — environ 4 caractères en anglais, 2-3 en français. Pourquoi c'est important ? Parce que **tout se paye en tokens** : input, output, et contexte.
 
-La **fenêtre de contexte** (200K tokens pour Claude) représente la "mémoire de travail" du modèle. La commande `/context` permet de visualiser comment cet espace est utilisé :
+La **fenêtre de contexte** (200K tokens pour Claude, jusqu'à 1M en bêta) représente la "mémoire de travail" du modèle. La commande `/context` permet de visualiser comment cet espace est utilisé :
 
 ```console
 /context
 ```
 
-{{< img src="cmd_context.png" alt="Visualisation du contexte avec /context" width="650" >}}
+{{< img src="cmd_context.png" width="650" >}}
 
 Cette vue détaille la répartition du contexte entre les différents composants :
 
@@ -278,7 +278,7 @@ Créer un système d'observabilité complet pour Karpenter : alertes + dashboard
 
 Claude analyse le prompt et génère automatiquement un **plan structuré** en sous-tâches. Cette décomposition permet de suivre la progression et garantit que chaque étape est complétée avant de passer à la suivante.
 
-{{< img src="karpenter_plan.png" alt="Plan généré par Claude Code" width="600" >}}
+{{< img src="karpenter_plan.png" width="600" >}}
 
 On voit ici les 4 tâches identifiées : création des alertes VMRule, création du dashboard unifié, validation avec kubectl et Chrome, puis finalisation avec commit et PR.
 
@@ -286,7 +286,7 @@ On voit ici les 4 tâches identifiées : création des alertes VMRule, création
 
 C'est ici que nous constatons la **puissance des MCPs**. Claude en utilise **simultanément plusieurs** pour obtenir un contexte complet :
 
-{{< img src="karpenter_mcp.png" alt="Appels aux MCPs" width="1200" >}}
+{{< img src="karpenter_mcp.png" width="1200" >}}
 
 - **context7** : Récupère la documentation Grafana v11+ pour les alerting rules et le format JSON des dashboards
 - **victoriametrics** : Liste toutes les métriques `karpenter_*` disponibles dans mon cluster
@@ -331,7 +331,7 @@ Pour ceux qui baignent dans Kubernetes, on peut faire un parallèle 😉 : la sp
 | Framework | Force principale | Cas d'usage idéal |
 |-----------|-----------------|-------------------|
 | **[GitHub Spec Kit](https://github.com/github/spec-kit)** | Intégration native GitHub/Copilot | Projets greenfield, workflow structuré |
-| **[BMAD](https://github.com/bmad-sim/bmad-method)** | Équipes multi-agents (PM, Architect, Dev) | Systèmes complexes multi-repos |
+| **[BMAD](https://github.com/bmad-code-org/BMAD-METHOD)** | Équipes multi-agents (PM, Architect, Dev) | Systèmes complexes multi-repos |
 | **[OpenSpec](https://github.com/Fission-AI/OpenSpec)** | Léger, centré sur les changements | Projets brownfield, itération rapide |
 {{% /notice %}}
 
@@ -358,7 +358,7 @@ Pour [cloud-native-ref](https://github.com/Smana/cloud-native-ref), j'ai créé 
 | `/validate` | Vérifie la complétude avant implémentation |
 | `/create-pr` | Crée la PR avec référence automatique à la spec |
 
-{{< img src="sdd_workflow.png" alt="Workflow SDD" width="700" >}}
+{{< img src="sdd_workflow.png" width="700" >}}
 {{% /notice %}}
 
 #### Pourquoi le SDD pour le Platform Engineering ?
@@ -515,7 +515,7 @@ Si vous travaillez sur du code sensible ou propriétaire :
 - Demandez l'option **Zero-Data-Retention** (ZDR) si nécessaire
 - N'utilisez **jamais** le plan Free/Pro pour du code confidentiel
 
-Consultez la [documentation sur la confidentialité](https://www.anthropic.com/policies/privacy) pour plus de détails.
+Consultez la [documentation sur la confidentialité](https://www.anthropic.com/legal/privacy) pour plus de détails.
 {{% /notice %}}
 
 ### :bulb: Optimiser son utilisation
@@ -526,22 +526,21 @@ Les tips et workflows découverts au fil de mon utilisation (CLAUDE.md, hooks, g
 
 ### Mes prochaines étapes
 
-C'est une préoccupation que je partage avec beaucoup de développeurs : **que se passe-t-il si Anthropic change les règles du jeu ?** Cette crainte s'est d'ailleurs matérialisée début janvier 2026, lorsqu'Anthropic a [bloqué sans préavis](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses) l'accès à Claude via des outils tiers comme [OpenCode](https://github.com/opencode-ai/opencode).
+C'est une préoccupation que je partage avec beaucoup de développeurs : **que se passe-t-il si Anthropic change les règles du jeu ?** Cette crainte s'est d'ailleurs matérialisée début janvier 2026, lorsqu'Anthropic a [bloqué sans préavis](https://venturebeat.com/technology/anthropic-cracks-down-on-unauthorized-claude-usage-by-third-party-harnesses) l'accès à Claude via des outils tiers comme [OpenCode](https://github.com/charmbracelet/crush).
 
-De par ma sensibilité pour l'open source, j'envisage d'explorer les alternatives ouvertes: **[Mistral Vibe](https://mistral.ai/news/devstral-2-vibe-cli)** avec Devstral 2 (72.2% SWE-bench) et **[OpenCode](https://opencode.ai/)** (multi-provider, modèles locaux via Ollama) par exemple.
+De par ma sensibilité pour l'open source, j'envisage d'explorer les alternatives ouvertes: **[Mistral Vibe](https://mistral.ai/news/devstral-2-vibe-cli)** avec Devstral 2 (72.2% SWE-bench) et **[Crush](https://github.com/charmbracelet/crush)** (anciennement OpenCode) (multi-provider, modèles locaux via Ollama) par exemple.
 
 ---
 
 ## :bookmark: Références
 
 ### Guides et best practices
-- [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices) — Anthropic Engineering
 - [How I Use Every Claude Code Feature](https://blog.sshh.io/p/how-i-use-every-claude-code-feature) — Guide complet par sshh
 
 ### Spec-Driven Development
 - [GitHub Spec Kit](https://github.com/github/spec-kit) — Toolkit SDD de GitHub
 - [OpenSpec](https://github.com/Fission-AI/OpenSpec) — SDD léger pour projets brownfield
-- [BMAD Method](https://github.com/bmad-sim/bmad-method) — Multi-agent SDD
+- [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD) — Multi-agent SDD
 
 ### Plugins, Skills et MCPs
 - [Code-Simplifier](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier) — Nettoyage de code IA
