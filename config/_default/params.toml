@@ -109,7 +109,7 @@ iconsDir = "icons/" # without a leading forward slash
 # website author
 [author]
 name = "Smaine Kahlouch"
-photo = "images/smana.jpg"
+photo = "images/smana.webp"
 
 [plausible_analytics]
 enable = false # to enable plausible analytics set to true.
