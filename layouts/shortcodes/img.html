@@ -7,7 +7,7 @@
 
 <figure style="text-align: center;">
   <picture>
-    {{- if $image -}}
+    {{- if and $image $image.Width -}}
       {{- $w600  := math.Min 600 $image.Width | int -}}
       {{- $w900  := math.Min 900 $image.Width | int -}}
       {{- $r600  := $image.Resize (printf "%dx" $w600) -}}
