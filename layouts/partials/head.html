@@ -34,7 +34,7 @@
 <link rel="preload" href="{{ $styles.Permalink }}" integrity = "{{ $styles.Data.Integrity }}" as="style" crossorigin="anonymous">
 
 <!-- preload critical font -->
-<link rel="preload" href="/fonts/Metropolis-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/Metropolis-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous">
 
 <!-- preload main javascript file -->
 {{ $bundle := partialCached "func/getJavascriptBundle" . }}
