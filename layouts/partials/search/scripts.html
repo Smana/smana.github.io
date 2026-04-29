@@ -1,0 +1,31 @@
+{{- $params := site.Params }}
+{{- if $params.enableSearch }}
+  {{- $fusePath := "js/fuse.js" }}
+  {{- $fuse := resources.Get $fusePath | resources.ExecuteAsTemplate $fusePath . }}
+  {{- $searchPath := "js/search.js" }}
+  {{- $search := resources.Get $searchPath | resources.ExecuteAsTemplate $searchPath . }}
+  {{- $bundle := slice $fuse $search | resources.Concat "js/search.js" | resources.Minify | resources.Fingerprint "sha512" }}
+  <script>
+  (function () {
+    var loaded = false;
+    var src = {{ $bundle.Permalink | jsonify }};
+    var integrity = {{ $bundle.Data.Integrity | jsonify }};
+    function loadSearch() {
+      if (loaded) return;
+      loaded = true;
+      var s = document.createElement('script');
+      s.src = src;
+      s.integrity = integrity;
+      s.crossOrigin = 'anonymous';
+      document.head.appendChild(s);
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      var input = document.getElementById('find');
+      if (input) {
+        input.addEventListener('focus', loadSearch, { once: true });
+        input.addEventListener('input', loadSearch, { once: true });
+      }
+    });
+  })();
+  </script>
+{{- end }}
