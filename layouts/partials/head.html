@@ -51,3 +51,7 @@
 {{- end }}
 
 {{- partial "scripts/google/tag-manager" (dict "noscript" false) }}
+{{- if findRE `<code` .Content }}
+  {{- $hl := partialCached "func/getHighlightBundle" . .Lang }}
+  <script type="text/javascript" defer src="{{ $hl.Permalink }}" integrity="{{ $hl.Data.Integrity }}" crossorigin="anonymous"></script>
+{{- end }}
