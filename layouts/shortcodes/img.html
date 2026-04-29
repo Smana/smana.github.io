@@ -3,23 +3,22 @@
 {{- $width := .Get "width" -}}
 {{- $cap := .Get "caption" -}}
 
-{{- $image := "" -}}
-{{- if .Page.Resources -}}
-  {{- $image = .Page.Resources.GetMatch $src -}}
-{{- end -}}
+{{- $image := .Page.Resources.GetMatch $src -}}
 
 <figure style="text-align: center;">
   <picture>
     {{- if $image -}}
-      {{- $r600  := $image.Resize "600x" -}}
-      {{- $r900  := $image.Resize "900x" -}}
+      {{- $w600  := math.Min 600 $image.Width | int -}}
+      {{- $w900  := math.Min 900 $image.Width | int -}}
+      {{- $r600  := $image.Resize (printf "%dx" $w600) -}}
+      {{- $r900  := $image.Resize (printf "%dx" $w900) -}}
       {{- $a600  := $r600.Process "avif q75" -}}
       {{- $a900  := $r900.Process "avif q75" -}}
       {{- $w600  := $r600.Process "webp q80" -}}
       {{- $w900  := $r900.Process "webp q80" -}}
       {{- $sizes := "(max-width: 600px) 100vw, min(900px, 100vw)" -}}
       {{- with $width -}}
-        {{- $sizes = printf "(max-width: 600px) 100vw, min(%spx, 100vw)" . -}}
+        {{- $sizes = printf "(max-width: 600px) 100vw, min(%dpx, 100vw)" (. | int) -}}
       {{- end -}}
       <source type="image/avif"
               srcset="{{ $a600.RelPermalink }} 600w, {{ $a900.RelPermalink }} 900w"
@@ -34,7 +33,7 @@
         class="image_figure image_internal image_processed"
         width="{{ $image.Width }}"
         height="{{ $image.Height }}"
-        src="{{ $image.RelPermalink | absURL }}"
+        src="{{ $image.RelPermalink }}"
         {{- with $width }}
         style="max-width: min({{ . }}px, 100%); display: block; margin: 0 auto;"
         {{- end }}
