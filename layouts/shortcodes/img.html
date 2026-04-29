@@ -3,7 +3,6 @@
 {{- $width := .Get "width" -}}
 {{- $cap := .Get "caption" -}}
 
-{{- /* Get the image resource for proper figure/picture structure */ -}}
 {{- $image := "" -}}
 {{- if .Page.Resources -}}
   {{- $image = .Page.Resources.GetMatch $src -}}
@@ -11,23 +10,47 @@
 
 <figure style="text-align: center;">
   <picture>
-    <img
-      loading="lazy"
-      decoding="async"
-      alt="{{ $alt }}"
-      {{- with $image }}
-      class="image_figure image_internal image_processed"
-      width="{{ .Width }}"
-      height="{{ .Height }}"
-      src="{{ .RelPermalink | absURL }}"
-      {{- else }}
-      class="image_figure image_internal image_unprocessed"
-      src="{{ $src | absURL }}"
-      {{- end }}
-      {{- with $width }}
-      style="max-width: min({{ . }}px, 100%); display: block; margin: 0 auto;"
-      {{- end }}
-    />
+    {{- if $image -}}
+      {{- $r600  := $image.Resize "600x" -}}
+      {{- $r900  := $image.Resize "900x" -}}
+      {{- $a600  := $r600.Process "avif q75" -}}
+      {{- $a900  := $r900.Process "avif q75" -}}
+      {{- $w600  := $r600.Process "webp q80" -}}
+      {{- $w900  := $r900.Process "webp q80" -}}
+      {{- $sizes := "(max-width: 600px) 100vw, min(900px, 100vw)" -}}
+      {{- with $width -}}
+        {{- $sizes = printf "(max-width: 600px) 100vw, min(%spx, 100vw)" . -}}
+      {{- end -}}
+      <source type="image/avif"
+              srcset="{{ $a600.RelPermalink }} 600w, {{ $a900.RelPermalink }} 900w"
+              sizes="{{ $sizes }}">
+      <source type="image/webp"
+              srcset="{{ $w600.RelPermalink }} 600w, {{ $w900.RelPermalink }} 900w"
+              sizes="{{ $sizes }}">
+      <img
+        loading="lazy"
+        decoding="async"
+        alt="{{ $alt }}"
+        class="image_figure image_internal image_processed"
+        width="{{ $image.Width }}"
+        height="{{ $image.Height }}"
+        src="{{ $image.RelPermalink | absURL }}"
+        {{- with $width }}
+        style="max-width: min({{ . }}px, 100%); display: block; margin: 0 auto;"
+        {{- end }}
+      />
+    {{- else -}}
+      <img
+        loading="lazy"
+        decoding="async"
+        alt="{{ $alt }}"
+        class="image_figure image_internal image_unprocessed"
+        src="{{ $src | absURL }}"
+        {{- with $width }}
+        style="max-width: min({{ . }}px, 100%); display: block; margin: 0 auto;"
+        {{- end }}
+      />
+    {{- end -}}
   </picture>
   {{- with $cap }}
   <figcaption>{{ . | markdownify }}</figcaption>
