@@ -1,0 +1,7 @@
+{{ $highlightPath := "js/highlight.js" }}
+{{ $highlight := resources.Get $highlightPath | resources.ExecuteAsTemplate $highlightPath . }}
+
+{{ $bundlePath := (printf "%s/js/highlight-bundle.js" .Lang) }}
+{{ $bundle := slice $highlight | resources.Concat $bundlePath | resources.Minify | resources.Fingerprint "sha512" }}
+
+{{ return $bundle }}
