@@ -105,6 +105,8 @@ Tout est déployé par **GitOps** (Flux), exposé en privé via **Tailscale**, e
 
 ## :brain: Les modèles open-weight retenus
 
+Avant de plonger dans la plomberie Kubernetes, le choix le plus structurant : **quels modèles déployer ?** Cette décision contraint tout le reste — taille de GPU, quantification, latence atteignable, et budget.
+
 ### L'écosystème en mai 2026
 
 Ces derniers mois, la qualité des modèles open-weight a progressé **considérablement**. Sur **SWE-bench Verified**[^swebench], les deux meilleurs modèles open-weight sont désormais **DeepSeek V4 Pro (Max)** (80.6%) et **Kimi K2.6** (80.2%), à environ 7 points des modèles propriétaires de pointe (Claude Opus 4.7 à 87.6%, GPT-5.5 à 88.7%). Côté plus léger, **Qwen2.5-Coder** et **Qwen3-Coder** (Alibaba) restent des références pour la génération de code, et **Qwen3** brille en raisonnement multilingual.
@@ -144,9 +146,16 @@ Le **FP8** divise la VRAM par 2 et est supporté nativement (au niveau hardware)
 | **`xplane-qwen3-8b`** | Général, multilingual, raisonnement | Qwen3-8B (fp8) | `thinking_mode` togglable pour le raisonnement, 32k contexte, support multilingual fort |
 | **`xplane-llamaguard3-1b`** | Pre-filter safety | Llama-Guard-3-1B (fp16) | Détection jailbreak / prompt injection, modèle dédié à cette tâche |
 
-Le **FIM** (_Fill-In-the-Middle_) mérite un mot : c'est ce qui fait la différence entre une autocomplete réactive (<200ms) et un truc lourdingue. Continue envoie un prompt structuré avec les tokens spéciaux `<|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>`, et le modèle complète le trou — différent d'un chat classique. Le Base (et pas l'Instruct) est nécessaire pour que ces tokens soient correctement interprétés.
+{{% notice tip "Le FIM (_Fill-In-the-Middle_) : pourquoi un modèle Base ?" %}}
+Le FIM est ce qui fait la différence entre une **autocomplete réactive (<200ms)** et un truc lourdingue. Continue envoie un prompt structuré avec les tokens spéciaux `<|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>`, et le modèle complète le trou — c'est très différent d'un chat classique.
+
+**Le Base (et non l'Instruct) est obligatoire** : les versions Instruct sont fine-tunées sur des conversations, ce qui dilue les tokens FIM appris pendant le pré-entraînement. Utiliser un Instruct ici, c'est obtenir des complétions souvent off-topic ou bavardes.
+{{% /notice %}}
 
 Voici la claim Crossplane qui définit le coder principal — c'est l'**abstraction-clé** de la plateforme, on y reviendra :
+
+<details>
+<summary><strong>Voir la claim <code>InferenceService</code> complète</strong></summary>
 
 ```yaml
 # apps/base/ai/llm/qwen-coder.yaml
@@ -181,6 +190,8 @@ spec:
     prefixCache:
       enabled: true
 ```
+
+</details>
 
 Quarante lignes de YAML qui génèrent : un HelmRelease vLLM, un ScaledObject KEDA, une AIGatewayRoute, des CiliumNetworkPolicy, et un Job de préchargement des poids. **Conséquence directe : pour basculer vers un autre modèle, il suffit d'adapter quelques champs du bloc `model:` (le `repository:`, sa `revision:`, parfois la `quantization:` ou le `toolCallParser:`), de commiter, et Flux reconfigure toute la stack.** Le jour où l'écosystème open-weight aura suffisamment progressé, la migration sera quasi-triviale.
 
@@ -236,7 +247,10 @@ Selon la catégorie détectée, le routage suit cette table de décision :
 | `code_with_reasoning` | `xplane-qwen-coder` | `use_reasoning: true` (signal-fusion) |
 | **Jailbreak détecté** | `xplane-llamaguard3-1b` | Pre-filter, refus immédiat |
 
-Côté config, Iris se résume à déclarer le modèle par défaut et les endpoints des modèles ciblés (extrait simplifié) :
+Côté config, Iris se résume à déclarer le modèle par défaut et les endpoints des modèles ciblés.
+
+<details>
+<summary><strong>Voir l'extrait de config Iris (HelmRelease)</strong></summary>
 
 ```yaml
 # infrastructure/base/vllm-semantic-router/helmrelease.yaml
@@ -261,6 +275,8 @@ config:
       port: 8000
 ```
 
+</details>
+
 ### Vérifier le routage depuis l'extérieur
 
 Iris ajoute un header `x-vsr-selected-model` à la réponse — ce qui permet de **rejouer ou debugger n'importe quelle décision** :
@@ -282,6 +298,8 @@ Code → coder. Math → reasoner. Multilingual → général. Jailbreak → gua
 ---
 
 ## :gear: La plateforme d'inférence sous le capot
+
+Modèles choisis, routage défini — reste à les **servir efficacement**. C'est ici que les choix techniques (moteur d'inférence, GPU, stockage) décident de la latence, du throughput et, _in fine_, du coût.
 
 ### vLLM Production Stack
 
@@ -316,7 +334,14 @@ Deux options méritent une mention :
 
 ### GPU sur Kubernetes : Karpenter et NVIDIA L4
 
-Un détail souvent invisible avant de plonger dans le sujet : pour l'inférence d'un LLM, **le facteur limitant n'est pas la compute mais la bande passante mémoire**. Un modèle 7B en fp8 doit lire ~7 Go de poids *par token généré* — un L4 (300 Go/s) plafonne donc en théorie autour de ~40 tokens/s en single-stream, indépendamment de ses TFLOPS. C'est ce qui explique pourquoi les configurations multi-H100 (3.35 To/s chacun) restent dominantes pour les très gros modèles, et pourquoi la quantification fp8 — qui divise par deux le volume à transférer — a un impact disproportionné sur le throughput perçu[^bandwidth].
+{{% notice info "L'inférence LLM est _memory-bound_, pas _compute-bound_" %}}
+Pour l'inférence d'un LLM, **le facteur limitant n'est pas la compute mais la bande passante mémoire**. Un modèle 7B en fp8 doit lire ~7 Go de poids *par token généré* — un L4 (300 Go/s) plafonne donc en théorie autour de **~40 tokens/s** en single-stream, **indépendamment de ses TFLOPS**.
+
+C'est ce qui explique pourquoi :
+
+* Les configurations **multi-H100** (3.35 To/s chacun) restent dominantes pour les très gros modèles
+* La **quantification FP8** — qui divise par deux le volume à transférer — a un impact disproportionné sur le throughput perçu[^bandwidth]
+{{% /notice %}}
 
 [^bandwidth]: Voir [Every AI Chip on Earth Is Starving for Data](https://sanjeevganjihal.substack.com/p/every-ai-chip-on-earth-is-starving) — analyse détaillée de la chute du ratio bytes/FLOP entre générations de GPU (H100 → B200 → Vera Rubin) et de ses conséquences sur l'inférence.
 
@@ -546,6 +571,9 @@ La **vraie raison** : OpenCode publie un _compatibility shim_ explicite avec Cla
 
 Voici l'`opencode.json` que j'utilise (extrait minimal) :
 
+<details>
+<summary><strong>Voir la config <code>opencode.json</code></strong></summary>
+
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
@@ -575,6 +603,8 @@ Voici l'`opencode.json` que j'utilise (extrait minimal) :
   }
 }
 ```
+
+</details>
 
 Deux choses à noter :
 
