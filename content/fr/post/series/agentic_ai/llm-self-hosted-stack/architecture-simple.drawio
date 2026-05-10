@@ -1,0 +1,145 @@
+<mxfile host="app.diagrams.net" agent="Claude" version="24.7.17">
+  <diagram name="Self-hosted LLM stack — simplified view" id="stack-simple">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="Self-hosted LLM stack — simplified view" style="text;html=1;align=center;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#232F3E" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1020" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- ================= CLIENTS ================= -->
+        <mxCell id="cli-cont" value="🧩&lt;br&gt;&lt;b&gt;Continue&lt;/b&gt;&lt;br&gt;&lt;span style='font-size:10px;font-weight:normal;color:#555'&gt;VSCode · FIM&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5184B6;fontSize=12;align=center;verticalAlign=middle;fontColor=#232F3E" vertex="1" parent="1">
+          <mxGeometry x="120" y="80" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="cli-oc" value="⚡&lt;br&gt;&lt;b&gt;OpenCode&lt;/b&gt;&lt;br&gt;&lt;span style='font-size:10px;font-weight:normal;color:#555'&gt;CLI · agent loop&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5184B6;fontSize=12;align=center;verticalAlign=middle;fontColor=#232F3E" vertex="1" parent="1">
+          <mxGeometry x="450" y="80" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="cli-webui" value="💬&lt;br&gt;&lt;b&gt;OpenWebUI&lt;/b&gt;&lt;br&gt;&lt;span style='font-size:10px;font-weight:normal;color:#555'&gt;web chat&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#5184B6;fontSize=12;align=center;verticalAlign=middle;fontColor=#232F3E" vertex="1" parent="1">
+          <mxGeometry x="780" y="80" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Tailscale tunnel band -->
+        <mxCell id="ts-band" value="🔒  HTTPS + API key  •  Tailscale (private network)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#0F0F23;strokeColor=#0F0F23;align=center;fontColor=#FFFFFF;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="1020" height="32" as="geometry" />
+        </mxCell>
+
+        <!-- ================= EKS ================= -->
+        <mxCell id="eks" value="EKS — &lt;b&gt;Kubernetes cluster&lt;/b&gt;" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;strokeColor=#ED7100;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#ED7100;" vertex="1" parent="1">
+          <mxGeometry x="40" y="232" width="1020" height="380" as="geometry" />
+        </mxCell>
+
+        <!-- Envoy AI Gateway -->
+        <mxCell id="aig-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#326CE5;gradientColor=none;fillColor=#326CE5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;aspect=fixed;shape=mxgraph.kubernetes.icon;prIcon=svc;" vertex="1" parent="eks">
+          <mxGeometry x="40" y="50" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="aig" value="&lt;b&gt;Envoy AI Gateway&lt;/b&gt;&lt;br&gt;&lt;span style='font-size:10px;color:#555'&gt;Header-based routing on &lt;tt&gt;x-ai-eg-model&lt;/tt&gt; · API-key auth&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#326CE5;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle" vertex="1" parent="eks">
+          <mxGeometry x="100" y="50" width="640" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Iris (Semantic Router) on the right -->
+        <mxCell id="iris-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#D4A106;gradientColor=none;fillColor=#D4A106;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;aspect=fixed;shape=mxgraph.kubernetes.icon;prIcon=deploy;" vertex="1" parent="eks">
+          <mxGeometry x="800" y="50" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="iris" value="&lt;b&gt;Iris&lt;/b&gt;&lt;br&gt;&lt;span style='font-size:10px;color:#555'&gt;Semantic Router&lt;br&gt;(&lt;tt&gt;model: MoM&lt;/tt&gt;)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFDF5;strokeColor=#D4A106;fontSize=11;align=left;spacingLeft=10;verticalAlign=middle" vertex="1" parent="eks">
+          <mxGeometry x="860" y="50" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Models row -->
+        <mxCell id="models-lbl" value="&lt;b&gt;vLLM Production Stack&lt;/b&gt; — 4 open-weight models (fp8, NVIDIA L4)" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#326CE5" vertex="1" parent="eks">
+          <mxGeometry x="40" y="160" width="640" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#326CE5;gradientColor=none;fillColor=#326CE5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;aspect=fixed;shape=mxgraph.kubernetes.icon;prIcon=deploy;" vertex="1" parent="eks">
+          <mxGeometry x="60" y="200" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m1" value="&lt;b&gt;qwen-coder&lt;/b&gt;&lt;br&gt;&lt;span style='font-size:9px;color:#555'&gt;7B · code / agent&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#326CE5;fontSize=10;align=left;spacingLeft=8;verticalAlign=middle" vertex="1" parent="eks">
+          <mxGeometry x="105" y="195" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m2-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#326CE5;gradientColor=none;fillColor=#326CE5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;aspect=fixed;shape=mxgraph.kubernetes.icon;prIcon=deploy;" vertex="1" parent="eks">
+          <mxGeometry x="335" y="200" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" value="&lt;b&gt;qwen-coder-fim&lt;/b&gt; 🔥&lt;br&gt;&lt;span style='font-size:9px;color:#555'&gt;1.5B · FIM &lt;200ms · always warm&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#326CE5;fontSize=10;align=left;spacingLeft=8;verticalAlign=middle" vertex="1" parent="eks">
+          <mxGeometry x="380" y="195" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m3-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#326CE5;gradientColor=none;fillColor=#326CE5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;aspect=fixed;shape=mxgraph.kubernetes.icon;prIcon=deploy;" vertex="1" parent="eks">
+          <mxGeometry x="60" y="270" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" value="&lt;b&gt;qwen3-8b&lt;/b&gt;&lt;br&gt;&lt;span style='font-size:9px;color:#555'&gt;8B · general / reasoning&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#326CE5;fontSize=10;align=left;spacingLeft=8;verticalAlign=middle" vertex="1" parent="eks">
+          <mxGeometry x="105" y="265" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m4-icon" value="" style="sketch=0;outlineConnect=0;fontColor=#326CE5;gradientColor=none;fillColor=#326CE5;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;aspect=fixed;shape=mxgraph.kubernetes.icon;prIcon=deploy;" vertex="1" parent="eks">
+          <mxGeometry x="335" y="270" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="m4" value="&lt;b&gt;llamaguard3-1b&lt;/b&gt; ❄️&lt;br&gt;&lt;span style='font-size:9px;color:#555'&gt;1B · guardrail · scale-to-zero&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#326CE5;fontSize=10;align=left;spacingLeft=8;verticalAlign=middle" vertex="1" parent="eks">
+          <mxGeometry x="380" y="265" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Sidecar: control plane summary card -->
+        <mxCell id="ctrl" value="&lt;b&gt;Control plane&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;span style='font-size:10px;color:#555'&gt;⚙️ &lt;b&gt;Crossplane&lt;/b&gt; XR &lt;tt&gt;InferenceService&lt;/tt&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;1 claim → entire per-model stack&lt;br&gt;&lt;br&gt;📈 &lt;b&gt;KEDA&lt;/b&gt; — autoscaling (running-ratio, KV cache)&lt;br&gt;&lt;br&gt;🖥️ &lt;b&gt;Karpenter&lt;/b&gt; — gpu-l4 NodePool (spot)&lt;br&gt;&lt;br&gt;🔁 &lt;b&gt;Flux&lt;/b&gt; — GitOps from &lt;tt&gt;cloud-native-ref&lt;/tt&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F9F5;strokeColor=#388E3C;fontSize=11;align=left;spacingLeft=12;spacingRight=12;spacingTop=10;verticalAlign=top;fontColor=#232F3E" vertex="1" parent="eks">
+          <mxGeometry x="640" y="155" width="360" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ================= S3 ================= -->
+        <mxCell id="s3-icon" value="" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.simple_storage_service;" vertex="1" parent="1">
+          <mxGeometry x="500" y="650" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="s3-lbl" value="&lt;b&gt;Amazon S3&lt;/b&gt; (S3 Files, POSIX) — model weights" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#232F3E" vertex="1" parent="1">
+          <mxGeometry x="290" y="713" width="480" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ================ EDGES ================ -->
+        <!-- Clients → AI Gateway (3 arrows merge) -->
+        <mxCell id="e-cont-aig" style="endArrow=classic;html=1;strokeColor=#1A73E8;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0" edge="1" parent="1" source="cli-cont" target="aig-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-oc-aig" style="endArrow=classic;html=1;strokeColor=#1A73E8;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0" edge="1" parent="1" source="cli-oc" target="aig-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-webui-aig" style="endArrow=classic;html=1;strokeColor=#1A73E8;strokeWidth=2;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.8;entryY=0;entryDx=0;entryDy=0" edge="1" parent="1" source="cli-webui" target="aig-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- AIG → Iris (MoM only) -->
+        <mxCell id="e-aig-iris" style="endArrow=classic;html=1;strokeColor=#D4A106;strokeWidth=2;dashed=1;dashPattern=4 4;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0" edge="1" parent="1" source="aig" target="iris">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-aig-iris-lbl" value="model: MoM&lt;br&gt;→ classify" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontStyle=2;fontColor=#D4A106" vertex="1" parent="1">
+          <mxGeometry x="800" y="270" width="100" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- AIG → Models (header-match direct) -->
+        <mxCell id="e-aig-m1" style="endArrow=classic;html=1;strokeColor=#1A73E8;strokeWidth=1.5" edge="1" parent="1" source="aig-icon" target="m1-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-aig-m2" style="endArrow=classic;html=1;strokeColor=#1A73E8;strokeWidth=1.5" edge="1" parent="1" source="aig-icon" target="m2-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-aig-m3" style="endArrow=classic;html=1;strokeColor=#1A73E8;strokeWidth=1.5" edge="1" parent="1" source="aig-icon" target="m3-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-aig-m4" style="endArrow=classic;html=1;strokeColor=#1A73E8;strokeWidth=1.5" edge="1" parent="1" source="aig-icon" target="m4-icon">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Models → S3 (load weights) -->
+        <mxCell id="e-models-s3" style="endArrow=classic;html=1;strokeColor=#7AA116;strokeWidth=2;dashed=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0" edge="1" parent="1" source="m4-icon" target="s3-icon">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="530" y="630" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-models-s3-lbl" value="loads weights (S3 CSI PVC)" style="text;html=1;align=center;verticalAlign=middle;fontSize=9;fontStyle=2;fontColor=#7AA116" vertex="1" parent="1">
+          <mxGeometry x="430" y="630" width="200" height="18" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

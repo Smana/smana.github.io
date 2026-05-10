@@ -20,13 +20,12 @@ J'utilise désormais l'agentic coding de façon quotidienne, comme beaucoup d'en
 
 Je me suis alors lancé un petit défi : **comment pourrions-nous héberger nos propres LLMs dans notre infrastructure ?** Souveraineté des données, choix du modèle, indépendance vis-à-vis d'un fournisseur, et surtout — la curiosité technique de voir ce qui est aujourd'hui *vraiment* faisable avec les outils modernes à notre disposition.
 
-{{% notice info "Open-weight ≠ Open-source" %}}
-La distinction est souvent floutée :
+{{% notice info "Open-weight et open-source : une frontière floue" %}}
+Dans la pratique, on parle souvent d'**open-source** dès qu'un modèle est sous licence permissive (Apache 2.0, MIT) — Mistral, Qwen ou DeepSeek sont fréquemment étiquetés ainsi.
 
-* **Open-weight** — les **poids** sont publics, le _dataset_ et le code d'entraînement complet ne le sont pas. Exemples : **Qwen 2.5**, **Mistral** (Apache 2.0), **DeepSeek V3/V4** (MIT, le plus transparent grâce à son tech report et ses briques infra open-sourcées), **Llama 3** (licence communautaire restrictive au-delà de 700M MAU).
-* **Open-source strict** — poids **+ dataset + code + checkpoints intermédiaires**, pour permettre la **reproduction depuis zéro**. Très rares : **OLMo** (AllenAI, qui publie même son dataset _Dolma_), **Pythia**, **LLM360**.
+Plus rigoureusement, un modèle est **open-weight** quand seuls les poids sont publiés, et **open-source au sens [OSAID](https://opensource.org/ai/open-source-ai-definition)** (Open Source AI Definition, OSI 2024) quand poids, _dataset_ et code d'entraînement le sont — permettant la reproduction complète. Très peu de modèles satisfont ce dernier critère (**OLMo**, **Pythia**).
 
-Pour notre cas d'usage l'open-weight suffit largement : on déploie, on inspecte, on fine-tune — pas besoin de re-pré-entraîner depuis zéro.
+Pour héberger et utiliser un modèle, la disponibilité des poids suffit — c'est ce que je désigne ici par "open-weight".
 {{% /notice %}}
 
 {{% notice warning "Cet article est une **démonstration**" %}}
