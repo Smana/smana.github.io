@@ -20,14 +20,6 @@ J'utilise désormais l'agentic coding de façon quotidienne, comme beaucoup d'en
 
 Je me suis alors lancé un petit défi : **comment pourrions-nous héberger nos propres LLMs dans notre infrastructure ?** Souveraineté des données, choix du modèle, indépendance vis-à-vis d'un fournisseur, et surtout — la curiosité technique de voir ce qui est aujourd'hui *vraiment* faisable avec les outils modernes à notre disposition.
 
-{{% notice info "Open-weight et open-source : une frontière floue" %}}
-Dans la pratique, on parle souvent d'**open-source** dès qu'un modèle est sous licence permissive (Apache 2.0, MIT) — Mistral, Qwen ou DeepSeek sont fréquemment étiquetés ainsi.
-
-Plus rigoureusement, un modèle est **open-weight** quand seuls les poids sont publiés, et **open-source au sens [OSAID](https://opensource.org/ai/open-source-ai-definition)** (Open Source AI Definition, OSI 2024) quand poids, _dataset_ et code d'entraînement le sont — permettant la reproduction complète. Très peu de modèles satisfont ce dernier critère (**OLMo**, **Pythia**).
-
-Pour héberger et utiliser un modèle, la disponibilité des poids suffit — c'est ce que je désigne ici par "open-weight".
-{{% /notice %}}
-
 {{% notice warning "Cet article est une **démonstration**" %}}
 Soyons honnêtes : sur les tâches agentiques complexes, un modèle open-weight 7-8B joue dans une **autre catégorie** qu'un Sonnet 4.6 ou un Opus 4.7 — l'écart est considérable. Et les modèles qui *pourraient* s'en approcher (DeepSeek V4 Pro, Kimi K2.6) demandent un matériel hors de portée à titre personnel.
 
@@ -62,41 +54,7 @@ Les choix techniques sont justifiés dans les ADR ([`docs/decisions/`](https://g
 
 Voici la carte avant de plonger dans les détails. Trois couches : **modèles**, **plateforme** (inférence + routage + scaling), **clients**.
 
-```text
-        ┌──────────────────────────────────────────────────────────┐
-        │  Clients                                                 │
-        │  ┌─────────────────┐  ┌────────────────┐  ┌────────────┐ │
-        │  │ OpenWebUI (web) │  │ Continue (IDE) │  │ OpenCode   │ │
-        │  └─────────────────┘  └────────────────┘  └────────────┘ │
-        └────────────┬─────────────────────────────────────────────┘
-                     │ HTTPS + Bearer token (Tailscale tag:k8s)
-                     ▼
-        ┌──────────────────────────────────────────────────────────┐
-        │  Envoy AI Gateway   (header-match routing, API-key auth) │
-        └────────────┬─────────────────────────────────────────────┘
-                     │
-                     ▼
-        ┌──────────────────────────────────────────────────────────┐
-        │  Iris (vllm-semantic-router) — classifier sidecar        │
-        │  cascade: code → coder, math/multilingual → general,     │
-        │           jailbreak → guardrail                          │
-        └────────────┬─────────────────────────────────────────────┘
-                     │
-                     ▼
-        ┌──────────────────────────────────────────────────────────┐
-        │  vLLM Pods (4 modèles)        ──────► KEDA ScaledObject  │
-        │  • xplane-qwen-coder (7B)       (Prometheus triggers     │
-        │  • xplane-qwen-coder-fim (1.5B)  sur saturation vLLM)    │
-        │  • xplane-qwen3-8b                                       │
-        │  • xplane-llamaguard3-1b                                 │
-        └────────────┬─────────────────────────────────────────────┘
-                     │
-                     ▼
-        ┌──────────────────────────────────────────────────────────┐
-        │  Karpenter NodePool gpu-l4 (g6.xlarge spot, NVIDIA L4)   │
-        │  + Amazon S3 Files (poids modèles, POSIX over S3)        │
-        └──────────────────────────────────────────────────────────┘
-```
+{{< img src="architecture-simple.png" alt="Stack LLM self-hosted — vue simplifiée : clients, Envoy AI Gateway, Iris semantic router, 4 modèles vLLM, plan de contrôle (Crossplane, KEDA, Karpenter, Flux), S3" width="1200" >}}
 
 Tout est déployé par **GitOps** (Flux), exposé en privé via **Tailscale**, et chaque modèle est défini par une **claim Crossplane** unique (`InferenceService`) qui génère l'ensemble des ressources Kubernetes nécessaires. C'est cette abstraction qui permet de basculer un modèle en modifiant quelques champs YAML.
 
