@@ -1,6 +1,6 @@
 +++
 author = "Smaine Kahlouch"
-title = "Self-Hosted LLM stack : poser les fondations d'une alternative à `Claude Code`"
+title = "`vLLM` : faire tourner ses propres modèles chez soi, ce qui est concrètement possible"
 date = "2026-05-07"
 summary = "Démonstration d'une stack LLM self-hosted complète sur Kubernetes : vLLM, semantic-router, OpenCode. Ce qui est faisable aujourd'hui avec des modèles open-weight, et ce qui ne l'est pas — encore."
 featured = true
@@ -13,29 +13,29 @@ thumbnail = "thumbnail.png"
 +++
 
 {{% notice info "Série Agentic AI — Partie 3" %}}
-Cet article fait suite à [Agentic Coding : concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/) (les fondamentaux des coding agents) et [Quelques mois avec Claude Code](/fr/post/series/agentic_ai/ai-coding-tips/) (les workflows découverts à l'usage). **Ici, on prend du recul** : et si on hébergeait notre propre stack LLM ? Que peut-on raisonnablement faire en self-hosted aujourd'hui ?
+Cet article fait suite à [Agentic Coding : concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/) (les fondamentaux des coding agents) et [Quelques mois avec Claude Code](/fr/post/series/agentic_ai/ai-coding-tips/) (tips et retours d'expérience au quotidien). **Ici, on prend du recul** : Que peut-on raisonnablement faire en self-hosted aujourd'hui ?
 {{% /notice %}}
 
-J'utilise désormais l'agentic coding de façon quotidienne, comme beaucoup d'entre nous. Je suis globalement satisfait de l'expérience avec Claude Code, mais je garde un œil attentif sur l'**écosystème open-weight**, qui est lui aussi en pleine effervescence : Qwen, Llama, Mistral, GLM, DeepSeek — et sur la bataille que se mènent les différents acteurs du secteur.
+J'utilise désormais l'agentic coding de façon quotidienne, comme beaucoup d'entre nous. Je suis globalement satisfait de l'expérience avec Claude Code, mais je garde un œil attentif sur l'**écosystème open-weight**[^open-weight], qui est lui aussi en pleine effervescence : Qwen, Llama, Mistral, GLM, DeepSeek — et sur la bataille que se mènent les différents acteurs du secteur.
+
+[^open-weight]: Pour la définition précise — et la distinction avec *open-source* — voir [Open Weights, par l'Open Source Initiative](https://opensource.org/ai/open-weights).
 
 Je me suis alors lancé un petit défi : **comment pourrions-nous héberger nos propres LLMs dans notre infrastructure ?** Souveraineté des données, choix du modèle, indépendance vis-à-vis d'un fournisseur, et surtout — la curiosité technique de voir ce qui est aujourd'hui *vraiment* faisable avec les outils modernes à notre disposition.
 
-{{% notice warning "Cet article est une **démonstration**" %}}
-Soyons honnêtes : sur les tâches agentiques complexes, un modèle open-weight 7-8B joue dans une **autre catégorie** qu'un Sonnet 4.6 ou un Opus 4.7 — l'écart est considérable. Et les modèles qui *pourraient* s'en approcher (DeepSeek V4 Pro, Kimi K2.6) demandent un matériel hors de portée à titre personnel.
+{{% notice note "Cet article est une démonstration" %}}
+Soyons clairs : les modèles déployés ici sont des **7-8B paramètres**. Sur les tâches agentiques complexes, leur niveau est **très en-deçà** d'un Sonnet 4.6 ou d'un Opus 4.7 — ils hallucinent davantage, bouclent sur les erreurs là où un modèle _frontier_ passe sans effort.
 
-Cet article ne raconte pas une migration. Il **pose les fondations** d'une alternative à faire évoluer à mesure que l'écosystème rattrape son retard, et démontre ce qui est *déjà* possible aujourd'hui.
+Les modèles open-weight qui pourraient *vraiment* s'en approcher (DeepSeek V4 Pro, Kimi K2.6) demandent un matériel hors de portée à titre personnel.
+
+Cet article a pour objectif de **poser les fondations** d'une alternative à faire évoluer à mesure que l'écosystème rattrape son retard, et démontre ce qui est *déjà* possible aujourd'hui — y compris avec des modèles modestes.
 {{% /notice %}}
 
-## :dart: Objectifs de cet article
+## :dart: Objectifs
 
 * Comprendre les **briques d'une stack LLM self-hosted** moderne sur Kubernetes
 * Découvrir les choix techniques retenus : modèles open-weight, **vLLM Production Stack**, routage intelligent, autoscaling sur signaux GPU
 * Voir comment on consomme cette plateforme depuis trois clients : **OpenWebUI**, **Continue VSCode**, **OpenCode CLI**
 * Évaluer honnêtement ce qui marche, ce qui ne marche pas, et ce que ça coûte vraiment
-
-{{% notice tip "TL;DR" %}}
-Une stack LLM self-hosted complète sur Kubernetes pour **~$250/mois** (spot L4), avec **autocomplete IDE <200ms**, routage intelligent multi-modèles (`MoM`), et observabilité de bout en bout. **Crédible** dès aujourd'hui pour les besoins de souveraineté et de confidentialité ; **pas encore** un remplaçant universel de Claude Code sur les tâches agentiques complexes — mais la fondation est posée pour absorber les modèles de demain en quelques lignes de YAML.
-{{% /notice %}}
 
 {{% notice tip "Le repo de référence" %}}
 Toute la stack est déployée par GitOps depuis [**cloud-native-ref**](https://github.com/Smana/cloud-native-ref) — au-delà de la couche LLM, le repo illustre **un écosystème cloud-native complet** :
@@ -45,114 +45,78 @@ Toute la stack est déployée par GitOps depuis [**cloud-native-ref**](https://g
 * **Observabilité** — VictoriaMetrics, VictoriaLogs, Grafana
 * **Sécurité & accès** — gestion des secrets + exposition privée via Tailscale
 
-Les choix techniques sont justifiés dans les ADR ([`docs/decisions/`](https://github.com/Smana/cloud-native-ref/tree/main/docs/decisions)).
 {{% /notice %}}
 
 ---
 
 ## :world_map: Vue d'ensemble de la stack
 
-Voici la carte avant de plonger dans les détails. Trois couches : **modèles**, **plateforme** (inférence + routage + scaling), **clients**.
+Avant d'entrer dans le coeur de la bête, voici une vue d'ensemble:
 
-{{< img src="architecture-simple.png" alt="Stack LLM self-hosted — vue simplifiée : clients, Envoy AI Gateway, Iris semantic router, 4 modèles vLLM, plan de contrôle (Crossplane, KEDA, Karpenter, Flux), S3" width="1200" >}}
+{{< img src="architecture-vllm.png" width="1200" >}}
 
-Tout est déployé par **GitOps** (Flux), exposé en privé via **Tailscale**, et chaque modèle est défini par une **claim Crossplane** unique (`InferenceService`) qui génère l'ensemble des ressources Kubernetes nécessaires. C'est cette abstraction qui permet de basculer un modèle en modifiant quelques champs YAML.
+La stack s'organise en **trois couches**, qui suivent le chemin d'une requête :
+
+1. **Accès** — l'**Envoy AI Gateway** en frontal, et le **vLLM Semantic Router** qui choisit dynamiquement le modèle quand c'est nécessaire.
+2. **Inférence** — une _fleet_ de pods **vLLM** qui servent les modèles sur GPU.
+3. **Stockage** — les poids des modèles mutualisés sur un volume partagé.
+
+L'ensemble est piloté par **GitOps** (Flux réconcilie tout depuis [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) et exposé en privé via **Tailscale** — rien n'atterrit sur Internet public. Chaque couche est détaillée dans les sections qui suivent.
 
 ---
 
-## :brain: Les modèles open-weight retenus
+## :electric_plug: La pièce maîtresse : l'abstraction `InferenceService`
 
-Avant de plonger dans la plomberie Kubernetes, le choix le plus structurant : **quels modèles déployer ?** Cette décision contraint tout le reste — taille de GPU, quantification, latence atteignable, et budget.
+Si vous avez lu certains de [mes articles précédents](/fr/post/crossplane_composition_functions/), vous savez que j'apprécie particulièrement `Crossplane` pour fournir la bonne abstraction aux utilisateurs. Il fait partie de mes composants essentiels et permet d'exposer une **interface adaptée et simple** à utiliser. J'en ai déjà quelques-unes : `App`, `SQLInstance`, `EPI` — et maintenant `InferenceService`.
 
-### L'écosystème en mai 2026
+### Déclarer un nouveau modèle
 
-Ces derniers mois, la qualité des modèles open-weight a progressé **considérablement**. Sur **SWE-bench Verified**[^swebench], les deux meilleurs modèles open-weight sont désormais **DeepSeek V4 Pro (Max)** (80.6%) et **Kimi K2.6** (80.2%), à environ 7 points des modèles propriétaires de pointe (Claude Opus 4.7 à 87.6%, GPT-5.5 à 88.7%). Côté plus léger, **Qwen2.5-Coder** et **Qwen3-Coder** (Alibaba) restent des références pour la génération de code, et **Qwen3** brille en raisonnement multilingual.
-
-[^swebench]: Verified est aujourd'hui considéré comme partiellement contaminé : OpenAI a [cessé de le reporter](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/) au profit de [SWE-bench Pro](https://labs.scale.com/leaderboard/swe_bench_pro_public), où Kimi K2.6 mène les open-weight à 58.6%.
-
-Mais entre "pouvoir lire le poids sur HuggingFace" et "le faire tourner sur du GPU **financièrement accessible**", il y a un monde. Les meilleurs modèles open-weight pour le coding demandent des configurations **multi-H100** ou **multi-H200**, et même les modèles intermédiaires comme **Qwen3-Coder-30B-A3B-FP8** réclament au minimum un **L40S 48GB** — quand notre _NodePool_ standard tourne sur des **L4 24GB**. Le facteur limitant ici n'est pas technique : c'est tout simplement le **coût**, que je ne peux pas supporter sur mes moyens personnels.
-
-{{% notice info "Combien coûterait un DeepSeek V4 Pro ou un Kimi K2.6 ?" %}}
-Pour fixer un ordre de grandeur : faire tourner un **DeepSeek V4 Pro** (1.6T paramètres, ~49B actifs en MoE) ou un **Kimi K2.6** (~1T total, ~32B actifs) en FP8 demande typiquement **8 à 16× H100 80GB** selon la quantification — l'équivalent d'une à deux instances AWS `p5.48xlarge` à **~55 $/heure on-demand** chacune (us-east-1, mai 2026), ou d'une `p5e.48xlarge` (8× H200 141GB) à un tarif similaire. Soit, en 24/7, un budget mensuel de l'ordre de **40 000 à 80 000 $**. Même en spot ou en _reserved_ sur un an, on reste largement au-dessus de **15 000 $/mois**.
-
-À titre personnel, c'est évidemment hors de portée. La démo reste donc sur du L4 24GB et on choisit des modèles qui rentrent dedans — un compromis assumé, documenté comme [chemin d'évolution](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) dans le repo.
-{{% /notice %}}
-
-### Quatre modèles, quatre rôles
-
-Chaque modèle a un rôle bien défini dans la stack. La quantification **fp8** est utilisée partout.
-
-{{% notice info "C'est quoi la quantification ?" %}}
-Un modèle de langage stocke ses **poids** sous forme de nombres décimaux. En précision native (**FP16** / **BF16**), chaque poids occupe **16 bits** (2 octets) — c'est précis, mais ça consomme beaucoup de VRAM.
-
-La **quantification** consiste à représenter ces mêmes poids sur **moins de bits**. On arrondit les valeurs avec une précision numérique réduite, ce qui **divise la mémoire** et **accélère les calculs**. La contrepartie : les sorties du modèle (probabilités sur les tokens) **dérivent légèrement** de celles du modèle non quantifié — mesurable sur des benchmarks comme la perplexité, MMLU ou HumanEval.
-
-| Format | Bits/param | Dérive vs FP16 | Usage typique |
-|---|---|---|---|
-| FP16 / BF16 | 16 | 0 (référence) | Précision native, entraînement |
-| **FP8** | **8** | <1% (imperceptible) | Standard inférence moderne |
-| FP4 / INT4 | 4 | 3-5% (visible) | Modèles ≥1T paramètres |
-
-Le **FP8** divise la VRAM par 2 et est supporté nativement (au niveau hardware) par les GPU récents : **L4, L40S, H100, H200** — d'où son adoption généralisée en inférence.
-{{% /notice %}}
-
-| Modèle | Rôle | Taille | Pourquoi celui-là ? |
-|---|---|---|---|
-| **`xplane-qwen-coder`** | Code chat, agentic edits | Qwen2.5-Coder-7B-Instruct (fp8) | Native function-calling, top-tier 7B coding benchmarks, Apache 2.0 |
-| **`xplane-qwen-coder-fim`** | Tab-complete IDE (FIM) | Qwen2.5-Coder-1.5B (fp8) | **Modèle Base** (les FIM tokens sont dilués dans la version Instruct), rapide, partage le tokenizer Qwen |
-| **`xplane-qwen3-8b`** | Général, multilingual, raisonnement | Qwen3-8B (fp8) | `thinking_mode` togglable pour le raisonnement, 32k contexte, support multilingual fort |
-| **`xplane-llamaguard3-1b`** | Pre-filter safety | Llama-Guard-3-1B (fp16) | Détection jailbreak / prompt injection, modèle dédié à cette tâche |
-
-{{% notice tip "Le FIM (_Fill-In-the-Middle_) : pourquoi un modèle Base ?" %}}
-Le FIM est ce qui fait la différence entre une **autocomplete réactive (<200ms)** et un truc lourdingue. Continue envoie un prompt structuré avec les tokens spéciaux `<|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>`, et le modèle complète le trou — c'est très différent d'un chat classique.
-
-**Le Base (et non l'Instruct) est obligatoire** : les versions Instruct sont fine-tunées sur des conversations, ce qui dilue les tokens FIM appris pendant le pré-entraînement. Utiliser un Instruct ici, c'est obtenir des complétions souvent off-topic ou bavardes.
-{{% /notice %}}
-
-Voici la claim Crossplane qui définit le coder principal — c'est l'**abstraction-clé** de la plateforme, on y reviendra :
-
-<details>
-<summary><strong>Voir la claim <code>InferenceService</code> complète</strong></summary>
+Concrètement, exposer un nouveau LLM sur la plateforme se résume à l'ajout d'un fichier YAML dont voici un exemple :
 
 ```yaml
-# apps/base/ai/llm/qwen-coder.yaml
 apiVersion: cloud.ogenki.io/v1alpha1
 kind: InferenceService
 metadata:
-  name: xplane-qwen-coder
+  name: xplane-my-new-model
   namespace: llm
 spec:
   model:
-    repository: Qwen/Qwen2.5-Coder-7B-Instruct
-    revision: c03e6d358207e414f1eca0bb1891e29f1db0e242  # pragma: allowlist secret
+    repository: Qwen/Qwen3-8B
+    revision: <hf-commit-sha>
     quantization: fp8
     contextWindow: 32768
-    maxNumSeqs: 32
     toolCallParser: hermes
     preload:
       enabled: true
   gpu:
     count: 1
-    minVRAM: 16Gi
   routing:
     tier: medium
-    specialty: code
+    specialty: general
   scaling:
     minReplicas: 1
     maxReplicas: 2
-  cache:
-    kvOffload:
-      enabled: true
-      sizeGB: 16
-    prefixCache:
-      enabled: true
 ```
 
-</details>
+Quelques secondes après le push, Flux réconcilie, la composition Crossplane se déclenche, et **toutes les ressources Kubernetes nécessaires sont appliquées automatiquement**.
 
-Quarante lignes de YAML qui génèrent : un HelmRelease vLLM, un ScaledObject KEDA, une AIGatewayRoute, des CiliumNetworkPolicy, et un Job de préchargement des poids. **Conséquence directe : pour basculer vers un autre modèle, il suffit d'adapter quelques champs du bloc `model:` (le `repository:`, sa `revision:`, parfois la `quantization:` ou le `toolCallParser:`), de commiter, et Flux reconfigure toute la stack.** Le jour où l'écosystème open-weight aura suffisamment progressé, la migration sera quasi-triviale.
+### Ce que la composition génère pour nous
 
-À titre d'illustration, voici la PR-type d'une migration future (passer du Qwen2.5-Coder-7B actuel à un Qwen3-Coder-30B le jour où il rentre sur le matériel) :
+À partir de cette _Claim_, une dizaine de ressources Kubernetes sont créées. Au-delà des classiques (`Service`, `ServiceAccount`, `ExternalSecret`), six d'entre elles méritent d'être pointées :
+
+* 🧠 **[vLLM](https://github.com/vllm-project/vllm) (`Deployment`)** — moteur d'inférence : _continuous batching_ + _paged attention_ donnent un throughput **3 à 10× supérieur** à un serving naïf sur le même GPU. Image `vllm/vllm-openai`, `nodeSelector: gpu-l4`. *([on revient sur vLLM en Couche 2](#vllm-production-stack))*
+
+* 📦 **`Job` de préchargement** — télécharge les ~15 Go de poids HuggingFace vers le PVC S3 Files. **Idempotent** (1× par couple `repository@revision`) : les pods vLLM (réplicas, redéploiements) montent ensuite le volume en quelques secondes.
+
+* 🛡️ **Deux `CiliumNetworkPolicy`** (zero-trust) : politique restrictive pour le pod vLLM long-lived (DNS sortant + ingress AI Gateway/Iris/vmagent), politique plus permissive scopée au Job de préchargement (HF, AWS API, EKS Pod Identity Agent). Évite d'élargir les droits du serving aux besoins ponctuels du _bootstrap_.
+
+* ⚡ **`ScaledObject` KEDA** — autoscaling déclenché **avant** que la charge ne sature un pod, plutôt qu'en réaction à la file d'attente qui se forme. *([le calcul est détaillé en Couche 2](#autoscaling-avec-keda))*
+
+* 📊 **`VMServiceScrape` + `VMRule`** — métriques vLLM scrapées par **VictoriaMetrics** sur `/metrics`, SLOs et alertes (cold-start budget, taux d'erreur, latence) _shippés_ avec le modèle. *([approche détaillée dans la série Observabilité](/fr/post/series/observability/metrics/))*
+
+* 🚪 **`AIGatewayRoute`** — déclare comment l'**Envoy AI Gateway** dispatche le trafic vers ce modèle : `model: xplane-qwen-coder` dans la requête OpenAI atterrit sur le bon pod, sans logique applicative.
+
+**Pour basculer d'un modèle à un autre**, il suffit de modifier deux champs (`model.repository` et `model.revision`). Voici par exemple la PR-type pour passer du Qwen2.5-Coder-7B actuel à un Qwen3-Coder-30B le jour où il rentre sur le matériel :
 
 ```diff
 # apps/base/ai/llm/qwen-coder.yaml
@@ -168,103 +132,77 @@ spec:
 
 Quatre lignes changent. Flux réconcilie, KEDA réajuste les triggers, Karpenter provisionne le bon GPU — tout l'agencement existant suit.
 
----
+{{% notice tip "KCL : versionner, tester, valider une composition" %}}
+La composition n'est pas écrite en YAML patches (peu lisible, intestable) mais en [**KCL**](https://kcl-lang.io/) via la [function-kcl](https://github.com/crossplane-contrib/function-kcl) — un langage de configuration **typé**, avec **assertions natives**. Trois conséquences directes :
 
-## :twisted_rightwards_arrows: Le routage intelligent
+* **Tests unitaires** — un fichier [`main_test.k`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/infrastructure/base/crossplane/configuration/kcl/inference-service/main_test.k) valide chaque comportement (`kcl test` tourne en CI sur chaque PR).
+* **Packaging OCI versionné** — la composition est publiée comme image OCI (`oci://ghcr.io/smana/cloud-native-ref/crossplane-inference-service:0.6.0`), référencée par tag immuable.
+* **Schéma de claim validé côté API server** — `kubectl apply` rejette les claims incohérentes (par exemple `minReplicas > maxReplicas`) **avant** que la composition ne se déclenche.
 
-Un seul modèle ne fait pas tout : **coder pour le code**, **reasoner pour les maths**, **guard pour la safety**. Il faut donc router intelligemment chaque requête vers le bon modèle.
-
-### Deux modes de routage complémentaires
-
-La porte d'entrée combine **deux mécanismes complémentaires**, mobilisés selon le besoin :
-
-* **Routage explicite** — le client cible directement un modèle (`model: xplane-qwen-coder`) via le header `x-ai-eg-model` ou le body de la requête. **[Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway)** dispatche nativement, latence négligeable. C'est ce que font Continue (autocomplete) et OpenCode quand ils savent quel modèle utiliser.
-* **Routage sémantique** — le client demande le modèle virtuel **`MoM`** (_Mixture of Models_) et **[vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router)**, déployé en **sidecar HTTP classifier**, analyse le prompt pour choisir le bon modèle (coder, reasoner, guard). Coût : ~250-300ms de classification (le classifier mmBERT tourne sur CPU — aucune pression sur la VRAM des pods GPU), payé **uniquement** quand `MoM` est demandé.
-
-C'est cette dualité qui fait la puissance de l'archi : un client qui sait ce qu'il veut paie zéro latence supplémentaire, un client générique (OpenWebUI) profite d'un routage intelligent automatique — sans jamais avoir à choisir entre les deux.
-
-### Comment Iris décide quoi router
-
-**L'objectif** : exposer un endpoint unique (`MoM`) qui lit chaque prompt et choisit automatiquement le modèle le plus adapté — sans que le client ait à connaître l'inventaire des modèles ni leurs spécialités.
-
-Iris analyse chaque prompt avec un **classifier mmBERT** (~100M paramètres, servi en local) entraîné sur les catégories **MMLU** (_Massive Multitask Language Understanding_), disponibles dans la collection HuggingFace [llm-semantic-router](https://huggingface.co/llm-semantic-router). Trois classifiers tournent en parallèle :
-
-* **_intent classifier_** — détermine la catégorie du prompt (code, math, multilingual, general…)
-* **_jailbreak detector_** — repère les tentatives de prompt injection
-* **_PII detector_** — repère les données personnelles
-
-Selon la catégorie détectée, le routage suit cette table de décision :
-
-| Catégorie détectée | Modèle ciblé | Particularité |
-|---|---|---|
-| `code` | `xplane-qwen-coder` | Function-calling Hermes activé |
-| `reasoning` (math, physics) | `xplane-qwen3-8b` | `thinking_mode: true` |
-| `multilingual` | `xplane-qwen3-8b` | Pas de thinking_mode |
-| `general` (fallback) | `xplane-qwen3-8b` | Pas de thinking_mode |
-| `code_with_reasoning` | `xplane-qwen-coder` | `use_reasoning: true` (signal-fusion) |
-| **Jailbreak détecté** | `xplane-llamaguard3-1b` | Pre-filter, refus immédiat |
-
-Côté config, Iris se résume à déclarer le modèle par défaut et les endpoints des modèles ciblés.
-
-<details>
-<summary><strong>Voir l'extrait de config Iris (HelmRelease)</strong></summary>
-
-```yaml
-# infrastructure/base/vllm-semantic-router/helmrelease.yaml
-config:
-  default_model: xplane-qwen3-8b
-  router:
-    auto_model_name: MoM
-    include_config_models_in_list: true
-
-  vllm_endpoints:
-    - name: qwen3-8b
-      address: xplane-qwen3-8b.llm.svc.cluster.local
-      port: 8000
-    - name: qwen-coder
-      address: xplane-qwen-coder.llm.svc.cluster.local
-      port: 8000
-    - name: qwen-coder-fim
-      address: xplane-qwen-coder-fim.llm.svc.cluster.local
-      port: 8000
-    - name: llamaguard3-1b
-      address: xplane-llamaguard3-1b.llm.svc.cluster.local
-      port: 8000
-```
-
-</details>
-
-### Vérifier le routage depuis l'extérieur
-
-Iris ajoute un header `x-vsr-selected-model` à la réponse — ce qui permet de **rejouer ou debugger n'importe quelle décision** :
-
-```bash
-curl -sS -X POST https://llm.priv.cloud.ogenki.io/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -H "Authorization: Bearer $OPENAI_API_KEY" \
-  -D - \
-  -d '{
-    "model": "MoM",
-    "messages": [{"role":"user","content":"refactor this Go function for clarity"}]
-  }' | grep -i x-vsr-selected
-# x-vsr-selected-model: xplane-qwen-coder
-```
-
-Code → coder. Math → reasoner. Multilingual → général. Jailbreak → guardrail. Le tout transparent pour le client.
+Versions, tests, schéma — pas juste "du YAML qu'on copie-colle".
+{{% /notice %}}
 
 ---
 
-## :gear: La plateforme d'inférence sous le capot
+## :brain: Couche 1 — Les modèles et leur stockage
 
-Modèles choisis, routage défini — reste à les **servir efficacement**. C'est ici que les choix techniques (moteur d'inférence, GPU, stockage) décident de la latence, du throughput et, _in fine_, du coût.
+On va maintenant remonter les trois couches du diagramme, en commençant par le socle. Deux décisions structurantes ici : **quel matériel est financièrement accessible** (et donc quels modèles peuvent tenir dedans), et **comment leurs poids sont stockés et chargés à la demande**.
+
+### L'écosystème en mai 2026
+
+Ces derniers mois, la qualité des modèles open-weight a progressé **considérablement**. Sur **SWE-bench Verified**[^swebench], les deux meilleurs modèles open-weight sont désormais **DeepSeek V4 Pro (Max)** (80.6%) et **Kimi K2.6** (80.2%) — ils se défendent plutôt bien face aux leaders propriétaires (Claude Opus 4.7 à 87.6%, GPT-5.5 à 88.7%). Côté plus léger, **Qwen2.5-Coder** et **Qwen3-Coder** (Alibaba) restent des références pour la génération de code.
+
+[^swebench]: Verified est aujourd'hui considéré comme partiellement contaminé : OpenAI a [cessé de le reporter](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/) au profit de [SWE-bench Pro](https://labs.scale.com/leaderboard/swe_bench_pro_public), où Kimi K2.6 mène les open-weight à 58.6%.
+
+Mais entre "pouvoir télécharger le modèle depuis HuggingFace" et "le faire tourner sur du GPU **financièrement accessible**", il y a un monde. Les meilleurs modèles open-weight pour le coding demandent des configurations **multi-H100** ou **multi-H200**, et même les modèles intermédiaires comme **Qwen3-Coder-30B-A3B-FP8** réclament au minimum un **L40S 48GB**.</br>
+
+Le facteur limitant ici n'est pas la solution technique mais le **coût**. Pour cette démonstration, je me suis limité à des modèles modestes.
+
+{{% notice info "Combien coûterait un DeepSeek V4 Pro ou un Kimi K2.6 ?" %}}
+Pour fixer un ordre de grandeur : faire tourner un **DeepSeek V4 Pro** (1.6T paramètres, ~49B actifs en MoE) ou un **Kimi K2.6** (~1T total, ~32B actifs) en FP8 demande typiquement **8 à 16× H100 80GB**. En 24/7 sur AWS, le budget mensuel se situe entre **40 000 et 80 000 $**. Même en spot ou en _reserved_ sur un an, on reste largement au-dessus de **15 000 $/mois**.
+
+À titre personnel, c'est évidemment hors de portée. La démo reste donc sur du L4 24GB et on choisit des modèles qui rentrent dedans.
+{{% /notice %}}
+
+### Stockage des poids : S3 Files
+
+Charger ~15GB de poids depuis HuggingFace à chaque cold-start de pod, c'est lent et coûteux (bande passante egress). La solution retenue : [**Amazon S3 Files**](https://aws.amazon.com/blogs/aws/launching-s3-files-making-s3-buckets-accessible-as-file-systems/), une feature AWS **toute récente** (GA en **avril 2026**) qui expose un bucket S3 comme un **filesystem NFS conforme POSIX**, montable comme un volume Kubernetes partagé entre pods.
+
+Les avantages dans notre cas :
+
+* **Cold-start divisé** — un Job de préchargement télécharge les poids depuis HuggingFace une seule fois lors du premier déploiement ; chaque pod vLLM monte ensuite le volume directement, démarrage en quelques secondes
+* **Multi-attach natif** — plusieurs pods (réplicas, modèles distincts) partagent le même bucket sans configuration particulière, contrairement à un PVC EBS
+* **Cache intelligent** — préfetching automatique, latence ~1ms sur l'_active set_ (les poids fréquemment lus restent sur EFS sous le capot)
+* **Tarification EFS** sur les données actives uniquement, et **tarif S3 standard** (~$0.023/GB/mois) sur le stockage long terme — bien moins cher qu'un PVC EBS provisionné en taille fixe
+* **POSIX complet** — vLLM lit les poids comme depuis un disque local, sans adaptation
+
+{{% notice note "Le tout premier remplissage reste lent" %}}
+S3 Files n'est pas magique sur le _bootstrap_ initial : le Job de préchargement doit télécharger les ~15GB de poids depuis HuggingFace **une première fois** vers S3. Cette étape est limitée par la bande passante réseau de l'instance (~10 Gbps sur `g6.xlarge`) et prend typiquement plusieurs dizaines de secondes. Le gain s'amortit ensuite : tous les démarrages **suivants** (réplicas, redéploiements, autres modèles partageant le bucket) montent le volume en quelques secondes.
+{{% /notice %}}
+
+---
+
+## :gear: Couche 2 — La couche d'inférence : vLLM sur GPU
+
+
+Maintenant que nous avons choisi nos modèles, il faut un moyen efficace de les **servir efficacement**. Cette solution a un impact non négligeable sur la latence, le troughput et le coût.
 
 ### vLLM Production Stack
 
-Pour servir les modèles, on utilise [**vLLM Production Stack**](https://github.com/vllm-project/production-stack) — la déclinaison "production" de vLLM, qui apporte un Helm chart, un router de requêtes, et l'intégration KV cache offload (LMCache). Le choix vs KServe est documenté dans l'[ADR 0003](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/decisions/0003-vllm-production-stack-over-kserve.md) : performances natives, support fp8 mature, parser Hermes pour le function-calling.
+[**vLLM**](https://github.com/vllm-project/vllm) est un **moteur d'inférence open-source** spécialisé dans le serving de LLMs sur GPU, devenu un standard de fait. C'est le composant qui fait tourner les modèles dans cette stack, déployé via son [Helm chart Production Stack](https://github.com/vllm-project/production-stack). Les fonctionnalités qui comptent ici :
 
-Au-delà de la stack opérationnelle, vLLM apporte surtout son **continuous batching** et son **paged attention** : sur un même GPU, un serving naïf (HuggingFace Transformers ou Ollama default) plafonne typiquement à **3 à 10× moins de throughput**[^vllm-bench]. Pour de l'inférence multi-utilisateurs, c'est la différence entre un POC et une plateforme.
+* **API OpenAI-compatible** native — tous les clients (OpenWebUI, Continue, OpenCode…) parlent à vLLM sans adaptation.
+* **Support fp8 mature** au niveau hardware sur L4 / L40S / H100 / H200 — divise la VRAM par deux.
+* **Parser Hermes pour le function-calling** — indispensable pour faire fonctionner les `tools[]` des clients agentiques.
+* **Continuous batching** + **paged attention** — le couple qui démultiplie le throughput d'un GPU : typiquement **3 à 10× plus** qu'un serving naïf type HuggingFace Transformers ou Ollama default[^vllm-bench].
 
-[^vllm-bench]: Multiplicateur observé dans plusieurs _benchmarks_ et _roundups_ de fin 2025 — voir par exemple [Best Open Source LLMs You Can Self-Host](https://brightseotools.com/post/best-open-source-llms-you-can-self-host).
+{{% notice info "_Continuous batching_ et _paged attention_, en deux phrases" %}}
+**Continuous batching** : un serving naïf attend qu'un lot complet de requêtes arrive avant de le traiter (batching statique). vLLM, lui, **insère chaque nouvelle requête dans le batch GPU en cours** — le GPU ne dort jamais entre deux requêtes.
+
+**Paged attention** : le _KV cache_ (l'état d'attention par token, qui domine la consommation VRAM en inférence) est découpé en **pages de taille fixe**, comme la mémoire virtuelle d'un OS. Conséquence : plusieurs séquences de longueurs très différentes partagent la même VRAM **sans fragmentation**, ce qui démultiplie le nombre de séquences concurrentes par GPU.
+{{% /notice %}}
+
+[^vllm-bench]: Multiplicateurs documentés dans le papier original [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) (Kwon et al., SOSP 2023) : vLLM atteint **2-4×** le throughput de FasterTransformer et **14-24×** celui d'un baseline HuggingFace Transformers. La fourchette réelle dépend du type de charge et du baseline retenu.
 
 Concrètement, chaque modèle est servi par un Pod vLLM avec ce genre de config (générée par la composition Crossplane) :
 
@@ -284,163 +222,80 @@ servingEngineSpec:
       extraArgs: ["--tool-call-parser", "hermes"]
 ```
 
-Deux options méritent une mention :
+{{% notice info "Qu'est-ce que la quantification (fp8) ?" %}}
+Un modèle de langage stocke ses **poids** sous forme de nombres décimaux. En précision native (**FP16** / **BF16**), chaque poids occupe **16 bits** (2 octets) — c'est précis, mais ça consomme beaucoup de VRAM.
 
-* **Prefix caching** : crucial pour le FIM. Chaque keystroke partage le même préfixe (le contenu du fichier jusqu'au curseur) — le préfixe cache transforme chaque keystroke suivant en lookup O(1) du KV cache déjà calculé.
-* **KV offload (LMCache)** : permet d'étendre la mémoire effective du KV cache au-delà de la VRAM en utilisant la RAM hôte. C'est ce qui permet de tenir 32 séquences concurrentes en 32k contexte sur un L4 de 24Gi.
+La **quantification** consiste à représenter ces mêmes poids sur **moins de bits**. On arrondit les valeurs avec une précision numérique réduite, ce qui **divise la mémoire** et **accélère les calculs**. La contrepartie : les sorties du modèle (probabilités sur les tokens) **dérivent légèrement** de celles du modèle non quantifié.
 
-### GPU sur Kubernetes : Karpenter et NVIDIA L4
-
-{{% notice info "L'inférence LLM est _memory-bound_, pas _compute-bound_" %}}
-Pour l'inférence d'un LLM, **le facteur limitant n'est pas la compute mais la bande passante mémoire**. Un modèle 7B en fp8 doit lire ~7 Go de poids *par token généré* — un L4 (300 Go/s) plafonne donc en théorie autour de **~40 tokens/s** en single-stream, **indépendamment de ses TFLOPS**.
-
-C'est ce qui explique pourquoi :
-
-* Les configurations **multi-H100** (3.35 To/s chacun) restent dominantes pour les très gros modèles
-* La **quantification FP8** — qui divise par deux le volume à transférer — a un impact disproportionné sur le throughput perçu[^bandwidth]
+Le **FP8** divise la VRAM par 2 et est supporté nativement (au niveau hardware) par les GPU récents : **L4, L40S, H100, H200** — d'où son adoption généralisée en inférence.
 {{% /notice %}}
 
-[^bandwidth]: Voir [Every AI Chip on Earth Is Starving for Data](https://sanjeevganjihal.substack.com/p/every-ai-chip-on-earth-is-starving) — analyse détaillée de la chute du ratio bytes/FLOP entre générations de GPU (H100 → B200 → Vera Rubin) et de ses conséquences sur l'inférence.
+Un flag du YAML ci-dessus mérite un mot supplémentaire : **`enablePrefixCaching: true`**, crucial pour le FIM. Lors d'une session d'autocomplete, chaque requête envoyée par l'IDE contient le même **préfixe** (le code du fichier autour du curseur) ; seuls les derniers caractères changent à mesure que le développeur tape. Avec le _prefix caching_, vLLM **réutilise** le KV cache déjà calculé pour ce préfixe partagé d'une requête à l'autre, au lieu de tout recalculer — c'est ce qui permet de tenir la latence p95 sous les 200 ms en tab-complete intensif.
 
-Le NodePool dédié provisionne des instances **`g6.xlarge` (NVIDIA L4 24GB)** en spot, avec une politique de _consolidation_ ajustée :
+### Autoscaling avec KEDA
 
-```yaml
-# Extrait du NodePool gpu-l4
-spec:
-  consolidationPolicy: WhenEmpty
-  template:
-    spec:
-      requirements:
-        - key: karpenter.k8s.aws/instance-gpu-count
-          values: ["1"]   # Single-GPU SKUs only
-        - key: karpenter.k8s.aws/instance-family
-          values: ["g6"]
-      taints:
-        - key: nvidia.com/gpu
-          effect: NoSchedule
-```
+L'HPA standard de Kubernetes est limité à CPU/mémoire — des signaux qui ne reflètent **pas** la charge réelle d'un pod vLLM (le facteur limitant est la VRAM et le _batch_ interne du moteur, pas le CPU hôte). [**KEDA**](https://keda.sh) résout ce problème en permettant de scale sur **n'importe quel signal externe** : Prometheus, file d'attente, événement métier, etc.
 
-Le `consolidationPolicy: WhenEmpty` (et non le défaut `WhenEmptyOrUnderutilized`) protège le pod FIM toujours warm — un noeud qui héberge ce pod n'est jamais consolidé tant que le pod y est. Sans ça, Karpenter pourrait évincer le pod par optimisation… et casser la latence FIM <200ms à chaque coup.
+#### Scaler sur des indicateurs pertinents
 
-### Stockage des poids modèles : S3 Files
+Pour chaque modèle, le `ScaledObject` KEDA s'appuie sur deux métriques Prometheus exposées **par vLLM** :
 
-Charger ~15GB de poids depuis HuggingFace à chaque cold-start de pod, c'est lent et coûteux (bande passante egress). La solution retenue : [**Amazon S3 Files**](https://aws.amazon.com/blogs/aws/launching-s3-files-making-s3-buckets-accessible-as-file-systems/), une feature AWS **toute récente** (GA en **avril 2026**) qui expose un bucket S3 comme un **filesystem NFS conforme POSIX**, montable comme un volume Kubernetes partagé entre pods.
-
-Les avantages dans notre cas :
-
-* **Cold-start divisé** — un Job de préchargement télécharge les poids depuis HuggingFace une seule fois lors du premier déploiement ; chaque pod vLLM monte ensuite le volume directement, démarrage en quelques secondes
-* **Multi-attach natif** — plusieurs pods (réplicas, modèles distincts) partagent le même bucket sans configuration particulière, contrairement à un PVC EBS
-* **Cache intelligent** — préfetching automatique, latence ~1ms sur l'_active set_ (les poids fréquemment lus restent sur EFS sous le capot)
-* **Tarification EFS** sur les données actives uniquement, et **tarif S3 standard** (~$0.023/GB/mois) sur le stockage long terme — bien moins cher qu'un PVC EBS provisionné en taille fixe
-* **POSIX complet** — vLLM lit les poids comme depuis un disque local, sans adaptation
-
-L'[ADR 0004](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/decisions/0004-amazon-s3-files-for-model-weights-storage.md) détaille les arbitrages face aux alternatives (EBS multi-attach, EFS classique, Mountpoint for S3 — ce dernier étant un produit distinct, plus ancien, avec un POSIX partiel).
-
-{{% notice note "Le tout premier remplissage reste lent" %}}
-S3 Files n'est pas magique sur le _bootstrap_ initial : le Job de préchargement doit télécharger les ~15GB de poids depuis HuggingFace **une première fois** vers S3. Cette étape est limitée par la bande passante réseau de l'instance (~10 Gbps sur `g6.xlarge`) et prend typiquement plusieurs dizaines de secondes. Le gain s'amortit ensuite : tous les démarrages **suivants** (réplicas, redéploiements, autres modèles partageant le bucket) montent le volume en quelques secondes.
-{{% /notice %}}
-
-### L'abstraction-clé : la composition Crossplane
-
-C'est probablement le pattern le plus important de toute la plateforme. Chaque modèle est défini par une **claim** `InferenceService` (l'XR Crossplane) — une trentaine de lignes de YAML — qui génère **toutes** les ressources Kubernetes nécessaires :
-
-| Ressource générée | Rôle |
-|---|---|
-| `HelmRelease` (vLLM) | Le pod vLLM lui-même |
-| `ScaledObject` (KEDA) | Autoscaling sur signaux Prometheus |
-| `AIGatewayRoute` | Routage Envoy AI Gateway |
-| `CiliumNetworkPolicy` | Zero-trust egress/ingress |
-| `Job` (preload) | Téléchargement des poids vers S3 |
-| `VMServiceScrape` | Scraping métriques par VictoriaMetrics |
-
-C'est ce pattern d'**API Platform** — une interface simple cachant une stack riche — qui rend la plateforme évolutive. Quand un dérivé de DeepSeek V4 (ou un modèle équivalent) sera disponible en quantification adaptée à L4, une PR de quelques lignes dans `apps/base/ai/llm/qwen-coder.yaml` (essentiellement `model.repository` et sa `revision:`) suffira à basculer.
-
-### Authentification : Bearer token + AWS Secrets Manager
-
-L'**Envoy Gateway `SecurityPolicy`** vérifie un Bearer token sur chaque requête. Les clés sont stockées dans **AWS Secrets Manager** (`platform/llm/api-keys`) sous forme d'un objet JSON keyé par identité (`openwebui_apikey`, `opencode_apikey`, `developer_apikey`…), et synchronisées dans Kubernetes via **External Secrets Operator**.
-
-```bash
-# Récupérer sa clé personnelle
-aws secretsmanager get-secret-value \
-  --secret-id platform/llm/api-keys \
-  --query SecretString --output text | jq -r .openwebui_apikey
-
-# Et l'exporter dans l'environnement (jamais en dur dans une config)
-export OPENAI_API_KEY=$(aws secretsmanager get-secret-value \
-  --secret-id platform/llm/api-keys \
-  --query SecretString --output text | jq -r .openwebui_apikey)
-```
-
-Côté réseau, **Cilium NetworkPolicies** appliquent un **zero-trust** strict (chaque pod ne peut parler qu'aux services explicitement autorisés), et l'exposition externe se fait uniquement via **Tailscale** (`tag:k8s` ACL) — aucune route publique.
-
----
-
-## :zap: Scaling : anticiper la saturation, ou disparaître quand inutile
-
-C'est probablement la section la plus intéressante techniquement, parce qu'elle illustre un choix produit non-trivial.
-
-### Le réflexe initial : scale-to-zero
-
-Un GPU L4 spot, c'est ~$0.30/h. Toujours warm = $200/mois par modèle. Naïvement, on se dit : **scale-to-zero**, plus de pods quand personne ne les utilise, première requête déclenche le scale-up.
-
-Techniquement, c'est faisable proprement avec le **[KEDA HTTP add-on](https://kedify.io/keda-http-add-on)** : un `HTTPScaledObject` par modèle, l'AI Gateway route vers un _interceptor_ qui met la requête en file d'attente le temps que le pod se lance. Le _cold-start budget_ pour un 7B est d'environ **180 secondes** : provisioning du nœud Karpenter (60s) + pull image (30s) + load des poids depuis S3 (30s) + compilation cudagraph (30s) + first token (30s).
-
-180 secondes d'attente sur la première requête d'une session, c'est… **lourd** pour un usage interactif. Le scale-to-zero trahit alors sa promesse : oui, c'est gratuit au repos, mais l'UX devient instantanément pénible.
-
-### Le pivot : autoscaling sur signaux anticipateurs
-
-La vraie réponse, c'est de garder les modèles **toujours warm** (`min=1`) et de **scale-up sur signaux anticipateurs** — avant que la file d'attente ne se forme. Concrètement, le `ScaledObject` KEDA s'appuie sur **deux triggers Prometheus** scrapés depuis les métriques vLLM :
+* `vllm:num_requests_running / vllm:num_requests_max` — la saturation du _batch_ interne (combien de requêtes vLLM traite en parallèle par rapport à son max).
+* `vllm:gpu_cache_usage_perc` — la pression sur le KV cache, qui monte vite avec les contextes longs.
 
 ```yaml
 # Extrait de la composition Crossplane
 triggers:
   - type: prometheus
     metadata:
-      query: |
-        max(
-          vllm:num_requests_running{served_model_name="xplane-qwen-coder"}
-        ) /
-        max(
-          vllm:num_requests_max{served_model_name="xplane-qwen-coder"}
-        )
-      threshold: "0.7"   # 70% saturation queue interne
+      query: max(vllm:num_requests_running) / max(vllm:num_requests_max)
+      threshold: "0.7"   # 70% du batch occupé
   - type: prometheus
     metadata:
-      query: |
-        avg(vllm:gpu_cache_usage_perc{served_model_name="xplane-qwen-coder"})
-      threshold: "0.85"  # 85% pression KV cache
+      query: avg(vllm:gpu_cache_usage_perc)
+      threshold: "0.85"  # 85% du KV cache
 ```
 
-* `vllm:num_requests_running / vllm:num_requests_max` mesure la **saturation interne** : combien de séquences sont en cours par rapport au max configuré (`maxNumSeqs: 32`)
-* `vllm:gpu_cache_usage_perc` mesure la **pression sur le KV cache** : si on s'approche de 85%, c'est que les contextes longs commencent à manger toute la VRAM
+L'objectif est d'**anticiper**: ces indicateurs montent *avant* qu'une file d'attente ne se forme côté utilisateur, ce qui permet à KEDA d'ajouter un réplica suffisamment tôt pour absorber la montée en charge **sans dégrader la latence des requêtes en cours**. C'est tout l'écart entre un autoscaler qui *réagit* (file qui grossit, latence qui explose) et un autoscaler qui *anticipe*.
 
-Ces deux triggers en signal-fusion permettent à KEDA de scale `1→2` ou `1→3` **avant** que la file d'attente ne se forme — la latence first-request reste prévisible. C'est plus subtil que "j'ai 100% de CPU, je scale", mais c'est exactement ce qu'il faut pour de l'inférence LLM.
+#### Karpenter prend le relais sur les nœuds
 
-### Quand le scale-to-zero garde du sens
+KEDA scale les **réplicas vLLM**, mais ces réplicas ont besoin d'un GPU disponible pour être planifiés. C'est **Karpenter** qui s'occupe de la couche en dessous : quand un pod ne trouve pas de noeud GPU libre, Karpenter provisionne automatiquement une instance fournissant du GPU (cycle ~60 s) ; et dès qu'un noeud n'héberge plus de pod GPU, il est décommissionné.
 
-L'approche always-warm n'est pas universelle. Pour des cas particuliers — modèles rarement appelés (le `xplane-llamaguard3-1b` n'est invoqué qu'en cas de jailbreak suspect), environnements dev/staging, modèles expérimentaux — la composition supporte aussi `minReplicas: 0` avec le KEDA HTTP add-on :
+---
 
-```yaml
-# Cas d'un modèle peu utilisé : OK pour scale-to-zero
-spec:
-  scaling:
-    minReplicas: 0    # Le pod disparait quand inactif
-    maxReplicas: 1
-  # ... la composition génère automatiquement un HTTPScaledObject
-```
+## :twisted_rightwards_arrows: Couche 3 — La couche d'accès : Gateway + routage
 
-{{% notice tip "Ce qu'on retient" %}}
-Le choix entre scale-to-zero et always-warm n'est pas un **choix technique** mais un **choix de produit** :
+Abordons la **porte d'entrée** de la plateforme : comment une requête arrive jusqu'au bon pod vLLM, et qui a le droit de l'envoyer.
 
-* **UX interactive** (chat, IDE) → les triggers Prometheus anticipateurs battent la « magie » du scale-from-zero
-* **Workloads batch / sporadiques** → l'inverse est vrai
+### Envoy AI Gateway : la porte d'entrée
 
-Avoir les deux modes dans la même composition, c'est ce qui fait la différence entre une plateforme et un POC.
-{{% /notice %}}
+[**Envoy AI Gateway**](https://github.com/envoyproxy/ai-gateway) est un projet open-source bâti sur Envoy Gateway, dédié à la gestion du trafic vers les services de Generative AI. C'est lui qui agit ici comme **point d'entrée unique** de la plateforme. Ses fonctionnalités principales :
 
-### Le rôle de Karpenter
+* **API OpenAI-compatible** — les clients adressent un endpoint unique (`https://llm.priv.cloud.ogenki.io/v1/...`) sans connaître les pods vLLM individuels.
+* **Routage par modèle** — la Gateway extrait le `model` du body de la requête OpenAI (ou d'un header `x-ai-eg-model`) et dispatche vers le bon `AIServiceBackend` Kubernetes (détails dans la sous-section suivante).
+* **Authentification par Bearer token** — un `SecurityPolicy` Envoy Gateway vérifie chaque requête contre une liste de tokens connus.
+* **Tracking de coûts par tokens** — `llmRequestCosts` extrait input/output/total tokens depuis les réponses, base utile pour du _rate limiting_ par tenant ou par modèle (préparé mais non activé ici).
+* **Multi-provider** — bien que la stack soit 100% self-hosted aujourd'hui, on pourrait demain pointer un client vers OpenAI / Anthropic / Bedrock à travers la même Gateway, sans toucher au code côté client.
 
-Une dernière subtilité : KEDA scale les **replicas vLLM**, Karpenter scale les **nœuds GPU**. Quand un nouveau pod doit être planifié et qu'il n'y a pas de noeud GPU disponible, Karpenter en provisionne un automatiquement (cycle ~60s). À l'inverse, quand le `consolidationPolicy: WhenEmpty` du NodePool détecte qu'un noeud n'héberge plus de pod GPU, il le décommissionne. La couche **Kubernetes reste élastique même quand vLLM ne l'est pas** — c'est cette double élasticité qui rend la facture finale supportable.
+Côté réseau, **Cilium NetworkPolicies** appliquent un _zero-trust_ strict entre pods, et l'exposition externe se fait uniquement via **Tailscale** (`tag:k8s` ACL) — aucune route publique.
+
+### Deux modes de routage complémentaires
+
+Un seul modèle ne fait pas tout : **coder pour le code**, **reasoner pour les maths**, **guard pour la safety**. La porte d'entrée combine **deux mécanismes complémentaires**, mobilisés selon le besoin :
+
+* **Routage explicite** — le client cible directement un modèle (`model: xplane-qwen-coder`) via le header `x-ai-eg-model` ou le body de la requête. **[Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway)** dispatche nativement, latence négligeable. C'est ce que font Continue (autocomplete) et OpenCode quand ils savent quel modèle utiliser.
+* **Routage sémantique** — le client demande le modèle virtuel **`MoM`** (_Mixture of Models_) et **[vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router)**, déployé en **sidecar HTTP classifier**, analyse le prompt pour choisir le bon modèle (coder, reasoner, guard). Coût : ~250-300ms de classification (le classifier mmBERT tourne sur CPU — aucune pression sur la VRAM des pods GPU), payé **uniquement** quand `MoM` est demandé.
+
+C'est cette dualité qui fait la puissance de l'archi : un client qui sait ce qu'il veut paie zéro latence supplémentaire, un client générique (OpenWebUI) profite d'un routage intelligent automatique — sans jamais avoir à choisir entre les deux.
+
+### Iris : le routage sémantique en bref
+
+[**Iris (vLLM Semantic Router)**](https://github.com/vllm-project/semantic-router) est le projet open-source qui implémente la logique de **_Mixture of Models_** (`MoM`). C'est un service léger, déployé en sidecar à côté de l'AI Gateway : il intercepte les requêtes adressées au modèle virtuel `MoM`, analyse le prompt et choisit dynamiquement le modèle réel qui va y répondre.
+
+Sous le capot, Iris s'appuie sur un classifier compact (~100M paramètres, dérivé de BERT, servi sur CPU — donc aucune pression sur la VRAM des GPUs) qui évalue le prompt selon **différents critères** : l'intention (code, raisonnement, multilingue…), la présence d'une éventuelle tentative de _jailbreak_, ou la détection de **données personnelles (PII)**. Selon le verdict, Iris route vers le modèle approprié — ou applique un _guardrail_ de sécurité dédié.
+
+**L'intérêt** : les clients adressent un seul endpoint (`MoM`) et bénéficient d'un routage adapté à chaque prompt sans coder leur propre logique de sélection. Le coût (~250-300 ms de classification) est le seul _trade-off_, payé uniquement sur les requêtes adressées à `MoM`.
 
 ---
 
@@ -492,6 +347,12 @@ models:
       maxTokens: 256
       temperature: 0.0
 ```
+
+{{% notice tip "Le FIM (_Fill-In-the-Middle_) : pourquoi un modèle Base ?" %}}
+Le FIM est ce qui fait la différence entre une **autocomplete réactive (<200ms)** et un truc lourdingue. Continue envoie un prompt structuré avec les tokens spéciaux `<|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>`, et le modèle complète le trou — c'est très différent d'un chat classique.
+
+**Le Base (et non l'Instruct) est obligatoire** : les versions Instruct sont fine-tunées sur des conversations, ce qui dilue les tokens FIM appris pendant le pré-entraînement. Utiliser un Instruct ici, c'est obtenir des complétions souvent off-topic ou bavardes.
+{{% /notice %}}
 
 {{% notice warning "Le piège de `template: qwen`" %}}
 Sans `template: qwen`, Continue envoie les prompts FIM au format CodeLlama (`<PRE>... <SUF>... <MID>`) — totalement différent du format Qwen (`<|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>`).

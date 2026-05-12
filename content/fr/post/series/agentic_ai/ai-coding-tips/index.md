@@ -20,7 +20,36 @@ Cet article fait suite à [Agentic Coding : concepts et cas concrets](/fr/post/s
 Comme pour tout outil qu'on adopte, c'est avec le temps qu'on affine sa façon de l'utiliser. À force d'itérer sur ma config et mes workflows, j'ai trouvé un rythme efficace avec Claude Code. Je partage ici ce qui fonctionne pour moi.
 
 {{% notice info "Article vivant" %}}
-Cet article sera mis à jour au fil de mes découvertes et de l'évolution des outils. N'hésitez pas à revenir de temps en temps pour y trouver de nouveaux tips.
+**Dernière mise à jour : 9 mai 2026**
+
+Cet article est mis à jour régulièrement au fil de mes découvertes et de l'évolution des outils. N'hésitez pas à revenir de temps en temps pour y trouver de nouveaux tips.
+{{% /notice %}}
+
+---
+
+## :wrench: Mon utilisation actuelle de Claude Code
+
+Autant le dire : quand on est habitué à Claude Code, les attentes sont élevées. Je ne vais pas redétailler ici les concepts (MCP, skills, subagents, hooks, SDD, automode) — ils sont couverts dans le [premier article de la série](/fr/post/series/agentic_ai/ai-coding-agent/). En revanche, voici un **aperçu non exhaustif** de ce que j'utilise au quotidien et l'**intérêt** que j'y trouve :
+
+**Les MCPs branchés dans ma session**
+
+* **Tolaria** : accès direct à mon wiki personnel — notes, ADRs, retours d'expérience récupérés sans quitter le terminal
+* **Linear** : lecture et création de tickets, lien entre une PR et une issue, sans changer d'onglet
+* **VictoriaMetrics / VictoriaLogs** : interroger métriques et logs depuis l'agent, pratique pour debug ou corréler un comportement à un déploiement
+* **Flux** : vérifier l'état GitOps d'un cluster (HelmReleases, Kustomizations) avant d'agir
+* **Context7** : récupérer la doc à jour d'une lib ou d'un SDK pour éviter les hallucinations sur les APIs récentes
+
+**Au-delà des MCPs**
+
+* **Skills** : capacités spécialisées chargées à la demande (création de PRs, audits sécurité, écriture de specs)
+* **Subagents et hooks** : déclencheurs automatiques (notification desktop, validation pré-commit) et délégation à des contextes isolés
+* **SDD** avec **superpowers** : j'ai testé plusieurs déclinaisons (github-specs, gsd) ; c'est aujourd'hui mon préféré pour sa simplicité d'usage, tout en garantissant un workflow complet qui respecte les bonnes pratiques
+* **Automode** sur les POC, avec une revue minutieuse à la première itération avant de laisser tourner
+
+Ce workflow tire parti des **forces spécifiques de Claude** : raisonnement Opus sur les passages critiques, fenêtre de contexte 1M en bêta, _function-calling_ très fiable.
+
+{{% notice tip "Mise en abyme : ce setup en action" %}}
+La [stack LLM self-hosted](/fr/post/series/agentic_ai/llm-self-hosted-stack/) (partie 3 de la série) a été **entièrement conçue et construite avec Claude Code** — compositions Crossplane/KCL, manifestes Helm, ADRs, dashboards Grafana, et la rédaction de l'article lui-même. C'est un exemple concret de tout ce qui est décrit ici : MCPs (Tolaria pour les notes de design, Context7 pour la doc vLLM/KEDA, Flux pour vérifier les déploiements), worktrees pour paralléliser plateforme et article, plan SDD pour cadrer le périmètre, et `code-simplifier` en fin de cycle. Petite ironie : utiliser Claude Code pour bâtir une alternative à Claude Code.
 {{% /notice %}}
 
 ---
