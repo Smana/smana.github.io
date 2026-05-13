@@ -61,7 +61,7 @@ La stack s'organise en **trois couches**, que l'on parcourra du socle vers la po
 2. **Inférence** — une _fleet_ de pods **vLLM** qui servent les modèles sur GPU.
 3. **Accès** — l'**Envoy AI Gateway** en frontal, et le **vLLM Semantic Router** qui choisit dynamiquement le modèle quand c'est nécessaire.
 
-L'ensemble est piloté par **GitOps** (Flux réconcilie tout depuis [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) et exposé en privé via **Tailscale** — rien n'atterrit sur Internet public. Chaque couche est détaillée dans les sections qui suivent.
+L'ensemble est piloté par **Flux** (réconciliation continue depuis [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) et exposé en privé via **Tailscale** — aucune donnée ne quitte l'infrastructure. Chaque couche est détaillée dans les sections qui suivent.
 
 ---
 
@@ -146,7 +146,7 @@ Versions, tests, schéma — pas juste "du YAML qu'on copie-colle".
 
 ## :brain: Couche 1 — Les modèles et leur stockage
 
-On va maintenant remonter les trois couches du diagramme, en commençant par le socle. Deux décisions structurantes ici : **quel matériel est financièrement accessible** (et donc quels modèles peuvent tenir dedans), et **comment leurs poids sont stockés et chargés à la demande**.
+Parcourons maintenant les trois couches du diagramme, en commençant par le socle. Deux décisions structurantes ici : **quel matériel est financièrement accessible** (et donc quels modèles peuvent tenir dedans), et **comment leurs poids sont stockés et chargés à la demande**.
 
 ### L'écosystème en mai 2026
 
@@ -195,10 +195,10 @@ Une fois le paysage des modèles posé et leurs poids accessibles via S3 Files, 
 * **Parser Hermes pour le function-calling** — indispensable pour faire fonctionner les `tools[]` des clients agentiques.
 * **Continuous batching** + **paged attention** — le couple qui démultiplie le throughput d'un GPU : typiquement **3 à 10× plus** qu'un serving naïf type HuggingFace Transformers ou Ollama default[^vllm-bench].
 
-{{% notice info "_Continuous batching_ et _paged attention_, en deux phrases" %}}
+{{% notice info "Continuous batching et paged attention, en deux phrases" %}}
 **Continuous batching** : un serving naïf attend qu'un lot complet de requêtes arrive avant de le traiter (batching statique). vLLM, lui, **insère chaque nouvelle requête dans le batch GPU en cours** — le GPU ne dort jamais entre deux requêtes.
 
-**Paged attention** : le _KV cache_ (l'état d'attention par token, qui domine la consommation VRAM en inférence) est découpé en **pages de taille fixe**, comme la mémoire virtuelle d'un OS. Conséquence : plusieurs séquences de longueurs très différentes partagent la même VRAM **sans fragmentation**, ce qui démultiplie le nombre de séquences concurrentes par GPU.
+**Paged attention** : un serving naïf réserve le _KV cache_ (la mémoire accumulée à chaque token, qui domine la VRAM) en un bloc contigu dimensionné sur la longueur max — un `malloc` au pire cas, gaspillé sur les requêtes courtes. vLLM le **pagine comme un OS pagine sa mémoire virtuelle** : pages de taille fixe à la demande, des séquences de longueurs très différentes cohabitent sur le même GPU sans fragmentation.
 {{% /notice %}}
 
 [^vllm-bench]: Multiplicateurs documentés dans le papier original [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) (Kwon et al., SOSP 2023) : vLLM atteint **2-4×** le throughput de FasterTransformer et **14-24×** celui d'un baseline HuggingFace Transformers. La fourchette réelle dépend du type de charge et du baseline retenu.
@@ -239,20 +239,20 @@ L'HPA standard de Kubernetes est limité à CPU/mémoire — des signaux qui ne 
 
 Pour chaque modèle, le `ScaledObject` KEDA s'appuie sur deux métriques Prometheus exposées **par vLLM** :
 
-* `vllm:num_requests_running / vllm:num_requests_max` — la saturation du _batch_ interne (combien de requêtes vLLM traite en parallèle par rapport à son max).
-* `vllm:kv_cache_usage_perc` — la pression sur le KV cache, qui monte vite avec les contextes longs.
+* `vllm:num_requests_running` — combien de requêtes vLLM traite en parallèle, rapportée à la taille de batch configurée (`maxNumSeqs`) pour mesurer la saturation du _batch_ interne.
+* `vllm:gpu_cache_usage_perc` — la pression sur le KV cache GPU, qui monte vite avec les contextes longs.
 
 ```yaml
 # Extrait de la composition Crossplane
 triggers:
   - type: prometheus
     metadata:
-      query: max(vllm:num_requests_running) / max(vllm:num_requests_max)
-      threshold: "0.7"   # 70% du batch occupé
+      query: max(vllm:num_requests_running{model_name="xplane-qwen-coder"}) / scalar(vector(32))
+      threshold: "0.7"   # 70% du batch (maxNumSeqs) occupé
   - type: prometheus
     metadata:
-      query: avg(vllm:kv_cache_usage_perc)
-      threshold: "0.85"  # 85% du KV cache
+      query: max(vllm:gpu_cache_usage_perc{model_name="xplane-qwen-coder"})
+      threshold: "0.6"   # 60% du KV cache GPU
 ```
 
 L'objectif est d'**anticiper** : ces indicateurs montent *avant* qu'une file d'attente ne se forme côté utilisateur, ce qui permet à KEDA d'ajouter un réplica suffisamment tôt pour absorber la montée en charge **sans dégrader la latence des requêtes en cours**. C'est tout l'écart entre un autoscaler qui *réagit* (file qui grossit, latence qui explose) et un autoscaler qui *anticipe*.
@@ -298,7 +298,7 @@ Sous le capot, un classifier compact (~100M paramètres, dérivé de **mmBERT**,
 
 ## :computer: Les clients
 
-Une plateforme sans clients n'est qu'une démo de plomberie. Pas la peine ici de détailler la configuration de chacun — l'objectif est de montrer qu'on dispose, en open-source, **d'alternatives crédibles aux solutions propriétaires** : chat web, autocomplete IDE, agent CLI.
+Enfin, afin de pouvoir concrètement utiliser cette plateforme, il faut évidemment des clients. Pas la peine ici de détailler la configuration de chacun — l'objectif est de montrer qu'on dispose, en open-source, **d'alternatives crédibles aux solutions propriétaires** : chat web, autocomplete IDE, agent CLI.
 
 <div style="display:flex;gap:16px;flex-wrap:wrap;margin:1.5em 0;align-items:flex-start;">
   <figure style="flex:1 1 0;min-width:280px;margin:0;text-align:center;">
@@ -325,27 +325,29 @@ Une plateforme sans clients n'est qu'une démo de plomberie. Pas la peine ici de
 
 ### Continue VSCode — l'autocomplete FIM dans l'IDE
 
-[**Continue**](https://continue.dev/) branche l'API sur VSCode (ou JetBrains). Le _killer feature_ ici, c'est le **FIM** (_Fill-In-the-Middle_) : autocomplete sous **200ms p95** grâce au pod coder dédié toujours warm et au prefix cache de vLLM. C'est ce qui fait la différence entre une autocomplete réactive et une autocomplete frustrante — l'équivalent d'un Cursor Tab ou d'un Copilot, mais sur notre infra.
+[**Continue**](https://continue.dev/) branche l'API sur VSCode (ou JetBrains). Le _killer feature_ ici, c'est le **FIM** (_Fill-In-the-Middle_) : autocomplete sous **200ms p95** grâce au pod coder dédié toujours warm et au prefix cache de vLLM. C'est ce qui fait la différence entre une autocomplete réactive et une autocomplete frustrante (cela s'apparente à ce que nous pouvons retrouver sur Cursor ou Copilot).
 
 ### OpenCode — l'alternative open-source à Claude Code
 
-[**OpenCode**](https://opencode.ai/) est ma surface principale dans cette stack : l'agent CLI qui se rapproche le plus de l'expérience **Claude Code**. Il publie un _compatibility shim_ explicite — `AGENTS.md` ↔ `CLAUDE.md`, **skills**, **MCPs**, sous-agents, slash commands — si bien que **tout le workflow construit autour de Claude Code se porte directement**. C'est ce qui le distingue d'Aider, Crush ou Continue agent mode : on ne réécrit pas son flow, on le rebranche sur un autre backend.
-
-Sur les tâches agentiques complexes (raisonnement multi-fichier, tool-use sur 5+ étapes), un coder 7B reste fragile face à Sonnet ou Opus. Pour des tâches contraintes — refactor ciblé, script généré, boucle de debug — c'est largement crédible.
+Je viens de découvrir [**OpenCode**](https://opencode.ai/) — l'agent CLI qui se rapproche le plus de l'expérience **Claude Code**, et donc le seul candidat sérieux pour envisager une migration le jour où ce serait nécessaire. Il publie un _compatibility shim_ explicite — `AGENTS.md` ↔ `CLAUDE.md`, **skills**, **MCPs**, sous-agents, slash commands — si bien que **tout le workflow construit autour de Claude Code se porte directement**. C'est ce qui le distingue d'Aider, Crush ou Continue agent mode.
 
 ---
 
 ## :bar_chart: Supervision et évaluation continue
 
-Une plateforme LLM produit beaucoup de signal — et la stack **expose tout ce qu'il faut pour l'exploiter** : métriques Prometheus côté vLLM, métriques OpenTelemetry Gen AI côté AI Gateway, logs centralisés sur VictoriaLogs, eval qualité avec Promptfoo. La question n'est pas "qu'est-ce qu'on observe ?" mais "qu'est-ce qu'on regarde en premier ?".
+Une plateforme LLM produit du signal **sur plusieurs axes à la fois** — santé du serving, consommation de tokens par tenant, qualité des réponses — et chacun a ses propres indicateurs (TTFT, inter-token latency, prefix cache hit, token usage par opération…) que les métriques classiques d'un monitoring web ne capturent pas.
+
+</br>
+
+Bonne nouvelle : la **stack d'observabilité existante** (VictoriaMetrics, VictoriaLogs, Grafana) absorbe tout ça sans nouvel outil — il restait à brancher les bonnes sources. Et l'enjeu va **au-delà de la détection d'anomalies** : comprendre *comment* la plateforme est utilisée — qui consomme quoi, sur quels modèles, pour quel coût — est tout aussi important.
 
 ### Santé de la plateforme — métriques `vLLM`
 
 [`vLLM` expose nativement](https://docs.vllm.ai/en/stable/usage/metrics/) un endpoint Prometheus complet, chaque métrique portant un label `model_name` :
 
-* **Charge** : `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:kv_cache_usage_perc` (les triggers KEDA viennent d'ici)
+* **Charge** : `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:gpu_cache_usage_perc` (les triggers KEDA viennent d'ici)
 * **Performance** : `vllm:time_to_first_token_seconds`, `vllm:inter_token_latency_seconds`, `vllm:e2e_request_latency_seconds`
-* **Throughput** : `vllm:prompt_tokens_total`, `vllm:generation_tokens_total`
+* **Throughput** : `vllm:prompt_tokens`, `vllm:generation_tokens`
 * **Optimisations** : `vllm:prefix_cache_hits` (essentiel pour mesurer l'efficacité du FIM)
 
 Le dashboard Grafana `LLM Platform` (déployé via `Grafana Operator` depuis `apps/base/ai/llm/grafana-dashboard.yaml`) agrège tout ça par modèle :
@@ -356,7 +358,7 @@ Sur le screenshot, la stack est au repos : 4 modèles actifs (un replica chacun)
 
 ### Usage et FinOps — métriques de l'AI Gateway
 
-C'est là que ça devient particulièrement intéressant. **`Envoy AI Gateway` expose ses métriques au standard [OpenTelemetry Gen AI Semantic Conventions](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/)** — il ne se contente pas de compter des requêtes, il instrumente le langage métier des LLMs :
+L'**`Envoy AI Gateway`** observe le trafic **un cran plus haut** que vLLM — au niveau métier. Ses métriques suivent le standard [OpenTelemetry Gen AI Semantic Conventions](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/) : il ne compte pas des requêtes, il instrumente le **langage métier des LLMs** :
 
 | Métrique | Mesure |
 |---|---|
@@ -365,16 +367,12 @@ C'est là que ça devient particulièrement intéressant. **`Envoy AI Gateway` e
 | `gen_ai.server.time_to_first_token` | TTFT au niveau gateway |
 | `gen_ai.server.time_per_output_token` | Inter-token latency |
 
-Chacune est automatiquement enrichie par `gen_ai.operation.name` (chat / completion / embedding…), `gen_ai.request.model`, `gen_ai.response.model` et `gen_ai.provider.name`. Premier bénéfice gratuit : **savoir quels modèles sont les plus utilisés** en une requête PromQL.
-
-Et surtout — c'est la pièce qui change tout — **on peut enrichir ces métriques avec des labels custom extraits des headers HTTP** via `controller.metricsRequestHeaderAttributes`. Si chaque client porte un header `x-tenant-id`, `x-team` ou `x-user`, ces valeurs deviennent des labels Prometheus. À partir de là, on répond à :
+Chaque métrique est automatiquement enrichie de labels `gen_ai.*` (modèle, opération, provider) — on sait déjà *qui consomme quoi* en une requête PromQL. Et on peut **injecter en labels des headers HTTP arbitraires** (`x-tenant-id`, `x-team`…) : à partir de là, on répond à :
 
 * **Quel tenant consomme le plus de tokens** sur les 30 derniers jours ?
 * **Quelle équipe a la latence p95 la plus haute** sur le coder ?
 * **Quel ratio prompt/génération** par utilisateur ? (utile pour le dimensionnement de contexte)
 * **Combien d'appels chat vs embedding** par client ?
-
-Bref : du **FinOps par tenant**, sans agent applicatif à écrire — c'est typiquement ce qu'on construit à la main sur des mois dans une plateforme propriétaire.
 
 > SLOs / alertes habituels (latence p95, taux d'erreur, saturation GPU) restent définis en `VMRule` à côté — rien de spécifique au LLM, j'en parle dans l'[article observability/alerting](/fr/post/series/observability/alerts/).
 
@@ -395,7 +393,7 @@ L'intérêt concret :
 * **Comparaison cascade vs modèle direct** : est-ce que le routage `MoM` dégrade la qualité par rapport à un appel direct au bon modèle ?
 * **Stress-test du tool-calling séquentiel** : combien d'appels d'outils consécutifs `Qwen2.5-Coder` peut-il enchaîner avant de se planter ?
 
-Soyons honnêtes : les scores absolus restent **en deçà** d'un Sonnet ou d'un Opus. L'eval continue ne sert pas à se rassurer dans l'absolu, mais à **mesurer l'évolution dans le temps** et à éviter les régressions silencieuses — c'est ce qui me permet de quantifier ce que j'affirme dans la conclusion.
+L'eval continue ne sert pas à se rassurer dans l'absolu, mais à **mesurer l'évolution dans le temps** et à éviter les régressions silencieuses — c'est ce qui me permet de quantifier ce que j'affirme dans la conclusion.
 
 ---
 
@@ -418,14 +416,14 @@ Pour tous les autres — moi le premier — **l'intérêt est de poser les fonda
 * **Diversification du matériel** : l'hégémonie Nvidia commence à craquer. DeepSeek V4 tourne déjà sur Huawei Ascend 950 (avec _Day 0 adaptation_ confirmée par Huawei, Cambricon et Hygon). Plus de fournisseurs → plus de disponibilité → moins de pression sur les prix.
 * **Accessibilité financière** : les modèles open-weight qui se rapprochent du frontier (1T+ paramètres) demandent encore 8 à 16× H100 — hors de portée à titre personnel, encore élevé pour beaucoup d'entreprises.
 
-### Une note (volontairement courte) géostratégique
+### Une note (volontairement courte) géopolitique
 
 Je n'ai volontairement pas voulu rentrer dans ces considérations dans le corps de l'article — et je prends les benchmarks tels quels, en supposant qu'ils sont impartiaux. Cela dit, deux observations méritent d'être posées :
 
 * **Les acteurs chinois privilégient l'open-weight** (DeepSeek, Kimi/Moonshot, Qwen/Alibaba). C'est un pari de stratégie industrielle qui pourrait s'avérer payant à long terme — plus l'écosystème open-weight mûrit, plus il devient compétitif face aux modèles fermés.
 * **Et leurs résultats sur SWE-bench** — la référence du coding — sont **vraiment bons** : sur SWE-bench Pro, Kimi K2.6 mène les open-weight à 58,6 %, à ~6 points de Claude Opus 4.7. Sur Verified, DeepSeek V4 Pro frôle les 80 %, soit ~7 points en deçà d'Opus. L'écart se resserre, benchmark après benchmark.
 
-### Et moi, là maintenant ?
+### Et maintenant ?
 
 Soyons clairs : aujourd'hui je ne troquerais pas mon écosystème Claude. Principalement pour des raisons **financières** — pas par attachement particulier. À mon échelle d'usage, Sonnet et Opus me coûtent moins cher que de reproduire en self-hosted une qualité équivalente.
 
@@ -434,8 +432,6 @@ Cela dit, j'aurais aimé pousser plus loin l'usage d'**OpenCode** et migrer pour
 Mais je garde la stack vivante. Quand un Qwen3-Coder-30B-A3B tournera correctement sur un L4 quantifié — chemin documenté dans [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — le swap sera une PR de quelques lignes. C'est ça l'**intérêt principal** de cette démo : se mettre en position d'**adopter rapidement** ce qui s'annonce, plutôt que d'avoir à tout (re)construire le jour où l'open-weight rattrapera le frontier.
 
 **Ironie de l'histoire** : l'ensemble de cette stack a été conçu et construit avec l'aide de **Claude Code** 🙃.
-
-L'avenir, lui, est résolument hybride.
 
 ---
 
@@ -450,7 +446,6 @@ L'avenir, lui, est résolument hybride.
 - [vLLM Production Stack](https://github.com/vllm-project/production-stack) — Inférence LLM en production
 - [vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router) — Routage intelligent multi-modèles
 - [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway) — Gateway API pour LLM
-- [KEDA HTTP add-on](https://kedify.io/keda-http-add-on) — Scale-from-zero HTTP
 - [Promptfoo](https://www.promptfoo.dev/) — Évaluation LLM en continu
 - [Continue](https://continue.dev/) — Extension VSCode IDE assist
 - [OpenCode](https://opencode.ai/) — CLI agent loop OSS
