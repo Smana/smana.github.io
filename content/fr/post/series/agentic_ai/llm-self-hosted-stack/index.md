@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "Self-hosted LLM stack : poser les fondations d'une plateforme open-weight évolutive"
-date = "2026-05-07"
+date = "2026-05-13"
 summary = "Une plateforme self-hosted pour héberger les modèles open-weight sur Kubernetes : `InferenceService` déclaratif, autoscaling sur signaux GPU, GitOps de bout en bout. Une fondation pensée pour évoluer avec l'écosystème."
 featured = true
 codeMaxLines = 30
@@ -23,7 +23,7 @@ J'utilise désormais l'agentic coding de façon quotidienne, comme beaucoup d'en
 Je me suis alors lancé un petit défi : **comment pourrions-nous héberger nos propres LLMs dans notre infrastructure ?** Souveraineté des données, choix du modèle, indépendance vis-à-vis d'un fournisseur, et surtout — la curiosité technique de voir ce qui est aujourd'hui *vraiment* faisable avec les outils modernes à notre disposition.
 
 {{% notice note "Cet article est une démonstration" %}}
-Soyons clairs : les modèles déployés ici sont des **7-8B paramètres**. Sur les tâches agentiques complexes, leur niveau est **très en-deçà** d'un Sonnet 4.6 ou d'un Opus 4.7 — ils hallucinent davantage, bouclent sur les erreurs là où un modèle _frontier_ passe sans effort.
+Les modèles déployés ici sont des **7-8B paramètres**, servis sur un **GPU L4 24GB**. Sur les tâches agentiques complexes, leur niveau est **très en-deçà** d'un Sonnet 4.6 ou d'un Opus 4.7 — ils hallucinent davantage, bouclent sur les erreurs là où un modèle _frontier_ passe sans effort.
 
 Les modèles open-weight qui pourraient *vraiment* s'en approcher (DeepSeek V4 Pro, Kimi K2.6) demandent un matériel hors de portée à titre personnel.
 
@@ -51,15 +51,15 @@ Toute la stack est déployée par GitOps depuis [**cloud-native-ref**](https://g
 
 ## :world_map: Vue d'ensemble de la stack
 
-Avant d'entrer dans le coeur de la bête, voici une vue d'ensemble:
+Avant d'entrer dans le cœur de la bête, voici une vue d'ensemble :
 
 {{< img src="architecture-vllm.png" width="1200" >}}
 
-La stack s'organise en **trois couches**, qui suivent le chemin d'une requête :
+La stack s'organise en **trois couches**, que l'on parcourra du socle vers la porte d'entrée :
 
-1. **Accès** — l'**Envoy AI Gateway** en frontal, et le **vLLM Semantic Router** qui choisit dynamiquement le modèle quand c'est nécessaire.
+1. **Stockage** — les poids des modèles mutualisés sur un volume partagé.
 2. **Inférence** — une _fleet_ de pods **vLLM** qui servent les modèles sur GPU.
-3. **Stockage** — les poids des modèles mutualisés sur un volume partagé.
+3. **Accès** — l'**Envoy AI Gateway** en frontal, et le **vLLM Semantic Router** qui choisit dynamiquement le modèle quand c'est nécessaire.
 
 L'ensemble est piloté par **GitOps** (Flux réconcilie tout depuis [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) et exposé en privé via **Tailscale** — rien n'atterrit sur Internet public. Chaque couche est détaillée dans les sections qui suivent.
 
@@ -154,7 +154,7 @@ Ces derniers mois, la qualité des modèles open-weight a progressé **considér
 
 [^swebench]: Verified est aujourd'hui considéré comme partiellement contaminé : OpenAI a [cessé de le reporter](https://openai.com/index/why-we-no-longer-evaluate-swe-bench-verified/) au profit de [SWE-bench Pro](https://labs.scale.com/leaderboard/swe_bench_pro_public), où Kimi K2.6 mène les open-weight à 58.6%.
 
-Mais entre "pouvoir télécharger le modèle depuis HuggingFace" et "le faire tourner sur du GPU **financièrement accessible**", il y a un monde. Les meilleurs modèles open-weight pour le coding demandent des configurations **multi-H100** ou **multi-H200**, et même les modèles intermédiaires comme **Qwen3-Coder-30B-A3B-FP8** réclament au minimum un **L40S 48GB**.</br>
+Mais entre "pouvoir télécharger le modèle depuis HuggingFace" et "le faire tourner sur du GPU **financièrement accessible**", il y a un monde. Les meilleurs modèles open-weight pour le coding demandent des configurations **multi-H100** ou **multi-H200**, et même les modèles intermédiaires comme **Qwen3-Coder-30B-A3B-FP8** réclament au minimum un **L40S 48GB**.
 
 Le facteur limitant ici n'est pas la solution technique mais le **coût**. Pour cette démonstration, je me suis limité à des modèles modestes.
 
@@ -170,7 +170,7 @@ Charger ~15GB de poids depuis HuggingFace à chaque cold-start de pod, c'est len
 
 Les avantages dans notre cas :
 
-* **Cold-start divisé** — un Job de préchargement télécharge les poids depuis HuggingFace une seule fois lors du premier déploiement ; chaque pod vLLM monte ensuite le volume directement, démarrage en quelques secondes
+* **Cold-start raccourci** — un Job de préchargement télécharge les poids depuis HuggingFace une seule fois lors du premier déploiement ; chaque pod vLLM monte ensuite le volume directement, démarrage en quelques secondes
 * **Multi-attach natif** — plusieurs pods (réplicas, modèles distincts) partagent le même bucket sans configuration particulière, contrairement à un PVC EBS
 * **Cache intelligent** — préfetching automatique, latence ~1ms sur l'_active set_ (les poids fréquemment lus restent sur EFS sous le capot)
 * **Tarification EFS** sur les données actives uniquement, et **tarif S3 standard** (~$0.023/GB/mois) sur le stockage long terme — bien moins cher qu'un PVC EBS provisionné en taille fixe
@@ -184,8 +184,7 @@ S3 Files n'est pas magique sur le _bootstrap_ initial : le Job de préchargement
 
 ## :gear: Couche 2 — La couche d'inférence : vLLM sur GPU
 
-
-Maintenant que nous avons choisi nos modèles, il faut un moyen efficace de les **servir efficacement**. Cette solution a un impact non négligeable sur la latence, le troughput et le coût.
+Une fois le paysage des modèles posé et leurs poids accessibles via S3 Files, il reste à les **servir efficacement** — ce choix pèse directement sur la latence, le throughput et le coût.
 
 ### vLLM Production Stack
 
@@ -230,7 +229,7 @@ La **quantification** consiste à représenter ces mêmes poids sur **moins de b
 Le **FP8** divise la VRAM par 2 et est supporté nativement (au niveau hardware) par les GPU récents : **L4, L40S, H100, H200** — d'où son adoption généralisée en inférence.
 {{% /notice %}}
 
-Un flag du YAML ci-dessus mérite un mot supplémentaire : **`enablePrefixCaching: true`**, crucial pour le FIM. Lors d'une session d'autocomplete, chaque requête envoyée par l'IDE contient le même **préfixe** (le code du fichier autour du curseur) ; seuls les derniers caractères changent à mesure que le développeur tape. Avec le _prefix caching_, vLLM **réutilise** le KV cache déjà calculé pour ce préfixe partagé d'une requête à l'autre, au lieu de tout recalculer — c'est ce qui permet de tenir la latence p95 sous les 200 ms en tab-complete intensif.
+Un flag du YAML ci-dessus mérite un mot supplémentaire : **`enablePrefixCaching: true`**, crucial pour le **FIM** (_Fill-In-the-Middle_, l'autocomplete dans l'IDE). Lors d'une session d'autocomplete, chaque requête envoyée par l'IDE contient le même **préfixe** (le code du fichier autour du curseur) ; seuls les derniers caractères changent à mesure que le développeur tape. Avec le _prefix caching_, vLLM **réutilise** le KV cache déjà calculé pour ce préfixe partagé d'une requête à l'autre, au lieu de tout recalculer — c'est ce qui permet de tenir la latence p95 sous les 200 ms en tab-complete intensif.
 
 ### Autoscaling avec KEDA
 
@@ -241,7 +240,7 @@ L'HPA standard de Kubernetes est limité à CPU/mémoire — des signaux qui ne 
 Pour chaque modèle, le `ScaledObject` KEDA s'appuie sur deux métriques Prometheus exposées **par vLLM** :
 
 * `vllm:num_requests_running / vllm:num_requests_max` — la saturation du _batch_ interne (combien de requêtes vLLM traite en parallèle par rapport à son max).
-* `vllm:gpu_cache_usage_perc` — la pression sur le KV cache, qui monte vite avec les contextes longs.
+* `vllm:kv_cache_usage_perc` — la pression sur le KV cache, qui monte vite avec les contextes longs.
 
 ```yaml
 # Extrait de la composition Crossplane
@@ -252,21 +251,21 @@ triggers:
       threshold: "0.7"   # 70% du batch occupé
   - type: prometheus
     metadata:
-      query: avg(vllm:gpu_cache_usage_perc)
+      query: avg(vllm:kv_cache_usage_perc)
       threshold: "0.85"  # 85% du KV cache
 ```
 
-L'objectif est d'**anticiper**: ces indicateurs montent *avant* qu'une file d'attente ne se forme côté utilisateur, ce qui permet à KEDA d'ajouter un réplica suffisamment tôt pour absorber la montée en charge **sans dégrader la latence des requêtes en cours**. C'est tout l'écart entre un autoscaler qui *réagit* (file qui grossit, latence qui explose) et un autoscaler qui *anticipe*.
+L'objectif est d'**anticiper** : ces indicateurs montent *avant* qu'une file d'attente ne se forme côté utilisateur, ce qui permet à KEDA d'ajouter un réplica suffisamment tôt pour absorber la montée en charge **sans dégrader la latence des requêtes en cours**. C'est tout l'écart entre un autoscaler qui *réagit* (file qui grossit, latence qui explose) et un autoscaler qui *anticipe*.
 
 #### Karpenter prend le relais sur les nœuds
 
-KEDA scale les **réplicas vLLM**, mais ces réplicas ont besoin d'un GPU disponible pour être planifiés. C'est [**Karpenter**](https://karpenter.sh/) qui s'occupe de la couche en dessous : quand un pod ne trouve pas de noeud GPU libre, Karpenter provisionne automatiquement une instance fournissant du GPU (cycle ~60 s) ; et dès qu'un noeud n'héberge plus de pod GPU, il est décommissionné.
+KEDA scale les **réplicas vLLM**, mais ces réplicas ont besoin d'un GPU disponible pour être planifiés. C'est [**Karpenter**](https://karpenter.sh/) qui s'occupe de la couche en dessous : quand un pod ne trouve pas de nœud GPU libre, Karpenter provisionne automatiquement une instance fournissant du GPU (cycle ~60 s) ; et dès qu'un nœud n'héberge plus de pod GPU, il est décommissionné.
 
 ---
 
 ## :twisted_rightwards_arrows: Couche 3 — La couche d'accès : Gateway + routage
 
-Qu’en est-il de la **porte d'entrée**? : comment une requête arrive jusqu'au bon pod vLLM, et qui a le droit de l'envoyer.
+Reste à examiner la **porte d'entrée** : comment une requête arrive jusqu'au bon pod vLLM, et qui a le droit de l'envoyer.
 
 ### Envoy AI Gateway : la porte d'entrée
 
@@ -283,17 +282,17 @@ Qu’en est-il de la **porte d'entrée**? : comment une requête arrive jusqu'au
 Un seul modèle ne fait pas tout : **coder pour le code**, **reasoner pour les maths**, **guard pour la safety**. La porte d'entrée combine **deux mécanismes complémentaires**, mobilisés selon le besoin :
 
 * **Routage explicite** — le client cible directement un modèle (`model: xplane-qwen-coder`) via le header `x-ai-eg-model` ou le body de la requête. **[Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway)** dispatche nativement, latence négligeable. C'est ce que font Continue (autocomplete) et OpenCode quand ils savent quel modèle utiliser.
-* **Routage sémantique** — le client demande le modèle virtuel **`MoM`** (_Mixture of Models_) et **[vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router)**, déployé en **sidecar HTTP classifier**, analyse le prompt pour choisir le bon modèle (coder, reasoner, guard). Coût : ~250-300ms de classification (le classifier mmBERT tourne sur CPU — aucune pression sur la VRAM des pods GPU), payé **uniquement** quand `MoM` est demandé.
+* **Routage sémantique** — le client demande le modèle virtuel **`MoM`** (_Mixture of Models_) et **[vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router)** analyse le prompt pour choisir le bon modèle réel (coder, reasoner, guard). Détaillé dans la sous-section suivante.
 
-Grâce à ces possibilités, un client qui sait ce qu'il veut ne subit aucune latence supplémentaire, un client générique (OpenWebUI) profite d'un routage intelligent automatique.
+Grâce à ces possibilités, un client qui sait ce qu'il veut ne subit aucune latence supplémentaire, et un client générique (OpenWebUI) profite d'un routage intelligent automatique.
 
 ### Iris et le routage sémantique
 
-[**Iris (vLLM Semantic Router)**](https://github.com/vllm-project/semantic-router) est le projet open-source qui implémente la logique de **_Mixture of Models_** (`MoM`). C'est un service léger, déployé en sidecar à côté de l'AI Gateway : il intercepte les requêtes adressées au modèle virtuel `MoM`, analyse le prompt et choisit dynamiquement le modèle réel qui va y répondre.
+[**Iris (vLLM Semantic Router)**](https://github.com/vllm-project/semantic-router) est le projet open-source qui implémente la logique de **_Mixture of Models_** (`MoM`). Déployé en **sidecar** à côté de l'AI Gateway, il intercepte les requêtes adressées au modèle virtuel `MoM` et choisit dynamiquement le modèle réel qui va y répondre.
 
-Sous le capot, Iris s'appuie sur un classifier compact (~100M paramètres, dérivé de BERT, servi sur CPU — donc aucune pression sur la VRAM des GPUs) qui évalue le prompt selon **différents critères** : l'intention (code, raisonnement, multilingue…), la présence d'une éventuelle tentative de _jailbreak_, ou la détection de **données personnelles (PII)**. Selon le verdict, Iris route vers le modèle approprié — ou applique un _guardrail_ de sécurité dédié.
+Sous le capot, un classifier compact (~100M paramètres, dérivé de **mmBERT**, servi sur **CPU** — donc aucune pression sur la VRAM des pods GPU) évalue le prompt selon **plusieurs critères** : l'intention (code, raisonnement, multilingue…), la présence d'une éventuelle tentative de _jailbreak_, ou la détection de **données personnelles (PII)**. Selon le verdict, Iris route vers le modèle approprié — ou applique un _guardrail_ de sécurité dédié.
 
-**L'intérêt** : les clients adressent un seul endpoint (`MoM`) et bénéficient d'un routage adapté à chaque prompt sans coder leur propre logique de sélection. Le coût (~250-300 ms de classification) est le seul _trade-off_, payé uniquement sur les requêtes adressées à `MoM`.
+**L'intérêt** : les clients adressent un seul endpoint (`MoM`) et bénéficient d'un routage adapté à chaque prompt sans coder leur propre logique de sélection. Le _trade-off_ : ~250-300 ms de classification, payés **uniquement** sur les requêtes adressées à `MoM`. C'est acceptable pour un chat — le TTFT global reste imperceptible côté humain — mais rédhibitoire pour l'autocomplete IDE qui doit rester sous les 200 ms p95 : c'est exactement pour ça que **Continue** adresse directement le pod coder en routage explicite.
 
 ---
 
@@ -326,7 +325,7 @@ Une plateforme sans clients n'est qu'une démo de plomberie. Pas la peine ici de
 
 ### Continue VSCode — l'autocomplete FIM dans l'IDE
 
-[**Continue**](https://continue.dev/) branche l'API sur VSCode (ou JetBrains). Le _killer feature_ ici, c'est le **FIM** (_Fill-In-the-Middle_) : autocomplete sous **200ms p95** grâce au pod coder dédié toujours warm et au prefix cache de vLLM. C'est ce qui fait la différence entre une autocomplete réactive et un truc lourdingue — l'équivalent d'un Cursor Tab ou d'un Copilot, mais sur notre infra.
+[**Continue**](https://continue.dev/) branche l'API sur VSCode (ou JetBrains). Le _killer feature_ ici, c'est le **FIM** (_Fill-In-the-Middle_) : autocomplete sous **200ms p95** grâce au pod coder dédié toujours warm et au prefix cache de vLLM. C'est ce qui fait la différence entre une autocomplete réactive et une autocomplete frustrante — l'équivalent d'un Cursor Tab ou d'un Copilot, mais sur notre infra.
 
 ### OpenCode — l'alternative open-source à Claude Code
 
@@ -402,13 +401,13 @@ Soyons honnêtes : les scores absolus restent **en deçà** d'un Sonnet ou d'un 
 
 ## :thought_balloon: Dernières remarques
 
-### Quels objectifs a t-on pu atteindre?
+### Quels objectifs a-t-on pu atteindre ?
 
 On a réussi à bâtir un **moyen simple de servir des modèles open-weight** sur Kubernetes : une claim YAML déclenche tout l'outillage nécessaire, le swap d'un modèle se fait en quelques lignes, et l'observabilité est en place de bout en bout.
 
-Mais soyons honnête sur l'expérience utilisateur : sans accès à des modèles "sérieux" (DeepSeek V4 Pro, Kimi K2.6, Qwen3-Coder-30B…), nos tests se sont essentiellement limités à **valider qu'on obtient une réponse** — pas à mesurer une vraie qualité de production. Avec les modèles 7-8B qui tiennent sur un L4, on a parfois l'impression de revenir à la préhistoire 😅.
+Mais soyons honnêtes sur l'expérience utilisateur : sans accès à des modèles "sérieux" (DeepSeek V4 Pro, Kimi K2.6, Qwen3-Coder-30B…), nos tests se sont essentiellement limités à **valider qu'on obtient une réponse** — pas à mesurer une vraie qualité de production. Avec les modèles 7-8B qui tiennent sur un L4, on a parfois l'impression de revenir à la préhistoire 😅.
 
-Le point positif, c'est ce qu'il y a *en dessous* : **la stack elle-même est viable et évolutive**.
+Le point positif, c'est ce qu'il y a sous le capot : **la stack elle-même est viable et évolutive**.
 
 ### À qui ça parle aujourd'hui
 
@@ -428,15 +427,15 @@ Je n'ai volontairement pas voulu rentrer dans ces considérations dans le corps 
 
 ### Et moi, là maintenant ?
 
-Soyons clair : aujourd'hui je ne troquerais pas mon écosystème Claude. Principalement pour des raisons **financières** — pas par attachement particulier. À mon échelle d'usage, Sonnet et Opus me coûtent moins cher que de reproduire en self-hosted une qualité équivalente.
+Soyons clairs : aujourd'hui je ne troquerais pas mon écosystème Claude. Principalement pour des raisons **financières** — pas par attachement particulier. À mon échelle d'usage, Sonnet et Opus me coûtent moins cher que de reproduire en self-hosted une qualité équivalente.
 
 Cela dit, j'aurais aimé pousser plus loin l'usage d'**OpenCode** et migrer pour de bon ma configuration Claude (skills, MCPs, sous-agents) sur ce backend — ce sera peut-être le sujet d'un futur article dédié à cet agent coding open-source.
 
 Mais je garde la stack vivante. Quand un Qwen3-Coder-30B-A3B tournera correctement sur un L4 quantifié — chemin documenté dans [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — le swap sera une PR de quelques lignes. C'est ça l'**intérêt principal** de cette démo : se mettre en position d'**adopter rapidement** ce qui s'annonce, plutôt que d'avoir à tout (re)construire le jour où l'open-weight rattrapera le frontier.
 
-L'avenir, lui, est résolument hybride.
-
 **Ironie de l'histoire** : l'ensemble de cette stack a été conçu et construit avec l'aide de **Claude Code** 🙃.
+
+L'avenir, lui, est résolument hybride.
 
 ---
 
