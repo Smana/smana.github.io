@@ -16,16 +16,16 @@ thumbnail = "thumbnail.png"
 This article follows [Agentic Coding: concepts and hands-on use cases](/en/post/series/agentic_ai/ai-coding-agent/) (the fundamentals of coding agents) and [A few months with Claude Code](/en/post/series/agentic_ai/ai-coding-tips/) (daily tips and lessons learned). **Here, we take a step back**: what can we reasonably do self-hosted today?
 {{% /notice %}}
 
-I now use agentic coding on a daily basis, like many of us. I'm overall happy with my Claude Code experience, but I keep a close eye on the **open-weight ecosystem**[^open-weight], which is also booming: Qwen, Llama, Mistral, GLM, DeepSeek — and on the fierce competition between the various players in the space.
+I now use agentic coding on a daily basis, like many of us. I'm overall happy with my Claude Code experience, but I keep a close eye on the **open-weight ecosystem**[^open-weight], which is also rapidly evolving: Qwen, Llama, Mistral, GLM, DeepSeek — and on the fierce competition between the various players in the space.
 
 [^open-weight]: For the precise definition — and the distinction from *open-source* — see [Open Weights, by the Open Source Initiative](https://opensource.org/ai/open-weights).
 
-So I gave myself a little challenge: **how could we host our own LLMs in our own infrastructure?** Data sovereignty, model choice, vendor independence, and above all — the technical curiosity to see what's *really* feasible today with the modern tools at our disposal.
+So I set myself a challenge: **how could we host our own LLMs in our own infrastructure?** Data sovereignty, model choice, vendor independence, and above all — the technical curiosity to see what's *really* feasible today with the modern tools at our disposal.
 
 {{% notice note "This article is a demonstration" %}}
-The models deployed here are **7-8B parameters**, served on a **L4 24GB GPU**. On complex agentic tasks, their level is **well below** a Sonnet 4.6 or an Opus 4.7 — they hallucinate more, loop on errors where a _frontier_ model breezes through.
+The models deployed here are **7-8B parameters**, served on a **L4 24GB GPU**. On complex agentic tasks, they fall **well short of** a Sonnet 4.6 or an Opus 4.7 — they hallucinate more, loop on errors where a _frontier_ model breezes through.
 
-The open-weight models that could *truly* compete (DeepSeek V4 Pro, Kimi K2.6) demand hardware out of reach for personal use.
+The open-weight models that could *truly* compete (DeepSeek V4 Pro, Kimi K2.6) require hardware that's simply out of reach for personal use.
 
 This article aims to **lay the foundations** of an alternative meant to evolve as the ecosystem catches up, and demonstrates what's *already* possible today — even with modest models.
 {{% /notice %}}
@@ -61,7 +61,7 @@ The stack is organized into **three layers**, which we'll walk through from the 
 2. **Inference** — a _fleet_ of **vLLM** pods serving models on GPU.
 3. **Access** — the **Envoy AI Gateway** at the front, and the **vLLM Semantic Router** that dynamically picks the model when needed.
 
-The whole thing is driven by **GitOps** (Flux reconciles everything from [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) and exposed privately via **Tailscale** — nothing lands on the public Internet. Each layer is detailed in the sections that follow.
+The whole thing is driven by **GitOps** (Flux reconciles everything from [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) and exposed privately via **Tailscale** — nothing is exposed to the public Internet. Each layer is detailed in the sections that follow.
 
 ---
 
@@ -146,7 +146,7 @@ Versions, tests, schema — not just "YAML we copy-paste".
 
 ## :brain: Layer 1 — Models and their storage
 
-Now let's walk the three layers of the diagram, starting from the bedrock. Two structural decisions here: **what hardware is financially accessible** (and therefore which models can fit), and **how their weights are stored and loaded on demand**.
+Now let's walk the three layers of the diagram, starting at the base. Two structural decisions here: **what hardware is financially accessible** (and therefore which models can fit), and **how their weights are stored and loaded on demand**.
 
 ### The ecosystem in May 2026
 
@@ -184,7 +184,7 @@ S3 Files isn't magic on the initial _bootstrap_: the preloading Job has to downl
 
 ## :gear: Layer 2 — The inference layer: vLLM on GPU
 
-Once the model landscape is laid out and the weights are accessible via S3 Files, we still need to **serve them efficiently** — a choice that bears directly on latency, throughput, and cost.
+Once the model landscape is laid out and the weights are accessible via S3 Files, we still need to **serve them efficiently** — a choice that directly affects latency, throughput, and cost.
 
 ### vLLM Production Stack
 
@@ -198,7 +198,7 @@ Once the model landscape is laid out and the weights are accessible via S3 Files
 {{% notice info "_Continuous batching_ and _paged attention_, in two sentences" %}}
 **Continuous batching**: a naive serving stack waits for a complete batch of requests before processing it (static batching). vLLM instead **inserts each new request into the in-flight GPU batch** — the GPU never sleeps between requests.
 
-**Paged attention**: the _KV cache_ (the per-token attention state, which dominates VRAM use during inference) is split into **fixed-size pages**, like the virtual memory of an OS. As a result, sequences of very different lengths share the same VRAM **without fragmentation**, which dramatically increases the number of concurrent sequences per GPU.
+**Paged attention**: a naive serving stack reserves the _KV cache_ (the memory accumulated per generated token, which dominates VRAM) as one contiguous block sized for the max length — a worst-case `malloc`, wasted on short requests. vLLM **pages it just like an OS pages its virtual memory**: fixed-size pages allocated on demand, with sequences of very different lengths cohabiting on the same GPU without fragmentation.
 {{% /notice %}}
 
 [^vllm-bench]: Multipliers documented in the original paper [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) (Kwon et al., SOSP 2023): vLLM reaches **2-4×** the throughput of FasterTransformer and **14-24×** that of a HuggingFace Transformers baseline. The actual range depends on the workload and chosen baseline.
@@ -255,7 +255,7 @@ triggers:
       threshold: "0.85"  # 85% of KV cache
 ```
 
-The goal is to **anticipate**: these indicators rise *before* a queue forms on the user side, which lets KEDA add a replica early enough to absorb the surge **without degrading the latency of in-flight requests**. That's the whole gap between an autoscaler that *reacts* (queue grows, latency explodes) and one that *anticipates*.
+The goal is to **anticipate**: these indicators rise *before* a queue forms on the user side, which lets KEDA add a replica early enough to absorb the surge **without degrading the latency of in-flight requests**. That's the key difference between an autoscaler that *reacts* (queue grows, latency explodes) and one that *anticipates*.
 
 #### Karpenter takes over on the node side
 
@@ -284,7 +284,7 @@ A single model doesn't do everything: **coder for code**, **reasoner for math**,
 * **Explicit routing** — the client targets a model directly (`model: xplane-qwen-coder`) via the `x-ai-eg-model` header or the request body. **[Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway)** dispatches natively, with negligible latency. That's what Continue (autocomplete) and OpenCode do when they know which model to use.
 * **Semantic routing** — the client asks for the virtual model **`MoM`** (_Mixture of Models_) and **[vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router)** analyzes the prompt to pick the right actual model (coder, reasoner, guard). Detailed in the next sub-section.
 
-Thanks to this, a client that knows what it wants takes no extra latency, and a generic client (OpenWebUI) benefits from automatic smart routing.
+With this setup, a client that knows what it wants pays no extra latency, and a generic client (OpenWebUI) benefits from automatic smart routing.
 
 ### Iris and semantic routing
 
@@ -292,7 +292,7 @@ Thanks to this, a client that knows what it wants takes no extra latency, and a 
 
 Under the hood, a compact classifier (~100M parameters, derived from **mmBERT**, served on **CPU** — so no pressure on GPU-pod VRAM) evaluates the prompt against **several criteria**: intent (code, reasoning, multilingual…), the presence of a possible _jailbreak_ attempt, or **personally identifiable information (PII)** detection. Based on the verdict, Iris routes to the appropriate model — or applies a dedicated safety _guardrail_.
 
-**The payoff**: clients hit a single endpoint (`MoM`) and get a per-prompt routing without coding their own selection logic. The _trade-off_: ~250-300 ms of classification, paid **only** on requests addressed to `MoM`. That's acceptable for chat — the overall TTFT stays imperceptible to a human — but a deal-breaker for IDE autocomplete, which has to stay under 200 ms p95: that's precisely why **Continue** hits the coder pod directly via explicit routing.
+**The payoff**: clients hit a single endpoint (`MoM`) and get a per-prompt routing without coding their own selection logic. The _trade-off_: ~250-300 ms of classification, incurred **only** on requests routed to `MoM`. That's acceptable for chat — the overall TTFT stays imperceptible to a human — but a deal-breaker for IDE autocomplete, which has to stay under 200 ms p95: that's precisely why **Continue** hits the coder pod directly via explicit routing.
 
 ---
 
@@ -329,15 +329,15 @@ A platform without clients is just plumbing. No need to walk through each config
 
 ### OpenCode — the open-source alternative to Claude Code
 
-[**OpenCode**](https://opencode.ai/) is my main surface in this stack: the CLI agent that comes closest to the **Claude Code** experience. It ships an explicit _compatibility shim_ — `AGENTS.md` ↔ `CLAUDE.md`, **skills**, **MCPs**, sub-agents, slash commands — so that **the entire workflow built around Claude Code carries over directly**. That's what sets it apart from Aider, Crush, or Continue's agent mode: you don't rewrite your flow, you just plug it into a different backend.
+I just discovered [**OpenCode**](https://opencode.ai/) — the CLI agent that comes closest to the **Claude Code** experience, and therefore the only serious candidate to consider for a migration the day it becomes necessary. It ships an explicit _compatibility shim_ — `AGENTS.md` ↔ `CLAUDE.md`, **skills**, **MCPs**, sub-agents, slash commands — so that **the entire workflow built around Claude Code carries over directly**. That's what sets it apart from Aider, Crush, or Continue's agent mode: you don't rewrite your flow, you just plug it into a different backend.
 
-On complex agentic tasks (multi-file reasoning, 5+ step tool-use), a 7B coder remains fragile compared to Sonnet or Opus. For constrained tasks — targeted refactors, generated scripts, debug loops — it's largely credible.
+On complex agentic tasks (multi-file reasoning, 5+ step tool-use), a 7B coder remains fragile compared to Sonnet or Opus. For well-scoped tasks — targeted refactors, one-shot scripts, debug loops — it's a credible option.
 
 ---
 
 ## :bar_chart: Monitoring and continuous evaluation
 
-An LLM platform produces a lot of signal — and the stack **exposes everything you need to exploit it**: Prometheus metrics on the vLLM side, OpenTelemetry Gen AI metrics on the AI Gateway side, centralized logs on VictoriaLogs, quality evals with Promptfoo. The question isn't "what do we observe?" but "what do we look at first?".
+An LLM platform produces signal **on several axes at once** — serving health, per-tenant token consumption, response quality — and each has its own indicators (TTFT, inter-token latency, prefix cache hit, token usage per operation…) that classic web monitoring doesn't capture. Good news: the **existing observability stack** (VictoriaMetrics, VictoriaLogs, Grafana) absorbs all of this with no new tooling — it was just a matter of wiring up the right sources. And the stake goes **beyond anomaly detection**: understanding *how* the platform is used — who consumes what, on which models, at what cost — is just as important.
 
 ### Platform health — `vLLM` metrics
 
@@ -356,7 +356,7 @@ In the screenshot, the stack is idle: 4 active models (one replica each), 0 in-f
 
 ### Usage and FinOps — AI Gateway metrics
 
-This is where it gets really interesting. **`Envoy AI Gateway` exposes its metrics following the [OpenTelemetry Gen AI Semantic Conventions](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/)** — it doesn't just count requests, it instruments the actual business vocabulary of LLMs:
+The **`Envoy AI Gateway`** observes traffic **one level up** from vLLM — at the business level. Its metrics follow the [OpenTelemetry Gen AI Semantic Conventions](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/) standard: it doesn't count requests, it instruments the **actual business vocabulary of LLMs**:
 
 | Metric | Measures |
 |---|---|
@@ -365,9 +365,7 @@ This is where it gets really interesting. **`Envoy AI Gateway` exposes its metri
 | `gen_ai.server.time_to_first_token` | TTFT at the gateway level |
 | `gen_ai.server.time_per_output_token` | Inter-token latency |
 
-Each one is automatically enriched with `gen_ai.operation.name` (chat / completion / embedding…), `gen_ai.request.model`, `gen_ai.response.model`, and `gen_ai.provider.name`. First free benefit: **knowing which models are used the most** with a single PromQL query.
-
-And, more importantly — the piece that changes everything — **you can enrich these metrics with custom labels extracted from HTTP headers** via `controller.metricsRequestHeaderAttributes`. If each client carries an `x-tenant-id`, `x-team`, or `x-user` header, those values become Prometheus labels. From there, you can answer:
+Each metric is automatically enriched with `gen_ai.*` labels (model, operation, provider) — you already know *who consumes what* in a single PromQL query. And you can **inject arbitrary HTTP headers as labels** (`x-tenant-id`, `x-team`…): from there, you can answer:
 
 * **Which tenant burns the most tokens** over the last 30 days?
 * **Which team has the highest p95 latency** on the coder?
@@ -403,11 +401,11 @@ Let's be honest: the absolute scores stay **below** a Sonnet or an Opus. Continu
 
 ### What did we manage to achieve?
 
-We've succeeded in building a **simple way to serve open-weight models** on Kubernetes: a YAML claim triggers all the necessary plumbing, swapping a model is a few-line change, and observability is in place end-to-end.
+We managed to build a **simple way to serve open-weight models** on Kubernetes: a YAML claim triggers all the necessary plumbing, swapping a model is a few-line change, and observability is in place end-to-end.
 
-But let's be honest about user experience: without access to "serious" models (DeepSeek V4 Pro, Kimi K2.6, Qwen3-Coder-30B…), our tests essentially boiled down to **verifying we get a response** — not to measuring real production-grade quality. With the 7-8B models that fit on a L4, you sometimes feel like you're back in the stone age 😅.
+But let's be honest about user experience: without access to "serious" models (DeepSeek V4 Pro, Kimi K2.6, Qwen3-Coder-30B…), our tests mostly came down to **checking that we got *any* response** — not to measuring real production-grade quality. With the 7-8B models that fit on an L4, you sometimes feel like you're back in the stone age 😅.
 
-The bright side is what's under the hood: **the stack itself is viable and scalable**.
+The bright side is what's under the hood: **the stack itself is solid and production-ready**.
 
 ### Who this resonates with today
 
@@ -418,24 +416,24 @@ For everyone else — myself first — **the point is to lay the foundations** f
 * **Hardware diversification**: Nvidia's hegemony is starting to crack. DeepSeek V4 already runs on Huawei Ascend 950 (with _Day 0 adaptation_ confirmed by Huawei, Cambricon, and Hygon). More vendors → more availability → less price pressure.
 * **Financial accessibility**: open-weight models closing in on the frontier (1T+ params) still demand 8 to 16× H100 — out of reach personally, still steep for many organizations.
 
-### A (deliberately short) geostrategic note
+### A (deliberately short) geopolitical note
 
-I deliberately stayed out of these considerations in the body of the article — and I take the benchmarks at face value, assuming they're unbiased. That said, two observations are worth putting down:
+I deliberately kept these considerations out of the main article — and I take the benchmarks at face value, assuming they're unbiased. That said, two observations are worth putting down:
 
 * **Chinese players are betting on open-weight** (DeepSeek, Kimi/Moonshot, Qwen/Alibaba). It's an industrial-strategy bet that may pay off long-term — the more the open-weight ecosystem matures, the more competitive it becomes against closed models.
 * **And their results on SWE-bench** — the coding reference — are **really good**: on SWE-bench Pro, Kimi K2.6 leads the open-weight pack at 58.6%, ~6 points behind Claude Opus 4.7. On Verified, DeepSeek V4 Pro brushes 80%, ~7 points behind Opus. The gap is closing, benchmark after benchmark.
 
 ### And me, right now?
 
-Let's be clear: today I wouldn't trade my Claude ecosystem. Mainly for **financial** reasons — not out of any particular attachment. At my usage scale, Sonnet and Opus cost me less than reproducing an equivalent quality self-hosted.
+Let's be clear: today I wouldn't trade my Claude ecosystem. Mainly for **financial** reasons — not out of any particular attachment. At my usage scale, Sonnet and Opus cost me less than replicating equivalent quality through self-hosting.
 
 That said, I would have liked to push my use of **OpenCode** further and migrate my Claude setup (skills, MCPs, sub-agents) onto that backend for good — that may be the topic of a future article dedicated to this open-source coding agent.
 
-But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a quantized L4 — a path documented in [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — the swap will be a few-line PR. That's the **main point** of this demo: positioning yourself to **adopt quickly** what's coming, rather than having to (re)build everything the day open-weight catches up to the frontier.
+But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a quantized L4 — a path documented in [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — the swap will be a few-line PR. That's the **main point** of this demo: positioning yourself to **move fast when the time comes**, rather than scrambling to (re)build everything the day open-weight catches up to the frontier.
 
 **Irony of history**: this entire stack was designed and built with the help of **Claude Code** 🙃.
 
-The future, well, is decidedly hybrid.
+The future, it's clear, is hybrid.
 
 ---
 
