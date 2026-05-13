@@ -61,7 +61,7 @@ La stack s'organise en **trois couches**, que l'on parcourra du socle vers la po
 2. **Inférence** — une _fleet_ de pods **vLLM** qui servent les modèles sur GPU.
 3. **Accès** — l'**Envoy AI Gateway** en frontal, et le **vLLM Semantic Router** qui choisit dynamiquement le modèle quand c'est nécessaire.
 
-L'ensemble est piloté par **Flux** et exposé en privé via **Tailscale** — rien n'atterrit sur Internet. Chaque couche est détaillée dans les sections qui suivent.
+L'ensemble est piloté par **Flux** (réconciliation continue depuis [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) et exposé en privé via **Tailscale** — aucune donnée ne quitte l'infrastructure. Chaque couche est détaillée dans les sections qui suivent.
 
 ---
 
@@ -146,7 +146,7 @@ Versions, tests, schéma — pas juste "du YAML qu'on copie-colle".
 
 ## :brain: Couche 1 — Les modèles et leur stockage
 
-On va maintenant remonter les trois couches du diagramme, en commençant par le socle. Deux décisions structurantes ici : **quel matériel est financièrement accessible** (et donc quels modèles peuvent tenir dedans), et **comment leurs poids sont stockés et chargés à la demande**.
+Parcourons maintenant les trois couches du diagramme, en commençant par le socle. Deux décisions structurantes ici : **quel matériel est financièrement accessible** (et donc quels modèles peuvent tenir dedans), et **comment leurs poids sont stockés et chargés à la demande**.
 
 ### L'écosystème en mai 2026
 
@@ -239,20 +239,20 @@ L'HPA standard de Kubernetes est limité à CPU/mémoire — des signaux qui ne 
 
 Pour chaque modèle, le `ScaledObject` KEDA s'appuie sur deux métriques Prometheus exposées **par vLLM** :
 
-* `vllm:num_requests_running / vllm:num_requests_max` — la saturation du _batch_ interne (combien de requêtes vLLM traite en parallèle par rapport à son max).
-* `vllm:kv_cache_usage_perc` — la pression sur le KV cache, qui monte vite avec les contextes longs.
+* `vllm:num_requests_running` — combien de requêtes vLLM traite en parallèle, rapportée à la taille de batch configurée (`maxNumSeqs`) pour mesurer la saturation du _batch_ interne.
+* `vllm:gpu_cache_usage_perc` — la pression sur le KV cache GPU, qui monte vite avec les contextes longs.
 
 ```yaml
 # Extrait de la composition Crossplane
 triggers:
   - type: prometheus
     metadata:
-      query: max(vllm:num_requests_running) / max(vllm:num_requests_max)
-      threshold: "0.7"   # 70% du batch occupé
+      query: max(vllm:num_requests_running{model_name="xplane-qwen-coder"}) / scalar(vector(32))
+      threshold: "0.7"   # 70% du batch (maxNumSeqs) occupé
   - type: prometheus
     metadata:
-      query: avg(vllm:kv_cache_usage_perc)
-      threshold: "0.85"  # 85% du KV cache
+      query: max(vllm:gpu_cache_usage_perc{model_name="xplane-qwen-coder"})
+      threshold: "0.6"   # 60% du KV cache GPU
 ```
 
 L'objectif est d'**anticiper** : ces indicateurs montent *avant* qu'une file d'attente ne se forme côté utilisateur, ce qui permet à KEDA d'ajouter un réplica suffisamment tôt pour absorber la montée en charge **sans dégrader la latence des requêtes en cours**. C'est tout l'écart entre un autoscaler qui *réagit* (file qui grossit, latence qui explose) et un autoscaler qui *anticipe*.
@@ -325,7 +325,7 @@ Enfin, afin de pouvoir concrètement utiliser cette plateforme, il faut évidemm
 
 ### Continue VSCode — l'autocomplete FIM dans l'IDE
 
-[**Continue**](https://continue.dev/) branche l'API sur VSCode (ou JetBrains). Le _killer feature_ ici, c'est le **FIM** (_Fill-In-the-Middle_) : autocomplete sous **200ms p95** grâce au pod coder dédié toujours warm et au prefix cache de vLLM. C'est ce qui fait la différence entre une autocomplete réactive et une autocomplete frustrante (celà s'apparente à ce que nous pouvons retrouver sur Cursor ou Copilot).
+[**Continue**](https://continue.dev/) branche l'API sur VSCode (ou JetBrains). Le _killer feature_ ici, c'est le **FIM** (_Fill-In-the-Middle_) : autocomplete sous **200ms p95** grâce au pod coder dédié toujours warm et au prefix cache de vLLM. C'est ce qui fait la différence entre une autocomplete réactive et une autocomplete frustrante (cela s'apparente à ce que nous pouvons retrouver sur Cursor ou Copilot).
 
 ### OpenCode — l'alternative open-source à Claude Code
 
@@ -345,9 +345,9 @@ Bonne nouvelle : la **stack d'observabilité existante** (VictoriaMetrics, Victo
 
 [`vLLM` expose nativement](https://docs.vllm.ai/en/stable/usage/metrics/) un endpoint Prometheus complet, chaque métrique portant un label `model_name` :
 
-* **Charge** : `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:kv_cache_usage_perc` (les triggers KEDA viennent d'ici)
+* **Charge** : `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:gpu_cache_usage_perc` (les triggers KEDA viennent d'ici)
 * **Performance** : `vllm:time_to_first_token_seconds`, `vllm:inter_token_latency_seconds`, `vllm:e2e_request_latency_seconds`
-* **Throughput** : `vllm:prompt_tokens_total`, `vllm:generation_tokens_total`
+* **Throughput** : `vllm:prompt_tokens`, `vllm:generation_tokens`
 * **Optimisations** : `vllm:prefix_cache_hits` (essentiel pour mesurer l'efficacité du FIM)
 
 Le dashboard Grafana `LLM Platform` (déployé via `Grafana Operator` depuis `apps/base/ai/llm/grafana-dashboard.yaml`) agrège tout ça par modèle :
@@ -446,7 +446,6 @@ Mais je garde la stack vivante. Quand un Qwen3-Coder-30B-A3B tournera correcteme
 - [vLLM Production Stack](https://github.com/vllm-project/production-stack) — Inférence LLM en production
 - [vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router) — Routage intelligent multi-modèles
 - [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway) — Gateway API pour LLM
-- [KEDA HTTP add-on](https://kedify.io/keda-http-add-on) — Scale-from-zero HTTP
 - [Promptfoo](https://www.promptfoo.dev/) — Évaluation LLM en continu
 - [Continue](https://continue.dev/) — Extension VSCode IDE assist
 - [OpenCode](https://opencode.ai/) — CLI agent loop OSS

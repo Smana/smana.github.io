@@ -61,7 +61,7 @@ The stack is organized into **three layers**, which we'll walk through from the 
 2. **Inference** — a _fleet_ of **vLLM** pods serving models on GPU.
 3. **Access** — the **Envoy AI Gateway** at the front, and the **vLLM Semantic Router** that dynamically picks the model when needed.
 
-The whole thing is driven by **GitOps** (Flux reconciles everything from [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) and exposed privately via **Tailscale** — nothing is exposed to the public Internet. Each layer is detailed in the sections that follow.
+The whole thing is driven by **GitOps** (Flux reconciles everything from [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)) and exposed privately via **Tailscale** — no data leaves the infrastructure. Each layer is detailed in the sections that follow.
 
 ---
 
@@ -239,20 +239,20 @@ The standard Kubernetes HPA is limited to CPU/memory — signals that don't refl
 
 For each model, the KEDA `ScaledObject` relies on two Prometheus metrics exposed **by vLLM**:
 
-* `vllm:num_requests_running / vllm:num_requests_max` — saturation of the internal _batch_ (how many requests vLLM is processing in parallel vs its max).
-* `vllm:kv_cache_usage_perc` — pressure on the KV cache, which climbs fast with long contexts.
+* `vllm:num_requests_running` — how many requests vLLM is processing in parallel, divided by the configured batch size (`maxNumSeqs`) to measure internal batch saturation.
+* `vllm:gpu_cache_usage_perc` — pressure on the GPU KV cache, which climbs fast with long contexts.
 
 ```yaml
 # Snippet from the Crossplane composition
 triggers:
   - type: prometheus
     metadata:
-      query: max(vllm:num_requests_running) / max(vllm:num_requests_max)
-      threshold: "0.7"   # 70% of batch occupied
+      query: max(vllm:num_requests_running{model_name="xplane-qwen-coder"}) / scalar(vector(32))
+      threshold: "0.7"   # 70% of the batch (maxNumSeqs) occupied
   - type: prometheus
     metadata:
-      query: avg(vllm:kv_cache_usage_perc)
-      threshold: "0.85"  # 85% of KV cache
+      query: max(vllm:gpu_cache_usage_perc{model_name="xplane-qwen-coder"})
+      threshold: "0.6"   # 60% of the GPU KV cache
 ```
 
 The goal is to **anticipate**: these indicators rise *before* a queue forms on the user side, which lets KEDA add a replica early enough to absorb the surge **without degrading the latency of in-flight requests**. That's the key difference between an autoscaler that *reacts* (queue grows, latency explodes) and one that *anticipates*.
@@ -329,9 +329,7 @@ A platform without clients is just plumbing. No need to walk through each config
 
 ### OpenCode — the open-source alternative to Claude Code
 
-I just discovered [**OpenCode**](https://opencode.ai/) — the CLI agent that comes closest to the **Claude Code** experience, and therefore the only serious candidate to consider for a migration the day it becomes necessary. It ships an explicit _compatibility shim_ — `AGENTS.md` ↔ `CLAUDE.md`, **skills**, **MCPs**, sub-agents, slash commands — so that **the entire workflow built around Claude Code carries over directly**. That's what sets it apart from Aider, Crush, or Continue's agent mode: you don't rewrite your flow, you just plug it into a different backend.
-
-On complex agentic tasks (multi-file reasoning, 5+ step tool-use), a 7B coder remains fragile compared to Sonnet or Opus. For well-scoped tasks — targeted refactors, one-shot scripts, debug loops — it's a credible option.
+I just discovered [**OpenCode**](https://opencode.ai/) — the CLI agent that comes closest to the **Claude Code** experience, and therefore the only serious candidate to consider for a migration the day it becomes necessary. It ships an explicit _compatibility shim_ — `AGENTS.md` ↔ `CLAUDE.md`, **skills**, **MCPs**, sub-agents, slash commands — so that **the entire workflow built around Claude Code carries over directly**. That's what sets it apart from Aider, Crush, or Continue's agent mode.
 
 ---
 
@@ -343,9 +341,9 @@ An LLM platform produces signal **on several axes at once** — serving health, 
 
 [`vLLM` natively exposes](https://docs.vllm.ai/en/stable/usage/metrics/) a full Prometheus endpoint, with each metric carrying a `model_name` label:
 
-* **Load**: `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:kv_cache_usage_perc` (KEDA triggers come from here)
+* **Load**: `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:gpu_cache_usage_perc` (KEDA triggers come from here)
 * **Performance**: `vllm:time_to_first_token_seconds`, `vllm:inter_token_latency_seconds`, `vllm:e2e_request_latency_seconds`
-* **Throughput**: `vllm:prompt_tokens_total`, `vllm:generation_tokens_total`
+* **Throughput**: `vllm:prompt_tokens`, `vllm:generation_tokens`
 * **Optimizations**: `vllm:prefix_cache_hits` (essential to measure FIM efficiency)
 
 The `LLM Platform` Grafana dashboard (deployed via `Grafana Operator` from `apps/base/ai/llm/grafana-dashboard.yaml`) aggregates all of this per model:
@@ -372,8 +370,6 @@ Each metric is automatically enriched with `gen_ai.*` labels (model, operation, 
 * **What's the prompt/generation ratio** per user? (useful for context sizing)
 * **How many chat vs embedding calls** per client?
 
-In short: **per-tenant FinOps**, with no application agent to write — typically what you spend months building by hand in a proprietary platform.
-
 > The usual SLOs / alerts (p95 latency, error rate, GPU saturation) stay defined as `VMRule` next to that — nothing LLM-specific, I cover it in the [observability/alerting article](/en/post/series/observability/alerts/).
 
 ### Qualitative evaluation with `Promptfoo`
@@ -393,7 +389,7 @@ The concrete benefits:
 * **Cascade vs direct model comparison**: does the `MoM` routing degrade quality compared to a direct call to the right model?
 * **Stress-testing sequential tool-calling**: how many consecutive tool calls can `Qwen2.5-Coder` chain before crashing?
 
-Let's be honest: the absolute scores stay **below** a Sonnet or an Opus. Continuous eval isn't about reassuring yourself in absolute terms, but about **measuring evolution over time** and avoiding silent regressions — that's what lets me quantify the claims I make in the conclusion.
+Continuous eval isn't about reassuring yourself in absolute terms, but about **measuring evolution over time** and avoiding silent regressions — that's what lets me quantify the claims I make in the conclusion.
 
 ---
 
@@ -413,7 +409,7 @@ The experience is immediately relevant for **organizations with a real data-sove
 
 For everyone else — myself first — **the point is to lay the foundations** for the moment the calculus really shifts. That moment depends on two fast-moving factors:
 
-* **Hardware diversification**: Nvidia's hegemony is starting to crack. DeepSeek V4 already runs on Huawei Ascend 950 (with _Day 0 adaptation_ confirmed by Huawei, Cambricon, and Hygon). More vendors → more availability → less price pressure.
+* **Hardware diversification**: Nvidia's hegemony is starting to crack. DeepSeek V4 already runs on Huawei Ascend 950 (with _Day 0 adaptation_ confirmed by Huawei, Cambricon, and Hygon). More vendors → more availability → downward pressure on prices.
 * **Financial accessibility**: open-weight models closing in on the frontier (1T+ params) still demand 8 to 16× H100 — out of reach personally, still steep for many organizations.
 
 ### A (deliberately short) geopolitical note
@@ -433,8 +429,6 @@ But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a
 
 **Irony of history**: this entire stack was designed and built with the help of **Claude Code** 🙃.
 
-The future, it's clear, is hybrid.
-
 ---
 
 ## :bookmark: References
@@ -448,7 +442,6 @@ The future, it's clear, is hybrid.
 - [vLLM Production Stack](https://github.com/vllm-project/production-stack) — Production-grade LLM inference
 - [vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router) — Smart multi-model routing
 - [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway) — Gateway API for LLMs
-- [KEDA HTTP add-on](https://kedify.io/keda-http-add-on) — HTTP scale-from-zero
 - [Promptfoo](https://www.promptfoo.dev/) — Continuous LLM evaluation
 - [Continue](https://continue.dev/) — VSCode IDE assist extension
 - [OpenCode](https://opencode.ai/) — OSS CLI agent loop
