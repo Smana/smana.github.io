@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
-title = "`vLLM` : faire tourner ses propres modèles chez soi, ce qui est concrètement possible"
+title = "Self-hosted LLM stack : poser les fondations d'une plateforme open-weight évolutive"
 date = "2026-05-07"
-summary = "Démonstration d'une stack LLM self-hosted complète sur Kubernetes : vLLM, semantic-router, OpenCode. Ce qui est faisable aujourd'hui avec des modèles open-weight, et ce qui ne l'est pas — encore."
+summary = "Une plateforme self-hosted pour héberger les modèles open-weight sur Kubernetes : `InferenceService` déclaratif, autoscaling sur signaux GPU, GitOps de bout en bout. Une fondation pensée pour évoluer avec l'écosystème."
 featured = true
 codeMaxLines = 30
 usePageBundles = true
@@ -260,25 +260,23 @@ L'objectif est d'**anticiper**: ces indicateurs montent *avant* qu'une file d'at
 
 #### Karpenter prend le relais sur les nœuds
 
-KEDA scale les **réplicas vLLM**, mais ces réplicas ont besoin d'un GPU disponible pour être planifiés. C'est **Karpenter** qui s'occupe de la couche en dessous : quand un pod ne trouve pas de noeud GPU libre, Karpenter provisionne automatiquement une instance fournissant du GPU (cycle ~60 s) ; et dès qu'un noeud n'héberge plus de pod GPU, il est décommissionné.
+KEDA scale les **réplicas vLLM**, mais ces réplicas ont besoin d'un GPU disponible pour être planifiés. C'est [**Karpenter**](https://karpenter.sh/) qui s'occupe de la couche en dessous : quand un pod ne trouve pas de noeud GPU libre, Karpenter provisionne automatiquement une instance fournissant du GPU (cycle ~60 s) ; et dès qu'un noeud n'héberge plus de pod GPU, il est décommissionné.
 
 ---
 
 ## :twisted_rightwards_arrows: Couche 3 — La couche d'accès : Gateway + routage
 
-Abordons la **porte d'entrée** de la plateforme : comment une requête arrive jusqu'au bon pod vLLM, et qui a le droit de l'envoyer.
+Qu’en est-il de la **porte d'entrée**? : comment une requête arrive jusqu'au bon pod vLLM, et qui a le droit de l'envoyer.
 
 ### Envoy AI Gateway : la porte d'entrée
 
 [**Envoy AI Gateway**](https://github.com/envoyproxy/ai-gateway) est un projet open-source bâti sur Envoy Gateway, dédié à la gestion du trafic vers les services de Generative AI. C'est lui qui agit ici comme **point d'entrée unique** de la plateforme. Ses fonctionnalités principales :
 
-* **API OpenAI-compatible** — les clients adressent un endpoint unique (`https://llm.priv.cloud.ogenki.io/v1/...`) sans connaître les pods vLLM individuels.
+* **Compatibilité avec l’API OpenAI** — les clients adressent un endpoint unique (`https://llm.priv.cloud.ogenki.io/v1/...`) sans connaître les pods vLLM individuels.
 * **Routage par modèle** — la Gateway extrait le `model` du body de la requête OpenAI (ou d'un header `x-ai-eg-model`) et dispatche vers le bon `AIServiceBackend` Kubernetes (détails dans la sous-section suivante).
 * **Authentification par Bearer token** — un `SecurityPolicy` Envoy Gateway vérifie chaque requête contre une liste de tokens connus.
 * **Tracking de coûts par tokens** — `llmRequestCosts` extrait input/output/total tokens depuis les réponses, base utile pour du _rate limiting_ par tenant ou par modèle (préparé mais non activé ici).
 * **Multi-provider** — bien que la stack soit 100% self-hosted aujourd'hui, on pourrait demain pointer un client vers OpenAI / Anthropic / Bedrock à travers la même Gateway, sans toucher au code côté client.
-
-Côté réseau, **Cilium NetworkPolicies** appliquent un _zero-trust_ strict entre pods, et l'exposition externe se fait uniquement via **Tailscale** (`tag:k8s` ACL) — aucune route publique.
 
 ### Deux modes de routage complémentaires
 
@@ -287,9 +285,9 @@ Un seul modèle ne fait pas tout : **coder pour le code**, **reasoner pour les m
 * **Routage explicite** — le client cible directement un modèle (`model: xplane-qwen-coder`) via le header `x-ai-eg-model` ou le body de la requête. **[Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway)** dispatche nativement, latence négligeable. C'est ce que font Continue (autocomplete) et OpenCode quand ils savent quel modèle utiliser.
 * **Routage sémantique** — le client demande le modèle virtuel **`MoM`** (_Mixture of Models_) et **[vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router)**, déployé en **sidecar HTTP classifier**, analyse le prompt pour choisir le bon modèle (coder, reasoner, guard). Coût : ~250-300ms de classification (le classifier mmBERT tourne sur CPU — aucune pression sur la VRAM des pods GPU), payé **uniquement** quand `MoM` est demandé.
 
-C'est cette dualité qui fait la puissance de l'archi : un client qui sait ce qu'il veut paie zéro latence supplémentaire, un client générique (OpenWebUI) profite d'un routage intelligent automatique — sans jamais avoir à choisir entre les deux.
+Grâce à ces possibilités, un client qui sait ce qu'il veut ne subit aucune latence supplémentaire, un client générique (OpenWebUI) profite d'un routage intelligent automatique.
 
-### Iris : le routage sémantique en bref
+### Iris et le routage sémantique
 
 [**Iris (vLLM Semantic Router)**](https://github.com/vllm-project/semantic-router) est le projet open-source qui implémente la logique de **_Mixture of Models_** (`MoM`). C'est un service léger, déployé en sidecar à côté de l'AI Gateway : il intercepte les requêtes adressées au modèle virtuel `MoM`, analyse le prompt et choisit dynamiquement le modèle réel qui va y répondre.
 
@@ -301,267 +299,144 @@ Sous le capot, Iris s'appuie sur un classifier compact (~100M paramètres, déri
 
 ## :computer: Les clients
 
-Une plateforme sans clients n'est qu'une démo de plomberie. Voyons les trois surfaces qui consomment notre stack.
+Une plateforme sans clients n'est qu'une démo de plomberie. Pas la peine ici de détailler la configuration de chacun — l'objectif est de montrer qu'on dispose, en open-source, **d'alternatives crédibles aux solutions propriétaires** : chat web, autocomplete IDE, agent CLI.
 
-### OpenWebUI : le chat web
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin:1.5em 0;align-items:flex-start;">
+  <figure style="flex:1 1 0;min-width:280px;margin:0;text-align:center;">
+    <video class="screencast-2x" style="width:100%;border-radius:6px;" autoplay muted loop playsinline preload="metadata">
+      <source src="openwebui-screencast.mp4" type="video/mp4">
+      Votre navigateur ne supporte pas la lecture vidéo.
+    </video>
+    <figcaption style="font-size:0.9em;color:#666;margin-top:6px;"><em>OpenWebUI — chat web</em></figcaption>
+  </figure>
+  <figure style="flex:1 1 0;min-width:280px;margin:0;text-align:center;">
+    <video class="screencast-2x" style="width:100%;border-radius:6px;" autoplay muted loop playsinline preload="metadata">
+      <source src="opencode-screencast.mp4" type="video/mp4">
+      Votre navigateur ne supporte pas la lecture vidéo.
+    </video>
+    <figcaption style="font-size:0.9em;color:#666;margin-top:6px;"><em>OpenCode — agent CLI</em></figcaption>
+  </figure>
+</div>
 
-[**OpenWebUI**](https://openwebui.com/) est probablement le standard de facto pour exposer une UI de chat type ChatGPT au-dessus d'une API OpenAI-compatible. Déployé à `chat.priv.cloud.ogenki.io` (toujours via Tailscale).
+<script>document.querySelectorAll('video.screencast-2x').forEach(v => { v.playbackRate = 2.0; });</script>
 
-<video controls width="100%" preload="metadata" muted>
-  <source src="openwebui-screencast.mp4" type="video/mp4">
-  Votre navigateur ne supporte pas la lecture vidéo.
-</video>
+### OpenWebUI — l'alternative open-source à ChatGPT / Gemini
 
-Dans le dropdown de modèles, on retrouve les `xplane-*` exposés par Iris (grâce à `include_config_models_in_list: true`) plus le modèle virtuel `MoM`. Quand on sélectionne `MoM`, c'est Iris qui décide en lisant le prompt. Quand on sélectionne un modèle précis, on bypass Iris et on économise les ~250ms du classifier.
+[**OpenWebUI**](https://openwebui.com/) expose une UI de chat web standard au-dessus de notre API OpenAI-compatible. Dans le dropdown des modèles on retrouve les pods de la plateforme plus le modèle virtuel `MoM` (Iris choisit alors le routage en lisant le prompt). **Cas d'usage** : chat exploratoire, tests rapides, accès non-dev — exactement ce qu'on ferait sur chat.openai.com ou gemini.google.com.
 
-Cas d'usage typiques : chat exploratoire, tests rapides de modèles, accès non-dev (pour quelqu'un qui n'utilise pas le terminal). Le response header `x-vsr-selected-model` permet de vérifier en direct ce qui a réellement servi la requête.
+### Continue VSCode — l'autocomplete FIM dans l'IDE
 
-### Continue VSCode : l'IDE
+[**Continue**](https://continue.dev/) branche l'API sur VSCode (ou JetBrains). Le _killer feature_ ici, c'est le **FIM** (_Fill-In-the-Middle_) : autocomplete sous **200ms p95** grâce au pod coder dédié toujours warm et au prefix cache de vLLM. C'est ce qui fait la différence entre une autocomplete réactive et un truc lourdingue — l'équivalent d'un Cursor Tab ou d'un Copilot, mais sur notre infra.
 
-[**Continue**](https://continue.dev/) est l'extension VSCode/JetBrains la plus mature pour brancher une API OpenAI-compatible sur un IDE. Configuration minimale dans `~/.continue/config.yaml` :
+### OpenCode — l'alternative open-source à Claude Code
 
-```yaml
-models:
-  - name: Qwen Coder (chat / agentic)
-    provider: openai
-    model: xplane-qwen-coder
-    apiBase: https://llm.priv.cloud.ogenki.io/v1
-    apiKey: ${env:OPENAI_API_KEY}  # pragma: allowlist secret
-    roles:
-      - chat
-      - edit
-      - apply
-    defaultCompletionOptions:
-      maxTokens: 2048
-      temperature: 0.2
+[**OpenCode**](https://opencode.ai/) est ma surface principale dans cette stack : l'agent CLI qui se rapproche le plus de l'expérience **Claude Code**. Il publie un _compatibility shim_ explicite — `AGENTS.md` ↔ `CLAUDE.md`, **skills**, **MCPs**, sous-agents, slash commands — si bien que **tout le workflow construit autour de Claude Code se porte directement**. C'est ce qui le distingue d'Aider, Crush ou Continue agent mode : on ne réécrit pas son flow, on le rebranche sur un autre backend.
 
-  - name: Qwen Coder FIM (autocomplete)
-    provider: openai
-    model: xplane-qwen-coder-fim
-    apiBase: https://llm.priv.cloud.ogenki.io/v1
-    apiKey: ${env:OPENAI_API_KEY}  # pragma: allowlist secret
-    roles:
-      - autocomplete
-    template: qwen
-    defaultCompletionOptions:
-      maxTokens: 256
-      temperature: 0.0
-```
-
-{{% notice tip "Le FIM (_Fill-In-the-Middle_) : pourquoi un modèle Base ?" %}}
-Le FIM est ce qui fait la différence entre une **autocomplete réactive (<200ms)** et un truc lourdingue. Continue envoie un prompt structuré avec les tokens spéciaux `<|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>`, et le modèle complète le trou — c'est très différent d'un chat classique.
-
-**Le Base (et non l'Instruct) est obligatoire** : les versions Instruct sont fine-tunées sur des conversations, ce qui dilue les tokens FIM appris pendant le pré-entraînement. Utiliser un Instruct ici, c'est obtenir des complétions souvent off-topic ou bavardes.
-{{% /notice %}}
-
-{{% notice warning "Le piège de `template: qwen`" %}}
-Sans `template: qwen`, Continue envoie les prompts FIM au format CodeLlama (`<PRE>... <SUF>... <MID>`) — totalement différent du format Qwen (`<|fim_prefix|>...<|fim_suffix|>...<|fim_middle|>`).
-
-Conséquence : le modèle ne parse pas les tokens et l'autocomplete devient soit muet, soit pollué par des bouts du prompt. C'est l'erreur la plus commune quand on connecte Continue à un Qwen-Coder.
-{{% /notice %}}
-
-Avec ça, on a un autocomplete <200ms p95 (grâce au prefix cache et au pod toujours warm) et un chat qui fonctionne pour les tâches non-agentiques (génération de fonction, refactor d'un bloc, explication de code).
-
-### OpenCode CLI : l'agent loop
-
-[**OpenCode**](https://opencode.ai/) est ma surface principale dans cette stack — c'est le client qui se rapproche le plus de l'expérience Claude Code, en open source.
-
-<video controls width="100%" preload="metadata" muted>
-  <source src="opencode-screencast.mp4" type="video/mp4">
-  Votre navigateur ne supporte pas la lecture vidéo.
-</video>
-
-#### Pourquoi OpenCode et pas autre chose
-
-La **vraie raison** : OpenCode publie un _compatibility shim_ explicite avec Claude Code. Les primitives sont quasi-isomorphes :
-
-| Claude Code | OpenCode |
-|---|---|
-| `CLAUDE.md` | `AGENTS.md` (le legacy filename est aussi reconnu) |
-| `~/.claude/skills/<name>/SKILL.md` | `skills/<name>/SKILL.md` (compat shim) |
-| `~/.claude/agents/<name>.md` | `agent/<name>.md` (`mode: subagent`) |
-| `~/.claude/commands/<name>.md` | `command/<name>.md` |
-| `settings.json` MCP block | `opencode.json` `mcp` block (per-agent glob scoping) |
-
-**Tout ce qu'on a construit côté Claude Code se porte directement.** C'est ça qui fait la différence par rapport à Aider, Crush ou Continue agent mode — on ne réécrit pas son workflow, on le branche sur un autre backend.
-
-#### La config concrète
-
-Voici l'`opencode.json` que j'utilise (extrait minimal) :
-
-<details>
-<summary><strong>Voir la config <code>opencode.json</code></strong></summary>
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "provider": {
-    "self-hosted": {
-      "name": "Self-hosted (cloud-native-ref LLM platform)",
-      "type": "openai",
-      "options": {
-        "baseURL": "https://llm.priv.cloud.ogenki.io/v1",
-        "apiKey": "{env:OPENAI_API_KEY}"
-      },
-      "models": {
-        "xplane-qwen-coder": {
-          "name": "Qwen2.5-Coder-7B-Instruct (RECOMMENDED for coding)",
-          "limit": { "context": 32768, "output": 4096 }
-        },
-        "xplane-qwen3-8b": {
-          "name": "Qwen3-8B (reasoning, multilingual, planning)",
-          "limit": { "context": 32768, "output": 4096 }
-        }
-      }
-    }
-  },
-  "agent": {
-    "build": { "model": "self-hosted/xplane-qwen-coder" },
-    "plan":  { "model": "self-hosted/xplane-qwen3-8b" }
-  }
-}
-```
-
-</details>
-
-Deux choses à noter :
-
-* **Routing par-agent** : l'agent `build` utilise le coder dédié, l'agent `plan` utilise le modèle reasoning. C'est exactement le pattern qui fait que chaque sous-tâche utilise le bon outil.
-* **`limit.context` et `limit.output`** explicites : sans eux, OpenCode peut envoyer des prompts qui dépassent la `maxModelLen` de vLLM, qui retourne alors une erreur cryptique du type _"maximum context length is X tokens, however you requested Y tokens"_. Mieux vaut prévenir.
-
-{{% notice info "Ce qu'on garde, ce qu'on perd" %}}
-**On garde** : la portabilité des skills/agents/commands/SDD/MCPs, l'expérience CLI, le workflow `/clear` `/compact`, la philosophie générale.
-
-**On perd** : la qualité brute de Sonnet 4.6 / Opus 4.7 sur les tâches agentiques complexes (raisonnement multi-fichier, tool-use sur 5+ étapes). Le function-calling de Qwen2.5-Coder-7B fonctionne, mais il est fragile au-delà de quelques étapes — c'est connu et documenté dans le code de la plateforme.
-{{% /notice %}}
+Sur les tâches agentiques complexes (raisonnement multi-fichier, tool-use sur 5+ étapes), un coder 7B reste fragile face à Sonnet ou Opus. Pour des tâches contraintes — refactor ciblé, script généré, boucle de debug — c'est largement crédible.
 
 ---
 
 ## :bar_chart: Supervision et évaluation continue
 
-Une stack qu'on déploie sans la mesurer, c'est un POC. Voyons comment on observe la nôtre.
+Une plateforme LLM produit beaucoup de signal — et la stack **expose tout ce qu'il faut pour l'exploiter** : métriques Prometheus côté vLLM, métriques OpenTelemetry Gen AI côté AI Gateway, logs centralisés sur VictoriaLogs, eval qualité avec Promptfoo. La question n'est pas "qu'est-ce qu'on observe ?" mais "qu'est-ce qu'on regarde en premier ?".
 
-### Le dashboard Grafana
+### Santé de la plateforme — métriques `vLLM`
 
-Un dashboard dédié `LLM Platform` est committé dans le repo (`apps/base/ai/llm/grafana-dashboard.yaml`) et déployé via `Grafana Operator`. Il agrège les métriques scrapées par VictoriaMetrics depuis les endpoints `/metrics` de chaque pod vLLM.
+[`vLLM` expose nativement](https://docs.vllm.ai/en/stable/usage/metrics/) un endpoint Prometheus complet, chaque métrique portant un label `model_name` :
+
+* **Charge** : `vllm:num_requests_running`, `vllm:num_requests_waiting`, `vllm:kv_cache_usage_perc` (les triggers KEDA viennent d'ici)
+* **Performance** : `vllm:time_to_first_token_seconds`, `vllm:inter_token_latency_seconds`, `vllm:e2e_request_latency_seconds`
+* **Throughput** : `vllm:prompt_tokens_total`, `vllm:generation_tokens_total`
+* **Optimisations** : `vllm:prefix_cache_hits` (essentiel pour mesurer l'efficacité du FIM)
+
+Le dashboard Grafana `LLM Platform` (déployé via `Grafana Operator` depuis `apps/base/ai/llm/grafana-dashboard.yaml`) agrège tout ça par modèle :
 
 {{< img src="grafana-dashboard-llm.png" alt="Dashboard Grafana — vue d'ensemble de la fleet LLM" width="1200" >}}
 
-On y retrouve les indicateurs clés :
+Sur le screenshot, la stack est au repos : 4 modèles actifs (un replica chacun), 0 requête en cours, KV cache à 0.01% — l'état "always warm" sans charge.
 
-* **Fleet at a glance** : nombre de modèles actifs, requêtes en cours, taux de requêtes, utilisation moyenne du KV cache
-* **Scale & queue** : nombre de replicas vLLM par modèle (les triggers KEDA en action), profondeur de la file d'attente
-* **Throughput** : tokens/seconde par modèle (prompt vs génération) — utile pour comparer les modèles entre eux
+### Usage et FinOps — métriques de l'AI Gateway
 
-Sur le screenshot ci-dessus, la stack est au repos : 4 modèles actifs (un replica chacun), 0 requête en cours, KV cache à 0.01%. C'est l'état "always warm" sans charge — exactement ce qu'on veut entre deux pics d'usage.
+C'est là que ça devient particulièrement intéressant. **`Envoy AI Gateway` expose ses métriques au standard [OpenTelemetry Gen AI Semantic Conventions](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/)** — il ne se contente pas de compter des requêtes, il instrumente le langage métier des LLMs :
 
-### SLOs et alerting
-
-Le fichier `vmrule-llm-slo.yaml` définit les règles VictoriaMetrics qui matérialisent les SLOs :
-
-* Latence p95 par modèle (alerte si dépassement seuil)
-* Taux d'erreur (alerte si > 1% sur 5 min)
-* Saturation GPU (warning à 80%, critical à 95%)
-
-Une particularité à garder en tête quand on supervise une plateforme LLM : **le volume des métriques scale avec le débit de tokens, pas avec le nombre de requêtes**, et la cardinalité des labels FinOps (tenant, modèle, route, agent) explose plus vite que sur un service web classique. C'est précisément le retour qu'en fait [Samuel Desseaux à propos de VictoriaMetrics et de l'agentic AI](https://www.linkedin.com/posts/sdesseaux_ai-observability-sre-share-7458572389568671745-D_pU) : le déplacement de "service is down" vers "tenant X a dépassé son budget horaire" change la nature même des alertes. VictoriaMetrics absorbe ça nativement (multi-tenancy au stockage, agrégation in-flight, ingestion OTLP) — ce qui justifie de le poser dès le _day 1_ plutôt que de migrer plus tard.
-
-Le tout s'intègre au stack alerting global de la plateforme — décrit dans l'[article observability/alerting](/fr/post/series/observability/alerts/).
-
-### Évaluation continue avec Promptfoo
-
-Un sujet qu'on aborde rarement dans les blogs LLM-self-hosted : **comment savoir si la qualité régresse** quand on bump un modèle ou tweak la cascade SR ?
-
-[**Promptfoo**](https://www.promptfoo.dev/) permet de définir une suite d'évaluations déclarative (prompts d'entrée + assertions sur la sortie) et de la faire tourner sur n'importe quel provider OpenAI-compatible. Dans notre stack, c'est packagé comme un **CronJob nightly** (`tooling/base/promptfoo/`) :
-
-* La suite d'eval est déclarée en `ConfigMap`
-* Le CronJob exécute Promptfoo une fois par nuit contre les 4 modèles + le routage MoM
-* Les résultats sont parsés et **poussés en métriques Prometheus** (donc visualisables dans Grafana)
-
-Cas d'usage typiques :
-
-* **Catching de régressions** sur un bump de modèle ou de version vLLM
-* **Comparaison cascade vs modèle direct** : est-ce que le routage MoM dégrade la qualité par rapport à un appel direct ?
-* **Stress-test du tool-calling séquentiel** : combien d'appels d'outils consécutifs Qwen2.5-Coder-7B peut-il enchaîner sans se planter ?
-
-Soyons honnêtes : les résultats absolus restent **en deçà** d'un Sonnet 4.6 ou d'un Opus 4.7. L'eval continue ne sert pas à se rassurer dans l'absolu, mais à mesurer **l'évolution dans le temps** et à éviter les régressions silencieuses. *C'est ce qui me permet de quantifier ce que j'affirme dans la conclusion.*
-
----
-
-## :balance_scale: Bilan honnête
-
-Trois mois après les premiers déploiements, voici ce qui marche, ce qui ne marche pas, et ce que ça coûte.
-
-### Ce qui marche bien
-
-* **Souveraineté complète** : pas un octet ne quitte AWS / Tailscale. Pour les données confidentielles, c'est non-négociable.
-* **Choix des modèles et de leurs rôles** : la composition Crossplane rend trivial le swap d'un modèle. C'est presque trop facile.
-* **FIM tab-complete <200ms** : indistinguable d'un Copilot ou d'un Continue avec backend Anthropic — l'expérience est là.
-* **Cascade SR fonctionnelle, observable, déboggable** : le header `x-vsr-selected-model` permet de comprendre n'importe quelle décision a posteriori.
-* **Évaluation continue automatisée** : Promptfoo en CronJob, c'est un signal fort de maturité opérationnelle.
-
-### Ce qui ne suffit pas (encore)
-
-* **Qualité Qwen2.5-Coder-7B vs Sonnet 4.6** : il y a un **gap réel** sur les tâches agentiques complexes (raisonnement multi-fichier, tool-use sur 5+ étapes, refactoring large). Le 7B se plante régulièrement là où Sonnet rebondit.
-* **L40S indispo en eu-west-3** : on est bloqués sur L4, donc bloqués sous Qwen3-Coder-30B-A3B-FP8. Le modèle qui rapprocherait du frontier est… inaccessible géographiquement.
-* **Function-calling fragile au-delà de quelques étapes** : Qwen2.5-Coder + parser Hermes, ça marche pour 2-3 outils consécutifs, ça casse souvent au-delà.
-* **Latence du classifier SR (~300ms)** sur chaque requête `MoM` : OK pour du chat, sensible en agent loop.
-* **Sensibilité à la quantification plus aggressive** : descendre du fp8 à l'INT4 ferait gagner ~50% de VRAM, mais dégrade le raisonnement et la fiabilité du tool-calling structuré de façon non-linéaire — c'est une voie à n'envisager qu'avec un harnais d'évaluation solide en parallèle[^quant-tradeoff]. Le fp8 reste à mon sens le sweet spot 2026 pour de l'inférence interactive.
-* **Overhead VRAM réel sous-estimé** : la VRAM "théorique" d'un modèle (poids × bytes/param) ignore l'overhead KV cache, activations et padding du framework. Compter **+10 à +20%** au-delà du chiffre marketing — un modèle annoncé "fits in 24GB" peut très bien saturer un L4 dès que le contexte grandit[^vram-overhead].
-
-[^quant-tradeoff]: Voir [Self-Hosted LLMs in the Real World — KDnuggets](https://www.kdnuggets.com/self-hosted-llms-in-the-real-world-limits-workarounds-and-hard-lessons) sur les trade-offs INT4 vs FP8 et les pièges de la quantification aggressive.
-[^vram-overhead]: Détaillé dans le [Self-Hosted LLM Leaderboard d'Onyx](https://onyx.app/self-hosted-llm-leaderboard) — une heuristique utile à garder en tête avant de dimensionner un NodePool Karpenter.
-
-### Coûts réels
-
-Aux prix spot AWS région Paris en mai 2026 :
-
-| Poste | Coût |
+| Métrique | Mesure |
 |---|---|
-| L4 spot (`g6.xlarge`) — baseline (FIM toujours warm + autres modèles scalés dynamiquement) | ~$220/mois |
-| Pics de charge (scale-up des autres modèles sous trafic) | +$0.30 à $1.20/h selon usage |
-| S3 Files (poids modèles, ~30GB) | <$1/mois |
-| EBS, network, overhead K8s | ~$5/mois |
-| **Steady-state typique** | **~$240-280/mois** |
+| `gen_ai.client.token.usage` | Tokens consommés (input / output / total) |
+| `gen_ai.server.request.duration` | Latence end-to-end par requête |
+| `gen_ai.server.time_to_first_token` | TTFT au niveau gateway |
+| `gen_ai.server.time_per_output_token` | Inter-token latency |
 
-À comparer avec un abonnement Claude Code Pro à $200/mois pour 1 utilisateur, ou les coûts API à l'usage (Sonnet 4.6 : $3/M input + $15/M output)… **la stack devient économiquement pertinente seulement** dans deux scénarios : (1) usage très soutenu par plusieurs développeurs simultanés, (2) la souveraineté est non-négociable et le coût n'est pas le critère premier.
+Chacune est automatiquement enrichie par `gen_ai.operation.name` (chat / completion / embedding…), `gen_ai.request.model`, `gen_ai.response.model` et `gen_ai.provider.name`. Premier bénéfice gratuit : **savoir quels modèles sont les plus utilisés** en une requête PromQL.
 
-### À qui ça parle aujourd'hui
+Et surtout — c'est la pièce qui change tout — **on peut enrichir ces métriques avec des labels custom extraits des headers HTTP** via `controller.metricsRequestHeaderAttributes`. Si chaque client porte un header `x-tenant-id`, `x-team` ou `x-user`, ces valeurs deviennent des labels Prometheus. À partir de là, on répond à :
 
-* **Équipes avec contraintes de confidentialité / souveraineté fortes** (santé, défense, finance) — c'est *le* cas d'usage clair
-* **Plateformes internes mutualisées** (R&D LLM, formation, MCP customs)
-* **Curieux qui veulent comprendre l'inférence LLM "from the inside"** — c'est aussi mon cas
+* **Quel tenant consomme le plus de tokens** sur les 30 derniers jours ?
+* **Quelle équipe a la latence p95 la plus haute** sur le coder ?
+* **Quel ratio prompt/génération** par utilisateur ? (utile pour le dimensionnement de contexte)
+* **Combien d'appels chat vs embedding** par client ?
 
-### À qui ça ne parle pas (encore)
+Bref : du **FinOps par tenant**, sans agent applicatif à écrire — c'est typiquement ce qu'on construit à la main sur des mois dans une plateforme propriétaire.
 
-* **Développeurs solo** qui veulent juste remplacer Claude Code pour économiser
-* **Équipes qui exigent la qualité Sonnet/Opus sur les workflows agentiques complexes** — il faudra encore quelques itérations open-weight pour combler le gap
+> SLOs / alertes habituels (latence p95, taux d'erreur, saturation GPU) restent définis en `VMRule` à côté — rien de spécifique au LLM, j'en parle dans l'[article observability/alerting](/fr/post/series/observability/alerts/).
+
+### Évaluation qualitative avec `Promptfoo`
+
+Les métriques d'infra disent si la plateforme **fonctionne**. Elles ne disent pas si elle **produit des bonnes réponses** — c'est une dimension complètement orthogonale, et c'est précisément ce que [**Promptfoo**](https://www.promptfoo.dev/) apporte.
+
+Le principe est simple : on déclare des cas de test qui ressemblent à des tests unitaires — un prompt d'entrée + des assertions sur la sortie attendue. Les types d'assertions couvrent tout l'éventail :
+
+* **Déterministes** : `equals`, `contains`, `regex`, `is-json` (avec schéma), `javascript` / `python` — parfait pour valider une sortie structurée (tool-calling, JSON formaté)
+* **Model-assisted** : `llm-rubric` (un LLM note la sortie selon une rubrique qualitative), `factuality` (adhérence aux faits fournis), `similar` (embeddings + cosine), `g-eval` (chain-of-thought avec critères custom) — la même approche que les évals propriétaires (HELM, MT-Bench), mais déclarable en YAML chez soi
+
+Dans la stack, c'est packagé comme un **CronJob nightly** (`tooling/base/promptfoo/`) : la suite est en `ConfigMap`, le job tourne contre les modèles + le routage `MoM`, et les résultats sont **poussés en métriques Prometheus** — donc visibles dans le même Grafana que les métriques techniques.
+
+L'intérêt concret :
+
+* **Détection des régressions** sur un bump de modèle ou de version `vLLM` — un score qualité qui chute de 80 → 65 % du jour au lendemain, c'est plus parlant qu'un graphe de latence
+* **Comparaison cascade vs modèle direct** : est-ce que le routage `MoM` dégrade la qualité par rapport à un appel direct au bon modèle ?
+* **Stress-test du tool-calling séquentiel** : combien d'appels d'outils consécutifs `Qwen2.5-Coder` peut-il enchaîner avant de se planter ?
+
+Soyons honnêtes : les scores absolus restent **en deçà** d'un Sonnet ou d'un Opus. L'eval continue ne sert pas à se rassurer dans l'absolu, mais à **mesurer l'évolution dans le temps** et à éviter les régressions silencieuses — c'est ce qui me permet de quantifier ce que j'affirme dans la conclusion.
 
 ---
 
 ## :thought_balloon: Dernières remarques
 
-À moins d'utiliser de puissants modèles qui nécessitent du matériel spécifique très cher, il est difficile d'obtenir aujourd'hui une expérience *ne serait-ce que satisfaisante* en self-hosted. Avec les modèles utilisés dans cette démo, on a parfois l'impression de revenir à la préhistoire 😅.
+### Quels objectifs a t-on pu atteindre?
 
-**Mais cette expérimentation démontre la faisabilité** et permet d'**anticiper les bouleversements à venir**.
+On a réussi à bâtir un **moyen simple de servir des modèles open-weight** sur Kubernetes : une claim YAML déclenche tout l'outillage nécessaire, le swap d'un modèle se fait en quelques lignes, et l'observabilité est en place de bout en bout.
 
-Le 24 avril 2026, **DeepSeek a annoncé son modèle V4** : un MoE 284B (13B actifs) baptisé **V4 Flash**, et un **V4-Pro** à 1.6T paramètres (49B actifs). Et surtout, **deux annonces qui changent la donne** :
+Mais soyons honnête sur l'expérience utilisateur : sans accès à des modèles "sérieux" (DeepSeek V4 Pro, Kimi K2.6, Qwen3-Coder-30B…), nos tests se sont essentiellement limités à **valider qu'on obtient une réponse** — pas à mesurer une vraie qualité de production. Avec les modèles 7-8B qui tiennent sur un L4, on a parfois l'impression de revenir à la préhistoire 😅.
 
-* Le modèle tourne sur **GPUs Huawei Ascend 950** (en plus des Nvidia), avec un _Day 0 adaptation_ confirmé par Huawei, Cambricon et Hygon — la dépendance Nvidia recule. Un détail qui n'est pas anodin : Jensen Huang lui-même [a qualifié de "horrible outcome"](https://thenextweb.com/news/nvidia-huang-deepseek-huawei-chips-horrible-outcome) la perspective de DeepSeek tournant sur Huawei.
-* Côté tarifs, DeepSeek V4-Pro est **environ 7× moins cher** que Claude Opus 4.7 et **6× moins cher** que GPT-5.5 sur les coûts API standards ([source VentureBeat](https://venturebeat.com/technology/deepseek-v4-arrives-with-near-state-of-the-art-intelligence-at-1-6th-the-cost-of-opus-4-7-gpt-5-5)). Sur les usages cachés, le ratio passe à des ordres de grandeur encore plus extrêmes.
+Le point positif, c'est ce qu'il y a *en dessous* : **la stack elle-même est viable et évolutive**.
 
-Couplez ça à la baisse continue du prix matériel (les RTX A4000 deviennent abordables, les futurs B100 vont bouleverser le segment data-center) et le calcul change : **dans 12 à 18 mois**, l'option self-hosted pourrait devenir économiquement compétitive même hors souveraineté pure.
+### À qui ça parle aujourd'hui
 
-D'ici là ? La fondation est posée, le pattern est en place, les lignes de bascule sont identifiées. Quand un Qwen3-Coder-30B-A3B tourne correctement sur un L4 quantifié AWQ-4bit (chemin documenté dans [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md)), le swap sera une PR de quelques lignes. C'est l'**intérêt principal** de cette démo : se mettre en position d'**adopter rapidement** ce qui s'annonce, plutôt que d'avoir à tout (re)construire le jour où l'open-weight rattrape le frontier.
+L'expérience est immédiatement pertinente pour les **entreprises avec une vraie problématique de souveraineté des données** — santé, défense, finance, secteurs régulés. Et avec les modèles open-weight les plus avancés (DeepSeek V4 Pro, Kimi K2.6, à moins de dix points d'Opus sur SWE-bench), la différence de qualité avec les modèles propriétaires est devenue marginale. Pour des données qui ne peuvent de toute façon pas sortir, la question ne se pose même plus vraiment.
 
-### Verdict
+Pour tous les autres — moi le premier — **l'intérêt est de poser les fondations** en vue du moment où le calcul basculera vraiment. Ce moment dépend de deux facteurs qui évoluent vite :
 
-Self-hosted aujourd'hui : **alternative crédible** pour la souveraineté et la confidentialité, **fondation solide** pour absorber les modèles de demain, **pas un remplaçant universel** pour Claude Code sur les tâches agentiques complexes — pas encore.
+* **Diversification du matériel** : l'hégémonie Nvidia commence à craquer. DeepSeek V4 tourne déjà sur Huawei Ascend 950 (avec _Day 0 adaptation_ confirmée par Huawei, Cambricon et Hygon). Plus de fournisseurs → plus de disponibilité → moins de pression sur les prix.
+* **Accessibilité financière** : les modèles open-weight qui se rapprochent du frontier (1T+ paramètres) demandent encore 8 à 16× H100 — hors de portée à titre personnel, encore élevé pour beaucoup d'entreprises.
 
-Et en attendant que Qwen3-Coder-30B ou DeepSeek V4 distillé tournent sur nos L4, je continue à utiliser Claude Code au quotidien. Sans renier l'investissement self-hosted : c'est un *complément*, pas un *substitut*. Pour les données sensibles, les expérimentations, les tâches non-critiques — la stack open-weight tourne. Pour le reste, Sonnet et Opus restent imbattables.
+### Une note (volontairement courte) géostratégique
+
+Je n'ai volontairement pas voulu rentrer dans ces considérations dans le corps de l'article — et je prends les benchmarks tels quels, en supposant qu'ils sont impartiaux. Cela dit, deux observations méritent d'être posées :
+
+* **Les acteurs chinois privilégient l'open-weight** (DeepSeek, Kimi/Moonshot, Qwen/Alibaba). C'est un pari de stratégie industrielle qui pourrait s'avérer payant à long terme — plus l'écosystème open-weight mûrit, plus il devient compétitif face aux modèles fermés.
+* **Et leurs résultats sur SWE-bench** — la référence du coding — sont **vraiment bons** : sur SWE-bench Pro, Kimi K2.6 mène les open-weight à 58,6 %, à ~6 points de Claude Opus 4.7. Sur Verified, DeepSeek V4 Pro frôle les 80 %, soit ~7 points en deçà d'Opus. L'écart se resserre, benchmark après benchmark.
+
+### Et moi, là maintenant ?
+
+Soyons clair : aujourd'hui je ne troquerais pas mon écosystème Claude. Principalement pour des raisons **financières** — pas par attachement particulier. À mon échelle d'usage, Sonnet et Opus me coûtent moins cher que de reproduire en self-hosted une qualité équivalente.
+
+Cela dit, j'aurais aimé pousser plus loin l'usage d'**OpenCode** et migrer pour de bon ma configuration Claude (skills, MCPs, sous-agents) sur ce backend — ce sera peut-être le sujet d'un futur article dédié à cet agent coding open-source.
+
+Mais je garde la stack vivante. Quand un Qwen3-Coder-30B-A3B tournera correctement sur un L4 quantifié — chemin documenté dans [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — le swap sera une PR de quelques lignes. C'est ça l'**intérêt principal** de cette démo : se mettre en position d'**adopter rapidement** ce qui s'annonce, plutôt que d'avoir à tout (re)construire le jour où l'open-weight rattrapera le frontier.
 
 L'avenir, lui, est résolument hybride.
 
-**Petite mise en abyme pour finir** : l'ensemble de cette stack a été conçu et construit avec **Claude Code** 🙃.
+**Ironie de l'histoire** : l'ensemble de cette stack a été conçu et construit avec l'aide de **Claude Code** 🙃.
 
 ---
 
