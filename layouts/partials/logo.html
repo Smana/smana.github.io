@@ -1,0 +1,17 @@
+{{- $t := site.Title -}}
+{{- $light := absURL "logos/logo-light.webp" -}}
+{{- $dark := absURL "logos/logo-dark.webp" -}}
+<a href='{{ absLangURL "" }}' class="nav_brand nav_item{{ with .class }} {{ . }}{{ end }}" title="{{ $t }}">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="{{ $dark }}">
+    <img src="{{ $light }}" class="logo" alt="{{ $t }}">
+  </picture>
+  {{- if ne (strings.HasSuffix .class "center") true }}
+  <div class="nav_close">
+    <div>
+      {{- partialCached "sprite" (dict "icon" "open-menu") -}}
+      {{- partial "sprite" (dict "icon" "closeme") -}}
+    </div>
+  </div>
+  {{- end }}
+</a>

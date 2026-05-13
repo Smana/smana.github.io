@@ -1,12 +1,15 @@
-
 [en]
-LanguageName = "English"
 contentDir = "content/en"
 title = "Ogenki"
 weight = 1
 
+[en.params]
+label = "English"
+
 [fr]
-LanguageName = "Français"
 contentDir = "content/fr"
 title = "Ogenki"
 weight = 2
+
+[fr.params]
+label = "Français"

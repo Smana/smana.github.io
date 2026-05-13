@@ -8,24 +8,23 @@
 <figure style="text-align: center;">
   <picture>
     {{- if and $image $image.Width -}}
-      {{- $w600  := math.Min 600 $image.Width | int -}}
-      {{- $w900  := math.Min 900 $image.Width | int -}}
-      {{- $r600  := $image.Resize (printf "%dx" $w600) -}}
-      {{- $r900  := $image.Resize (printf "%dx" $w900) -}}
-      {{- $a600  := $r600.Process "avif q75" -}}
-      {{- $a900  := $r900.Process "avif q75" -}}
-      {{- $w600  := $r600.Process "webp q80" -}}
-      {{- $w900  := $r900.Process "webp q80" -}}
-      {{- $sizes := "(max-width: 600px) 100vw, min(900px, 100vw)" -}}
+      {{- $w1x := math.Min 1200 $image.Width | int -}}
+      {{- $w2x := math.Min 2400 $image.Width | int -}}
+      {{- $r1x := $image.Resize (printf "%dx" $w1x) -}}
+      {{- $r2x := $image.Resize (printf "%dx" $w2x) -}}
+      {{- $w1xt := try ($r1x.Process "webp q90") -}}
+      {{- $w2xt := try ($r2x.Process "webp q90") -}}
+      {{- $sizes := "(max-width: 600px) 100vw, min(1200px, 100vw)" -}}
       {{- with $width -}}
         {{- $sizes = printf "(max-width: 600px) 100vw, min(%dpx, 100vw)" (. | int) -}}
       {{- end -}}
-      <source type="image/avif"
-              srcset="{{ $a600.RelPermalink }} 600w, {{ $a900.RelPermalink }} 900w"
-              sizes="{{ $sizes }}">
+      {{- if and (not $w1xt.Err) (not $w2xt.Err) }}
       <source type="image/webp"
-              srcset="{{ $w600.RelPermalink }} 600w, {{ $w900.RelPermalink }} 900w"
+              srcset="{{ $w1xt.Value.RelPermalink }} {{ $w1x }}w, {{ $w2xt.Value.RelPermalink }} {{ $w2x }}w"
               sizes="{{ $sizes }}">
+      {{- else }}
+        {{- warnf "img shortcode: skipping WebP for %q (encoder failed: %s)" $image.Name (or $w1xt.Err $w2xt.Err) -}}
+      {{- end }}
       <img
         loading="lazy"
         decoding="async"
