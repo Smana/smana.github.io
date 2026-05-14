@@ -1,23 +1,35 @@
-# hugoBasicExample
+# blog.ogenki.io
 
-This repository offers an example site for [Hugo](https://gohugo.io/) and also it provides the default content for demos hosted on the [Hugo Themes Showcase](https://themes.gohugo.io/).
+Source for **[blog.ogenki.io](https://blog.ogenki.io)** — a personal blog covering Cloud, security, DevOps, Kubernetes, and platform engineering. Posts are bilingual (English and French).
 
-# Using
+Built with [Hugo](https://gohugo.io) and the [hugo-clarity](https://github.com/chipzoller/hugo-clarity) theme, deployed to GitHub Pages via GitHub Actions.
 
-1. [Install Hugo](https://gohugo.io/overview/installing/)
-2. Clone this repository
+## Local development
+
+Hugo extended is required — the exact version is pinned in `.mise.toml`.
+
 ```bash
-git clone https://github.com/gohugoio/hugoBasicExample.git
-cd hugoBasicExample
-```
-3. Clone the repository you want to test. If you want to test all Hugo Themes then follow the instructions provided [here](https://github.com/gohugoio/hugoThemes#installing-all-themes)
-4. Run Hugo and select the theme of your choosing
-```bash
-hugo server -t YOURTHEME
-```
-5. Under `/content/` this repository contains the following:
-- A section called `/post/` with sample markdown content
-- A headless bundle called `homepage` that you may want to use for single page applications. You can find instructions about headless bundles over [here](https://gohugo.io/content-management/page-bundles/#headless-bundle)
-- An `about.md` that is intended to provide the `/about/` page for a theme demo
-6. If you intend to build a theme that does not fit in the content structure provided in this repository, then you are still more than welcome to submit it for review at the [Hugo Themes](https://github.com/gohugoio/hugoThemes/issues) respository
+# Start a local dev server with live reload
+hugo server
 
+# Build the production site
+hugo --minify
+
+# Create a new post
+hugo new post/my-post-name/index.md
+```
+
+## Layout
+
+- `content/en/post/` — English posts
+- `content/fr/post/` — French posts (translations)
+- `content/*/post/series/` — Multi-part series (e.g. `agentic_ai/`, `observability/`)
+- `themes/hugo-clarity/` — Theme (git submodule)
+- `config/_default/` — Hugo configuration split across `config.toml`, `params.toml`, `languages.toml`, `markup.toml`
+- `layouts/` — Site-specific overrides on top of the theme
+
+See [`CLAUDE.md`](./CLAUDE.md) for the full content and front-matter conventions.
+
+## Author
+
+Smaine Kahlouch — [@Smana](https://github.com/Smana)
