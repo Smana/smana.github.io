@@ -14,7 +14,7 @@ thumbnail = "thumbnail.png"
 +++
 
 {{% notice info "Agentic AI Series — Part 2" %}}
-This article follows [Agentic Coding: concepts and hands-on use cases](/en/post/series/agentic_ai/ai-coding-agent/), where we explored the fundamentals of agentic AI — tokens, MCPs, Skills, Tasks — and two detailed practical examples. **Here, we dive into advanced practices**: how to get the most out of Claude Code on a daily basis.
+This article follows [Agentic Coding: concepts and hands-on use cases](/post/series/agentic_ai/ai-coding-agent/), where we explored the fundamentals of agentic AI — tokens, MCPs, Skills, Tasks — and two detailed practical examples. **Here, we dive into advanced practices**: how to get the most out of Claude Code on a daily basis.
 {{% /notice %}}
 
 As with any tool you adopt, it takes time to refine how you use it. After iterating on my config and workflows, I've found an efficient rhythm with Claude Code. Here's what works for me.
@@ -51,7 +51,7 @@ Here's what the `CLAUDE.md` for [cloud-native-ref](https://github.com/Smana/clou
 - **Architecture summary** — key folder structure, not a novel
 - **Common pitfalls** — traps Claude keeps falling into if you don't warn it (e.g., wrong default namespace, label format)
 
-What I **don't** put in it: exhaustive documentation (that's what [Skills](/en/post/series/agentic_ai/ai-coding-agent/#skills-unlocking-new-powers) are for), long code examples (I reference existing files instead), and obvious instructions Claude already knows.
+What I **don't** put in it: exhaustive documentation (that's what [Skills](/post/series/agentic_ai/ai-coding-agent/#skills-unlocking-new-powers) are for), long code examples (I reference existing files instead), and obvious instructions Claude already knows.
 
 Here's a condensed excerpt from the `CLAUDE.md` of [cloud-native-ref](https://github.com/Smana/cloud-native-ref) to illustrate:
 
@@ -383,7 +383,7 @@ The **correction spiral** is by far the most dangerous. A real example: Claude w
 
 Over time, I've become increasingly comfortable with Claude Code, and the productivity gains are real. But they come with a lingering concern I can't fully shake: losing control — over the produced code, over the decisions made, over the understanding of what's running in production.
 
-These questions, as well as the methods that help me stay in control, are covered in the first article of this series. If you want to revisit the fundamentals or understand where these reflections come from, I highly recommend it: [Agentic Coding: concepts and hands-on use cases](/en/post/series/agentic_ai/ai-coding-agent/).
+These questions, as well as the methods that help me stay in control, are covered in the first article of this series. If you want to revisit the fundamentals or understand where these reflections come from, I highly recommend it: [Agentic Coding: concepts and hands-on use cases](/post/series/agentic_ai/ai-coding-agent/).
 
 ---
 
@@ -402,4 +402,4 @@ These questions, as well as the methods that help me stay in control, are covere
 - [Claude-Mem](https://github.com/thedotmack/claude-mem) — Persistent memory across sessions
 
 ### Previous article
-- [Agentic Coding: concepts and hands-on use cases](/en/post/series/agentic_ai/ai-coding-agent/) — Part 1 of the Agentic AI series
+- [Agentic Coding: concepts and hands-on use cases](/post/series/agentic_ai/ai-coding-agent/) — Part 1 of the Agentic AI series

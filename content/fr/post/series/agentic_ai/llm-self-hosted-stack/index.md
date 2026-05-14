@@ -135,7 +135,7 @@ Quatre lignes changent. Flux réconcilie, KEDA réajuste les triggers, Karpenter
 {{% notice tip "KCL : versionner, tester, valider une composition" %}}
 La composition n'est pas écrite en YAML patches (peu lisible, intestable) mais en [**KCL**](https://kcl-lang.io/) via la [function-kcl](https://github.com/crossplane-contrib/function-kcl) — un langage de configuration **typé**, avec **assertions natives**. Trois conséquences directes :
 
-* **Tests unitaires** — un fichier [`main_test.k`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/infrastructure/base/crossplane/configuration/kcl/inference-service/main_test.k) valide chaque comportement (`kcl test` tourne en CI sur chaque PR).
+* **Tests unitaires** — un fichier [`main_test.k`](https://github.com/Smana/cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/kcl/inference-service/main_test.k) valide chaque comportement (`kcl test` tourne en CI sur chaque PR).
 * **Packaging OCI versionné** — la composition est publiée comme image OCI (`oci://ghcr.io/smana/cloud-native-ref/crossplane-inference-service:0.6.0`), référencée par tag immuable.
 * **Schéma de claim validé côté API server** — `kubectl apply` rejette les claims incohérentes (par exemple `minReplicas > maxReplicas`) **avant** que la composition ne se déclenche.
 
@@ -429,7 +429,7 @@ Soyons clairs : aujourd'hui je ne troquerais pas mon écosystème Claude. Princi
 
 Cela dit, j'aurais aimé pousser plus loin l'usage d'**OpenCode** et migrer pour de bon ma configuration Claude (skills, MCPs, sous-agents) sur ce backend — ce sera peut-être le sujet d'un futur article dédié à cet agent coding open-source.
 
-Mais je garde la stack vivante. Quand un Qwen3-Coder-30B-A3B tournera correctement sur un L4 quantifié — chemin documenté dans [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — le swap sera une PR de quelques lignes. C'est ça l'**intérêt principal** de cette démo : se mettre en position d'**adopter rapidement** ce qui s'annonce, plutôt que d'avoir à tout (re)construire le jour où l'open-weight rattrapera le frontier.
+Mais je garde la stack vivante. Quand un Qwen3-Coder-30B-A3B tournera correctement sur un L4 quantifié — chemin documenté dans [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/main/docs/llm-platform-future-paths.md) — le swap sera une PR de quelques lignes. C'est ça l'**intérêt principal** de cette démo : se mettre en position d'**adopter rapidement** ce qui s'annonce, plutôt que d'avoir à tout (re)construire le jour où l'open-weight rattrapera le frontier.
 
 Et ce rattrapage ne vient pas que des modèles : la couche serving open-source évolue tout aussi vite et ajoute régulièrement des fonctions jusque-là réservées aux solutions propriétaires. Par exemple, [**vLLM-Omni**](https://github.com/vllm-project/vllm-omni) (premier *stable* fin 2025) étend `vLLM` à l'**omni-modalité** (texte, image, audio, vidéo, en entrée *et* en sortie) avec la même API OpenAI-compatible, donc plug directement dans la plateforme décrite ici.
 
@@ -442,7 +442,7 @@ Et ce rattrapage ne vient pas que des modèles : la couche serving open-source �
 ### Repos
 - [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) — La plateforme complète
 - [`docs/decisions/`](https://github.com/Smana/cloud-native-ref/tree/main/docs/decisions) — ADRs (vLLM Production Stack, S3 Files…)
-- [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — Chemins d'évolution
+- [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/main/docs/llm-platform-future-paths.md) — Chemins d'évolution
 
 ### Composants techniques
 - [vLLM Production Stack](https://github.com/vllm-project/production-stack) — Inférence LLM en production

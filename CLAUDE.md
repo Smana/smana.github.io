@@ -55,6 +55,19 @@ Theme shortcodes (from `themes/hugo-clarity/`):
 - **Menus:** Per-language in `config/_default/menus/`
 - **Deployment:** GitHub Actions (`.github/workflows/gh-pages.yaml`) auto-deploys `main` to GitHub Pages using Hugo 0.139.0 extended
 
+## Internal links / URL conventions
+
+English is the default language and is served at the **site root**, not under `/en/`. French is served under `/fr/`. So content files map to live URLs like this:
+
+- `content/en/post/foo/index.md` → `https://blog.ogenki.io/post/foo/` (NOT `/en/post/foo/`)
+- `content/fr/post/foo/index.md` → `https://blog.ogenki.io/fr/post/foo/`
+
+When writing internal links inside Markdown:
+- English posts: use `/post/...` paths (root-relative, no `/en/` prefix). `/en/post/...` returns 404.
+- French posts: use `/fr/post/...` paths.
+
+`aliases` entries that begin with `/en/post/...` are intentional historical redirects (set up before the default language moved to root) — leave them alone.
+
 ## Series
 
 Series group related posts under `post/series/<series-name>/`. Each series has its own `_index.md`. Example series: `observability`, `agentic_ai`, `workshop_helm`, `workshop_kubernetes`. French series live under `content/fr/post/series/`, English under `content/en/post/series/`.

@@ -13,7 +13,7 @@ thumbnail = "thumbnail.png"
 +++
 
 {{% notice info "Agentic AI Series — Part 3" %}}
-This article follows [Agentic Coding: concepts and hands-on use cases](/en/post/series/agentic_ai/ai-coding-agent/) (the fundamentals of coding agents) and [A few months with Claude Code](/en/post/series/agentic_ai/ai-coding-tips/) (daily tips and lessons learned). **Here, we take a step back**: what can we reasonably do self-hosted today?
+This article follows [Agentic Coding: concepts and hands-on use cases](/post/series/agentic_ai/ai-coding-agent/) (the fundamentals of coding agents) and [A few months with Claude Code](/post/series/agentic_ai/ai-coding-tips/) (daily tips and lessons learned). **Here, we take a step back**: what can we reasonably do self-hosted today?
 {{% /notice %}}
 
 I now use agentic coding on a daily basis, like many of us. I'm overall happy with my Claude Code experience, but I keep a close eye on the **open-weight ecosystem**[^open-weight], which is also rapidly evolving: Qwen, Llama, Mistral, GLM, DeepSeek — and on the fierce competition between the various players in the space.
@@ -67,7 +67,7 @@ The whole thing is driven by **GitOps** (Flux reconciles everything from [`cloud
 
 ## :electric_plug: The centerpiece: the `InferenceService` abstraction
 
-If you've read some of [my previous articles](/en/post/crossplane_composition_functions/), you know I particularly like `Crossplane` for providing the right abstraction to end users. It's one of my essential components and lets me expose a **simple, fit-for-purpose interface**. I already have a few: `App`, `SQLInstance`, `EPI` — and now `InferenceService`.
+If you've read some of [my previous articles](/post/crossplane_composition_functions/), you know I particularly like `Crossplane` for providing the right abstraction to end users. It's one of my essential components and lets me expose a **simple, fit-for-purpose interface**. I already have a few: `App`, `SQLInstance`, `EPI` — and now `InferenceService`.
 
 ### Declaring a new model
 
@@ -112,7 +112,7 @@ From this _Claim_, about a dozen Kubernetes resources are created. Beyond the us
 
 * ⚡ **KEDA `ScaledObject`** — autoscaling triggered **before** load saturates a pod, rather than reacting to a queue forming. *([the math is detailed in Layer 2](#autoscaling-with-keda))*
 
-* 📊 **`VMServiceScrape` + `VMRule`** — vLLM metrics scraped by **VictoriaMetrics** on `/metrics`, SLOs and alerts (cold-start budget, error rate, latency) _shipped_ alongside the model. *([detailed approach in the Observability series](/en/post/series/observability/metrics/))*
+* 📊 **`VMServiceScrape` + `VMRule`** — vLLM metrics scraped by **VictoriaMetrics** on `/metrics`, SLOs and alerts (cold-start budget, error rate, latency) _shipped_ alongside the model. *([detailed approach in the Observability series](/post/series/observability/metrics/))*
 
 * 🚪 **`AIGatewayRoute`** — declares how the **Envoy AI Gateway** dispatches traffic to this model: `model: xplane-qwen-coder` in an OpenAI request lands on the right pod, with no application logic.
 
@@ -135,7 +135,7 @@ Four lines change. Flux reconciles, KEDA readjusts triggers, Karpenter provision
 {{% notice tip "KCL: version, test, validate a composition" %}}
 The composition isn't written as YAML patches (unreadable, untestable) but in [**KCL**](https://kcl-lang.io/) via the [function-kcl](https://github.com/crossplane-contrib/function-kcl) — a **typed** configuration language with **native assertions**. Three direct consequences:
 
-* **Unit tests** — a [`main_test.k`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/infrastructure/base/crossplane/configuration/kcl/inference-service/main_test.k) file validates each behavior (`kcl test` runs in CI on every PR).
+* **Unit tests** — a [`main_test.k`](https://github.com/Smana/cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/kcl/inference-service/main_test.k) file validates each behavior (`kcl test` runs in CI on every PR).
 * **Versioned OCI packaging** — the composition is published as an OCI image (`oci://ghcr.io/smana/cloud-native-ref/crossplane-inference-service:0.6.0`), referenced by immutable tag.
 * **Claim schema validated at the API server** — `kubectl apply` rejects inconsistent claims (e.g. `minReplicas > maxReplicas`) **before** the composition is even triggered.
 
@@ -370,7 +370,7 @@ Each metric is automatically enriched with `gen_ai.*` labels (model, operation, 
 * **What's the prompt/generation ratio** per user? (useful for context sizing)
 * **How many chat vs embedding calls** per client?
 
-> The usual SLOs / alerts (p95 latency, error rate, GPU saturation) stay defined as `VMRule` next to that — nothing LLM-specific, I cover it in the [observability/alerting article](/en/post/series/observability/alerts/).
+> The usual SLOs / alerts (p95 latency, error rate, GPU saturation) stay defined as `VMRule` next to that — nothing LLM-specific, I cover it in the [observability/alerting article](/post/series/observability/alerts/).
 
 ### Qualitative evaluation with `Promptfoo`
 
@@ -425,7 +425,7 @@ Let's be clear: today I wouldn't trade my Claude ecosystem. Mainly for **financi
 
 That said, I would have liked to push my use of **OpenCode** further and migrate my Claude setup (skills, MCPs, sub-agents) onto that backend for good — that may be the topic of a future article dedicated to this open-source coding agent.
 
-But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a quantized L4 — a path documented in [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — the swap will be a few-line PR. That's the **main point** of this demo: positioning yourself to **move fast when the time comes**, rather than scrambling to (re)build everything the day open-weight catches up to the frontier.
+But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a quantized L4 — a path documented in [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/main/docs/llm-platform-future-paths.md) — the swap will be a few-line PR. That's the **main point** of this demo: positioning yourself to **move fast when the time comes**, rather than scrambling to (re)build everything the day open-weight catches up to the frontier.
 
 And this catch-up isn't only about models: the open-source serving layer evolves just as fast and regularly brings in capabilities previously reserved for proprietary solutions. For instance, [**vLLM-Omni**](https://github.com/vllm-project/vllm-omni) (first stable late 2025) extends `vLLM` to **omni-modality** (text, image, audio, video, as **inputs and outputs**) with the same OpenAI-compatible API, so it plugs directly into the platform described here.
 
@@ -438,7 +438,7 @@ And this catch-up isn't only about models: the open-source serving layer evolves
 ### Repos
 - [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) — The complete platform
 - [`docs/decisions/`](https://github.com/Smana/cloud-native-ref/tree/main/docs/decisions) — ADRs (vLLM Production Stack, S3 Files…)
-- [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — Evolution paths
+- [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/main/docs/llm-platform-future-paths.md) — Evolution paths
 
 ### Technical components
 - [vLLM Production Stack](https://github.com/vllm-project/production-stack) — Production-grade LLM inference
@@ -463,5 +463,5 @@ And this catch-up isn't only about models: the open-source serving layer evolves
 - [Huawei Ascend, Cambricon and Hygon Completed Day 0 Adaptation to DeepSeek-V4](https://www.trendforce.com/news/2026/04/29/news-huawei-ascend-cambricon-and-hygon-completed-day-0-adaptation-to-deepseek-v4/) — TrendForce
 
 ### Previous articles in the series
-- [Agentic Coding: concepts and hands-on use cases](/en/post/series/agentic_ai/ai-coding-agent/) — Part 1
-- [A few months with Claude Code: tips and workflows](/en/post/series/agentic_ai/ai-coding-tips/) — Part 2
+- [Agentic Coding: concepts and hands-on use cases](/post/series/agentic_ai/ai-coding-agent/) — Part 1
+- [A few months with Claude Code: tips and workflows](/post/series/agentic_ai/ai-coding-tips/) — Part 2
