@@ -176,8 +176,8 @@ The benefits in our case:
 * **EFS pricing** on active data only, and **S3 standard pricing** (~$0.023/GB/month) on long-term storage — way cheaper than a fixed-size provisioned EBS PVC
 * **Full POSIX** — vLLM reads weights as if from a local disk, no adaptation
 
-{{% notice note "The first fill is still slow" %}}
-S3 Files isn't magic on the initial _bootstrap_: the preloading Job has to download the ~15GB of weights from HuggingFace **a first time** into S3. This step is bound by the instance's network bandwidth (~10 Gbps on `g6.xlarge`) and typically takes several tens of seconds. The payoff amortizes from there: every **subsequent** start (replicas, redeploys, other models sharing the bucket) mounts the volume in seconds.
+{{% notice note "The initial fill is still slow" %}}
+S3 Files isn't magic on the initial _bootstrap_: the preloading Job has to download the ~15GB of weights from HuggingFace **a first time** into S3. This step is bound by the instance's network bandwidth (~10 Gbps on `g6.xlarge`) and typically takes several tens of seconds. The upfront cost amortizes from there: every **subsequent** start (replicas, redeploys, other models sharing the bucket) mounts the volume in seconds.
 {{% /notice %}}
 
 ---
@@ -284,7 +284,7 @@ A single model doesn't do everything: **coder for code**, **reasoner for math**,
 * **Explicit routing** — the client targets a model directly (`model: xplane-qwen-coder`) via the `x-ai-eg-model` header or the request body. **[Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway)** dispatches natively, with negligible latency. That's what Continue (autocomplete) and OpenCode do when they know which model to use.
 * **Semantic routing** — the client asks for the virtual model **`MoM`** (_Mixture of Models_) and **[vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router)** analyzes the prompt to pick the right actual model (coder, reasoner, guard). Detailed in the next sub-section.
 
-With this setup, a client that knows what it wants pays no extra latency, and a generic client (OpenWebUI) benefits from automatic smart routing.
+With this setup, a client that knows what it wants incurs no extra latency, and a generic client (OpenWebUI) benefits from automatic smart routing.
 
 ### Iris and semantic routing
 
@@ -292,7 +292,7 @@ With this setup, a client that knows what it wants pays no extra latency, and a 
 
 Under the hood, a compact classifier (~100M parameters, derived from **mmBERT**, served on **CPU** — so no pressure on GPU-pod VRAM) evaluates the prompt against **several criteria**: intent (code, reasoning, multilingual…), the presence of a possible _jailbreak_ attempt, or **personally identifiable information (PII)** detection. Based on the verdict, Iris routes to the appropriate model — or applies a dedicated safety _guardrail_.
 
-**The payoff**: clients hit a single endpoint (`MoM`) and get a per-prompt routing without coding their own selection logic. The _trade-off_: ~250-300 ms of classification, incurred **only** on requests routed to `MoM`. That's acceptable for chat — the overall TTFT stays imperceptible to a human — but a deal-breaker for IDE autocomplete, which has to stay under 200 ms p95: that's precisely why **Continue** hits the coder pod directly via explicit routing.
+**The benefit**: clients hit a single endpoint (`MoM`) and get a per-prompt routing without coding their own selection logic. The _trade-off_: ~250-300 ms of classification, incurred **only** on requests routed to `MoM`. That's acceptable for chat — the overall TTFT stays imperceptible to a human — but a deal-breaker for IDE autocomplete, which has to stay under 200 ms p95: that's precisely why **Continue** hits the coder pod directly via explicit routing.
 
 ---
 
@@ -335,7 +335,7 @@ I just discovered [**OpenCode**](https://opencode.ai/) — the CLI agent that co
 
 ## :bar_chart: Monitoring and continuous evaluation
 
-An LLM platform produces signal **on several axes at once** — serving health, per-tenant token consumption, response quality — and each has its own indicators (TTFT, inter-token latency, prefix cache hit, token usage per operation…) that classic web monitoring doesn't capture. Good news: the **existing observability stack** (VictoriaMetrics, VictoriaLogs, Grafana) absorbs all of this with no new tooling — it was just a matter of wiring up the right sources. And the stake goes **beyond anomaly detection**: understanding *how* the platform is used — who consumes what, on which models, at what cost — is just as important.
+An LLM platform produces signals **on several axes at once** — serving health, per-tenant token consumption, response quality — and each has its own indicators (TTFT, inter-token latency, prefix cache hit, token usage per operation…) that classic web monitoring doesn't capture. Good news: the **existing observability stack** (VictoriaMetrics, VictoriaLogs, Grafana) absorbs all of this with no new tooling — it was just a matter of wiring up the right sources. And the stake goes **beyond anomaly detection**: understanding *how* the platform is used — who consumes what, on which models, at what cost — is just as important.
 
 ### Platform health — `vLLM` metrics
 
@@ -419,7 +419,7 @@ I deliberately kept these considerations out of the main article — and I take 
 * **Chinese players are betting on open-weight** (DeepSeek, Kimi/Moonshot, Qwen/Alibaba). It's an industrial-strategy bet that may pay off long-term — the more the open-weight ecosystem matures, the more competitive it becomes against closed models.
 * **And their results on SWE-bench** — the coding reference — are **really good**: on SWE-bench Pro, Kimi K2.6 leads the open-weight pack at 58.6%, ~6 points behind Claude Opus 4.7. On Verified, DeepSeek V4 Pro brushes 80%, ~7 points behind Opus. The gap is closing, benchmark after benchmark.
 
-### And me, right now?
+### What's next?
 
 Let's be clear: today I wouldn't trade my Claude ecosystem. Mainly for **financial** reasons — not out of any particular attachment. At my usage scale, Sonnet and Opus cost me less than replicating equivalent quality through self-hosting.
 
@@ -427,7 +427,9 @@ That said, I would have liked to push my use of **OpenCode** further and migrate
 
 But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a quantized L4 — a path documented in [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — the swap will be a few-line PR. That's the **main point** of this demo: positioning yourself to **move fast when the time comes**, rather than scrambling to (re)build everything the day open-weight catches up to the frontier.
 
-**Irony of history**: this entire stack was designed and built with the help of **Claude Code** 🙃.
+And this catch-up isn't only about models: the open-source serving layer evolves just as fast and regularly brings in capabilities previously reserved for proprietary solutions. For instance, [**vLLM-Omni**](https://github.com/vllm-project/vllm-omni) (first stable late 2025) extends `vLLM` to **omni-modality** (text, image, audio, video, as **inputs and outputs**) with the same OpenAI-compatible API, so it plugs directly into the platform described here.
+
+**The kicker**: this entire stack was designed and built with the help of **Claude Code** 🙃.
 
 ---
 
@@ -440,6 +442,7 @@ But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a
 
 ### Technical components
 - [vLLM Production Stack](https://github.com/vllm-project/production-stack) — Production-grade LLM inference
+- [vLLM-Omni](https://github.com/vllm-project/vllm-omni) — Omni-modality serving (text/image/audio/video, in & out)
 - [vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router) — Smart multi-model routing
 - [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway) — Gateway API for LLMs
 - [Promptfoo](https://www.promptfoo.dev/) — Continuous LLM evaluation

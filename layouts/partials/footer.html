@@ -1,0 +1,17 @@
+{{- $s := .Site.Params }}
+{{- $c := default .Site.Title .Site.Copyright  }}
+{{- if or .Params.enableMathNotation $s.enableMathNotation }}
+  {{ partialCached "math" . }}
+{{- end }}
+{{- $light := absURL "icons/footer-light.webp" }}
+{{- $dark := absURL "icons/footer-dark.webp" }}
+<footer class="footer">
+  <div class="footer_inner wrap pale">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="{{ $dark }}">
+      <img src="{{ $light }}" class="icon icon_2 transparent" alt="{{ $c }}">
+    </picture>
+    <p>{{ T "copyright" | markdownify }}{{ with $s.since }}&nbsp;{{ . }}-{{ end }}&nbsp;<span class="year"></span>&nbsp;{{ upper $c }}. {{ T "all_rights" | markdownify }}</p>
+    {{- partialCached "top" .}}
+  </div>
+</footer>
