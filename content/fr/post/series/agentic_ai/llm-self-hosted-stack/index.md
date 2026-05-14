@@ -177,7 +177,7 @@ Les avantages dans notre cas :
 * **POSIX complet** — vLLM lit les poids comme depuis un disque local, sans adaptation
 
 {{% notice note "Le tout premier remplissage reste lent" %}}
-S3 Files n'est pas magique sur le _bootstrap_ initial : le Job de préchargement doit télécharger les ~15GB de poids depuis HuggingFace **une première fois** vers S3. Cette étape est limitée par la bande passante réseau de l'instance (~10 Gbps sur `g6.xlarge`) et prend typiquement plusieurs dizaines de secondes. Le gain s'amortit ensuite : tous les démarrages **suivants** (réplicas, redéploiements, autres modèles partageant le bucket) montent le volume en quelques secondes.
+S3 Files n'est pas magique sur le _bootstrap_ initial : le Job de préchargement doit télécharger les ~15GB de poids depuis HuggingFace **une première fois** vers S3. Cette étape est limitée par la bande passante réseau de l'instance (~10 Gbps sur `g6.xlarge`) et prend typiquement plusieurs dizaines de secondes. Le coût initial s'amortit ensuite : tous les démarrages **suivants** (réplicas, redéploiements, autres modèles partageant le bucket) montent le volume en quelques secondes.
 {{% /notice %}}
 
 ---
