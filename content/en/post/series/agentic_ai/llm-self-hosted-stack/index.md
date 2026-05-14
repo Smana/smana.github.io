@@ -419,7 +419,7 @@ I deliberately kept these considerations out of the main article — and I take 
 * **Chinese players are betting on open-weight** (DeepSeek, Kimi/Moonshot, Qwen/Alibaba). It's an industrial-strategy bet that may pay off long-term — the more the open-weight ecosystem matures, the more competitive it becomes against closed models.
 * **And their results on SWE-bench** — the coding reference — are **really good**: on SWE-bench Pro, Kimi K2.6 leads the open-weight pack at 58.6%, ~6 points behind Claude Opus 4.7. On Verified, DeepSeek V4 Pro brushes 80%, ~7 points behind Opus. The gap is closing, benchmark after benchmark.
 
-### And me, right now?
+### What's next?
 
 Let's be clear: today I wouldn't trade my Claude ecosystem. Mainly for **financial** reasons — not out of any particular attachment. At my usage scale, Sonnet and Opus cost me less than replicating equivalent quality through self-hosting.
 
@@ -427,7 +427,9 @@ That said, I would have liked to push my use of **OpenCode** further and migrate
 
 But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a quantized L4 — a path documented in [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/wip/self-hosted-llm-platform-draft/docs/llm-platform-future-paths.md) — the swap will be a few-line PR. That's the **main point** of this demo: positioning yourself to **move fast when the time comes**, rather than scrambling to (re)build everything the day open-weight catches up to the frontier.
 
-**Irony of history**: this entire stack was designed and built with the help of **Claude Code** 🙃.
+And this catch-up isn't only about models: the open-source serving layer evolves just as fast and regularly brings in capabilities previously reserved for proprietary solutions. For instance, [**vLLM-Omni**](https://github.com/vllm-project/vllm-omni) (first stable late 2025) extends `vLLM` to **omni-modality** (text, image, audio, video, as **inputs and outputs**) with the same OpenAI-compatible API, so it plugs directly into the platform described here.
+
+**The kicker**: this entire stack was designed and built with the help of **Claude Code** 🙃.
 
 ---
 
@@ -440,6 +442,7 @@ But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a
 
 ### Technical components
 - [vLLM Production Stack](https://github.com/vllm-project/production-stack) — Production-grade LLM inference
+- [vLLM-Omni](https://github.com/vllm-project/vllm-omni) — Omni-modality serving (text/image/audio/video, in & out)
 - [vLLM Semantic Router (Iris)](https://github.com/vllm-project/semantic-router) — Smart multi-model routing
 - [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway) — Gateway API for LLMs
 - [Promptfoo](https://www.promptfoo.dev/) — Continuous LLM evaluation
