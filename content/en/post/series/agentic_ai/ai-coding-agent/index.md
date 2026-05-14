@@ -350,7 +350,7 @@ For [cloud-native-ref](https://github.com/Smana/cloud-native-ref), I created a v
 | **Security** | Zero-trust, least privilege, externalized secrets |
 | **SRE** | Health probes, observability, failure modes |
 
-**⚡ Claude Code Skills** — The workflow is orchestrated by [skills](/en/post/series/agentic_ai/ai-coding-agent/#skills-unlocking-new-powers) (see previous section) that automate each step:
+**⚡ Claude Code Skills** — The workflow is orchestrated by [skills](/post/series/agentic_ai/ai-coding-agent/#skills-unlocking-new-powers) (see previous section) that automate each step:
 
 | Skill | Action |
 |-------|--------|
