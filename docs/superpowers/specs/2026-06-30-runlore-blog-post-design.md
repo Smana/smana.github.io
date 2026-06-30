@@ -20,10 +20,20 @@ the author's open-source agentic SRE incident-investigation agent. The post is t
 - **Series:** `series = ["observability"]`. Page bundle (`usePageBundles = true`),
   TOML front matter (`+++`), `toc = true`, emoji-decorated H2/H3 to match the
   existing series posts (metrics / logs / alerts).
-- **Tone:** follow the blog-writing-style memory — concise, theory-first, precise
-  terminology, no weak analogies, no "hook" sentences that rank one section above
-  another, honesty over polish. Match the existing series voice (notice blocks,
-  🎯 Objectifs / 📋 Prérequis, 💭 Dernières remarques, 🔖 Références).
+- **Tone:** follow the `ogenki-blog-style` skill + the blog-writing-style memory —
+  professional + personal voice (nous = exploration, vous = instructions, je =
+  personal experience/caveats); concise, theory-first, precise terminology, no weak
+  analogies, no "hook" sentences that rank one section above another, honesty over
+  polish; occasional self-deprecating aside and a rhetorical hook question.
+- **Term handling:** every technical term **bold** on first use with a brief
+  definition; acronyms spelled out on first mention — SRE (Site Reliability
+  Engineering), RCA (Root Cause Analysis), OKF (Open Knowledge Format), GitOps.
+  Keep English technical terms untranslated in the French post (Ingress Controller,
+  GitOps, etc.).
+- **Canonical structure (`ogenki-blog-style`):** Hook/Lead (problem or prior-series
+  notice, never an abstract definition) → Objectifs → Prérequis / Boîte à outils →
+  Concepts essentiels (lean) → En pratique → 💭 Dernières remarques → Références.
+- **Tooling:** scaffold the post file with the `hugo-new-post` skill.
 - **Internal links:** French posts use `/fr/post/...` paths.
 
 ## Source material (all verified locally)
@@ -60,6 +70,12 @@ the author's open-source agentic SRE incident-investigation agent. The post is t
    same-symptom/different-cause incident can anchor on a stale prior RCA.
 
 ## Structure (section by section)
+
+Maps onto the `ogenki-blog-style` canonical shape: §1 = Hook/Lead, §2 = Objectifs,
+§3 = Prérequis/Boîte à outils framing within the problem, §4–§6 = Concepts essentiels
+(kept lean), §8 = En pratique, §10 = Dernières remarques, §11 = Références. §7
+(alternatives) and §9 (dogfooding) are series-specific additions.
+
 
 1. **`{{% notice info %}}` — le chaînon manquant de la série** — compact, theory-first:
    the series covered métriques → logs → alertes (détecter) ; reste l'étape la plus
@@ -126,12 +142,14 @@ the author's open-source agentic SRE incident-investigation agent. The post is t
    (RunLore can run against vLLM/Ollama). Note the same review discipline (adversarial
    verification) used to build it is the philosophy baked into the product.
 
-10. **💭 Dernières remarques — un projet très jeune** — honest closer: pre-1.0, `auto`
-    mode frozen / not recommended on real clusters, golden path only (Flux +
+10. **💭 Dernières remarques — un projet très jeune** — honest reflection (not a
+    summary): pre-1.0, launched ~10 days ago, golden path only (Flux +
     VictoriaMetrics + Anthropic/OpenAI-compatible + Slack + GitHub). The memory angle
     needs *weeks* of real use to judge whether recall actually compounds; known quirk
     (workload+symptom recall vs. different cause). The author will report back in the
-    long run.
+    long run. Production caveats go in a **`{{% notice warning "Points d'attention
+    pour la prod" %}}`** box: read-only-by-default is the safe mode; the `auto`
+    autonomy rung is experimental, frozen, and not recommended on real clusters.
 
 11. **🔖 Références** — RunLore repo; OKF announcement + spec
     (GoogleCloudPlatform/knowledge-catalog); Karpathy LLM-wiki; k8sgpt; HolmesGPT;
