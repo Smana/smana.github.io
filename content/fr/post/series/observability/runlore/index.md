@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
-title = "`RunLore` : votre buddy SRE qui investigue les incidents — et apprend de chaque résolution"
+title = "`RunLore` : ton buddy SRE qui investigue les incidents — et apprend de chaque résolution"
 date = "2026-07-04"
-summary = "Souvent, la connaissance d'un incident se dissout dès qu'il est clos. RunLore, agent SRE open source, investigue et vous aide à identifier rapidement la cause racine, puis transforme chaque résolution en savoir réutilisable."
+summary = "Souvent, la connaissance d'un incident se dissout dès qu'il est clos. RunLore, agent SRE open source, investigue et t'aide à identifier rapidement la cause racine, puis transforme chaque résolution en savoir réutilisable."
 featured = false
 codeMaxLines = 30
 usePageBundles = true
@@ -31,19 +31,15 @@ J'ai décidé de m'attaquer à cette problématique en créant un projet open so
 
 Pour conserver la connaissance en mémoire, j'ai choisi l'**OKF** (_Open Knowledge Format_) : un format pensé précisément pour qu'un agent IA lise et écrive sa connaissance efficacement. J'y reviens [en détail plus loin](#okf--dune-idée-de-karpathy-à-un-standard).
 
-Cet article en présente les idées et un premier exemple concret.
+## 🎯 Objectifs
 
-## 🎯 Objectifs de cet article
-
-* 🔥 Comprendre le **coût caché** de l'investigation d'incident
 * 🤖 Découvrir **RunLore** et son fonctionnement
-* 🧠 Saisir ses **trois choix de conception** : un binaire simple, une mémoire au standard **OKF**, et l'humain à la décision
-* 🛠️ **Déployer** RunLore et voir un **incident réel** investigué sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)
-* 💭 Un retour **honnête** sur un projet encore très jeune
+* 🧠 Ses **trois choix de conception** : un binaire simple, la **boucle d'apprentissage**, et l'**humain à la décision**
+* 🛠️ Le **déployer** simplement avec Helm et le voir investiguer un **incident réel** sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)
 
-## 🔥 Le problème : le coût caché de l'investigation
+## 🔥 Pourquoi ce projet : le coût caché de l'investigation
 
-L'article précédent sur les alertes se terminait sur une évidence : la configuration technique ne suffit pas, il faut aussi des **runbooks et des procédures de réponse aux incidents**. Or, dans la vraie vie, ces runbooks sont incomplets, et une grande partie de la connaissance reste **tribale** : elle vit dans la tête de quelques personnes.
+L'article précédent sur les alertes se terminait sur une évidence : la configuration technique ne suffit pas, il faut aussi des **runbooks et des procédures de réponse aux incidents**. Or, dans la vraie vie, ces runbooks sont incomplets, et une grande partie de la connaissance ne vit que dans la tête de quelques personnes.
 
 Quand une alerte se déclenche, l'astreinte rejoue à chaque fois le même enchaînement manuel :
 
@@ -51,54 +47,38 @@ Quand une alerte se déclenche, l'astreinte rejoue à chaque fois le même encha
 * **Qu'est-ce qui ne va pas ?** Saturation, réseau, nœuds, dépendances en échec ?
 * **A-t-on déjà vu ça ?** La réponse est souvent « oui », mais personne ne retrouve où elle est documentée.
 
-Ce pivot permanent entre Git, les métriques, les logs et les flux réseau est exactement le genre de tâche qu'un agent peut prendre en charge. À condition qu'il soit **honnête** sur ce qu'il sait et ne sait pas.
+Ce pivot permanent entre Git, les métriques, les logs et les flux réseau est exactement le genre de tâche qu'un agent peut prendre en charge. **Plusieurs le font déjà** — mais l'enjeu, pour moi, est ailleurs : **garder l'humain au cœur des décisions**, sur ce que l'agent _fait_ comme sur ce qu'il _apprend_.
 
 ## 🤖 RunLore en bref
 
-{{< img src="runlore-logo.png" alt="Logo RunLore — une chouette à lunettes posée sur un livre ouvert" width="120" >}}
+{{< img src="runlore-logo.png" width="120" >}}
 
-**RunLore** est un **agent SRE** open source (licence Apache-2.0) qui s'exécute dans votre cluster Kubernetes sous la forme d'un binaire Go unique, déployé via Helm. Son principe est volontairement simple : à partir d'un événement (une alerte, un échec **GitOps** — la livraison continue pilotée par Git…), il investigue et répond à deux questions — _what changed?_ et _what's wrong?_ — puis publie dans votre messagerie une **cause racine** assortie d'un **score de confiance**, des preuves qui l'étayent, et des questions ouvertes à destination d'un humain.
+**RunLore** est un **agent SRE** open source (licence Apache-2.0) qui s'exécute dans ton cluster Kubernetes sous la forme d'un binaire Go unique, déployé via Helm. </br>
+Son principe est volontairement simple : à partir d'un événement (une alerte, un échec **GitOps** — la livraison continue pilotée par Git…), il investigue et répond à deux questions — _what changed?_ et _what's wrong?_ — puis publie dans ta messagerie une **cause racine** assortie d'un **score de confiance**, des preuves qui l'étayent, et des questions ouvertes à destination d'un humain.
 
-La notification est _verdict-first_ : elle s'ouvre sur un **verdict d'actionnabilité** clair — _aucune action_, _action suggérée_, _action requise_ ou _non concluant_ — avant même les détails. L'astreinte sait en un coup d'œil si elle doit intervenir.
+{{< img src="runlore-investigation-flow.png" alt="Flux d'investigation de RunLore : un événement déclenche une investigation qui corrèle l'historique GitOps, les métriques, les logs et les flux réseau ; la cause racine est publiée dans Slack et une PR est ouverte dans la base de connaissances" width="1080" >}}
 
-{{< img src="runlore-investigation-flow.png" alt="Flux d'investigation de RunLore : un événement déclenche une investigation qui corrèle l'historique GitOps, les métriques, les logs et les flux réseau ; la cause racine est publiée dans Slack et une PR est ouverte dans la base de connaissances" width="1080" caption="Le flux d'investigation : de l'événement à la cause racine, jusqu'à la capture dans la base de connaissances" >}}
+Le schéma se lit en trois temps :
 
-Le fil conducteur de l'investigation est l'**historique GitOps** (Flux ou Argo CD) : c'est la colonne vertébrale du _what-changed_, qui produit un diff Git exact entre les révisions déployées. Autour de ce signal, RunLore corrèle tout le reste, chaque source étant **pluggable** : une source non configurée désactive simplement l'outil correspondant.
+* **Déclencheurs** — une alerte, un échec GitOps ou un webhook lancent l'investigation.
+* **Sources de données** — l'**historique GitOps** (le fil rouge du _what-changed_), les métriques, les logs, les flux réseau, le cloud… _plus il y en a de branchées, plus la réponse est solide_.
+* **Canaux de notification** — le verdict part vers Slack, Matrix…
 
-| Catégorie | Supporté |
-|---|---|
-| **Déclencheurs** _(sources)_ | Webhook Alertmanager · échecs GitOps · webhook PagerDuty |
-| **GitOps** — _what changed_ | Flux · Argo CD |
-| **Métriques** | VictoriaMetrics · Prometheus (_PromQL_) |
-| **Logs** | VictoriaLogs (_LogsQL_) |
-| **Kubernetes** | client-go — statut des pods, events, logs des contrôleurs |
-| **Flux réseau** | Cilium Hubble · AWS VPC Flow Logs · GCP Firewall Logs |
-| **Cloud** | AWS — CloudTrail, EC2 / ASG / EKS |
-| **LLM** | Anthropic · Gemini · tout endpoint OpenAI-compatible (_vLLM, Ollama, OpenRouter…_) |
-| **Notifications** | Slack · Matrix · webhook générique |
-| **Base de connaissances** | GitHub (_App auth_) |
-
-{{% notice info "Et la sécurité ? 🔒" %}}
-Brancher un agent LLM sur son cluster soulève une question immédiate : que voit-il, et où cela part-il ? RunLore y répond par construction :
-
-* **Redaction des secrets à trois frontières de confiance** : le texte de l'incident, chaque sortie d'outil avant d'atteindre le modèle, et l'investigation finale avant toute publication (PR ou chat) ;
-* **RBAC minimal** : la lecture des logs de pods est restreinte à une liste de namespaces (par défaut `flux-system` uniquement) ;
-* **Journal d'audit** en append-only, chaîné par hash : chaque décision est traçable et infalsifiable.
-{{% /notice %}}
+Et tout ça repose sur une **base de connaissances** qui s'enrichit à chaque incident et **évolue avec le temps**.
 
 ### Trois choix de conception
 
-Des agents qui investiguent un incident, il en existe déjà (nous y reviendrons). Ce qui distingue RunLore tient en trois choix — et c'est leur **combinaison**, plus qu'aucun d'eux isolément, qui compte :
+Des agents qui investiguent un incident, il en existe déjà (nous y reviendrons). Ce qui distingue RunLore tient en trois choix — et c'est leur **combinaison** qui compte :
 
-1. 📦 **Un simple binaire, chez vous, sur vos modèles.** Un unique binaire Go dans votre cluster ; vous gardez la main sur vos données et vos modèles — et avec un LLM auto-hébergé, rien ne sort de votre périmètre. Pas de SaaS, pas de _lock-in_.
-2. 🧠 **Une mémoire qui se capitalise.** Chaque investigation nourrit un **catalogue de connaissances que vous possédez**, au standard **OKF**. Le même incident, la fois suivante, obtient une réponse instantanée plutôt qu'une nouvelle investigation.
+1. 📦 **Un simple binaire, chez toi, sur tes modèles.** Un unique binaire Go dans ton cluster ; tu gardes la main sur tes données et tes modèles — et avec un LLM auto-hébergé, rien ne sort de ton périmètre. Pas de SaaS, pas de _lock-in_.
+2. 🧠 **Une mémoire qui s'enrichit.** Chaque investigation nourrit un **catalogue de connaissances que tu possèdes**, au standard **OKF**. Le même incident, la fois suivante, obtient une réponse instantanée plutôt qu'une nouvelle investigation.
 3. ✋ **L'humain garde la main.** L'agent lit et recommande, il n'agit jamais seul (_read-only → suggest → approve_) — et surtout, **rien n'entre dans sa mémoire sans une PR relue par un humain**. Ce qu'il ne sait pas, il le délègue plutôt que de le deviner.
 
 Les deux sections qui suivent creusent les deux choix les moins évidents : la mémoire, puis la place gardée à l'humain.
 
-## 🧠 Une mémoire qui se capitalise
+## 🧠 Une mémoire qui s'enrichit
 
-La boucle autonome _alerte → cause racine → chat_ est aujourd'hui **banalisée** : plusieurs outils savent le faire. Ce qui l'est beaucoup moins, c'est une base de connaissances qui **se consolide dans un catalogue que vous possédez**.
+La boucle autonome _alerte → cause racine → chat_ est aujourd'hui **banalisée** : plusieurs outils savent le faire. Ce qui l'est beaucoup moins, c'est une base de connaissances qui **se consolide dans un catalogue que tu maîtrises**.
 
 ### La boucle d'apprentissage
 
@@ -106,21 +86,25 @@ RunLore implémente un cycle en quatre temps :
 
 1. **Retrieve** — face à un incident, il commence par chercher une réponse passée _digne de confiance_ dans la base de connaissances.
 2. **Capture** — si rien ne correspond, il investigue à chaud, enregistre ce qu'il a trouvé, puis **observe la suite** : l'incident s'est-il effectivement résolu ?
-3. **Curate** — un finding suffisamment fiable et nouveau devient une **Pull Request** rédigée dans votre dépôt de connaissances. C'est le **point de contrôle qualité** : on relit une entrée comme on relit du code.
+3. **Curate** — un finding suffisamment fiable et nouveau devient une **Pull Request** rédigée dans ton dépôt de connaissances. C'est le **point de contrôle qualité** : on relit une entrée comme on relit du code.
 4. **Compound** — une fois la PR fusionnée, l'entrée est ré-indexée et devient immédiatement disponible. Le même incident, la prochaine fois, obtient une réponse instantanée — sans ré-investigation.
 
 Tout part donc de **Retrieve**, qui tranche entre deux issues : servir une réponse connue **instantanément**, ou — faute de correspondance fiable — lancer la boucle complète, celle qui nourrit le catalogue.
 
-{{< img src="runlore-learning-loop.png" alt="Les deux issues d'un recall dans RunLore : un hit répond instantanément sans investigation ; un miss déclenche la boucle en quatre temps — Retrieve, Capture, Curate, Compound — qui nourrit un catalogue que vous possédez et rend le même incident instantané la fois suivante" width="1080" caption="Un **hit** répond instantanément, sans investigation ; un **miss** déclenche la boucle complète — investigation, curation, PR fusionnée — qui rend le même incident instantané la fois suivante, la confiance suivant le taux de résolution constaté" >}}
+{{< img src="runlore-learning-loop.png" width="1080" >}}
+</br>
 
-Ce qui fait de ce cycle un véritable **apprentissage**, et pas un simple bloc-notes, c'est que **les résultats bouclent en retour**. RunLore tient un _outcome ledger_ : à chaque fois qu'une entrée est rappelée, il note si l'incident s'est réellement résolu ensuite. La confiance d'une entrée est **dérivée de son taux de résolution constaté**, pas affirmée par le modèle. Une entrée qui résout régulièrement gagne en confiance ; une entrée qui est rappelée mais dont l'incident ne se résout jamais **se dégrade** et finit par ne plus être proposée, jusqu'à ce qu'une nouvelle investigation la corrige. La mémoire reflète ainsi la réalité opérationnelle, et non un état figé à un instant T.
+Ce qui fait de ce cycle un vrai **apprentissage** — pas un simple bloc-notes — c'est que **les résultats bouclent en retour**. RunLore tient un _outcome ledger_ : à chaque rappel d'une entrée, il note si l'incident s'est **réellement résolu** ensuite. La confiance est donc **dérivée du taux de résolution constaté**, pas affirmée par le modèle :
 
-Ce calcul a une autre moitié, **humaine** : sous chaque notification (en option, sur Slack et Matrix), deux boutons **👍 / 👎** laissent l'astreinte trancher. Le clic n'est pas cosmétique — il entre dans le **même calcul de confiance** que les résolutions réelles, au même poids :
+* une entrée qui **résout régulièrement** → elle **gagne en confiance** ;
+* une entrée **rappelée sans que l'incident se résolve jamais** → elle **se dégrade** et cesse d'être proposée (jusqu'à ce qu'une nouvelle investigation la corrige).
 
-* **👍** → une observation positive : l'entrée **gagne en confiance**.
-* **👎** → une observation négative : l'entrée **perd en confiance**, et un 👎 qui persiste **relance aussitôt une investigation** plutôt que de re-servir une réponse contestée.
+La mémoire reste ainsi **arrimée à la réalité opérationnelle**, jamais figée à un instant T.
 
-Surtout, ces votes sont **la seule vérité terrain quand aucun signal de résolution n'arrive** : un échec GitOps ou une alerte sans `send_resolved` n'émettent jamais de « resolved » — sans retour humain, la confiance de ces entrées resterait figée. En un clic, l'humain pilote donc deux choses : **ce que l'agent croit**, et **quand il a le droit de se répéter**.
+Ce même calcul a une **moitié humaine** : sous chaque notification (en option, sur Slack et Matrix), deux boutons **👍 / 👎**. Le clic n'est pas cosmétique — en un geste, l'astreinte pilote **deux leviers** :
+
+* **Ce que l'agent croit** — un vote pèse dans le calcul de confiance **exactement comme une résolution (👍) ou un échec (👎)**. C'est même **la seule vérité terrain quand aucun signal de résolution n'arrive** : un échec GitOps ou une alerte sans `send_resolved` n'émettent jamais de « resolved » — sans vote, ces entrées resteraient figées.
+* **Quand l'agent a le droit de se répéter** — un 👎 qui persiste **relance aussitôt une investigation** plutôt que de re-servir une réponse contestée.
 
 ### OKF : d'une idée de Karpathy à un standard
 
@@ -134,9 +118,9 @@ C'est exactement ce vide que comble l'**OKF** (_Open Knowledge Format_), un stan
 L'**OKF** représente la connaissance comme un répertoire de fichiers **markdown**, chacun décrivant **un concept** (un runbook, un incident, une métrique…) avec un frontmatter YAML dont le seul champ obligatoire est `type`. C'est la mise en standard du _LLM-wiki_ de Karpathy. Contrairement à une approche **RAG** (_Retrieval-Augmented Generation_) classique, il n'y a ni store propriétaire, ni schéma de compression, ni SDK imposé : du markdown versionné dans Git, lisible et modifiable autant par un humain que par un agent.
 {{% /notice %}}
 
-RunLore stocke donc sa mémoire au format **OKF-compatible**, dans un dépôt Git **que vous possédez** : indexé en BM25, relu par PR, avec une traçabilité complète. Et surtout, cette mémoire apprend **votre** contexte : vos contraintes, vos conventions, les spécificités de votre plateforme et de votre entreprise. Ce n'est pas un modèle générique, ce sont **vos** incidents, curés par **votre** équipe. Rien n'oblige d'ailleurs à démarrer d'une page blanche : le catalogue peut être **amorcé** dès le premier jour avec des connaissances _seeded_ (contraintes, architecture, conventions d'équipe), que les entrées _learned_ issues des incidents viennent ensuite enrichir.
+RunLore stocke donc sa mémoire au format **OKF-compatible**, dans un dépôt Git **que tu possèdes** : indexé en BM25, relu par PR, avec une traçabilité complète. Et surtout, cette mémoire apprend **ton** contexte : tes contraintes, tes conventions, les spécificités de ta plateforme et de ton entreprise. Ce n'est pas un modèle générique, ce sont **tes** incidents, curés par **ton** équipe. Rien n'oblige d'ailleurs à démarrer d'une page blanche : le catalogue peut être **amorcé** dès le premier jour avec des connaissances _seeded_ (contraintes, architecture, conventions d'équipe), que les entrées _learned_ issues des incidents viennent ensuite enrichir.
 
-Cette portabilité n'est pas théorique. Le binaire embarque un serveur **MCP** (_Model Context Protocol_) : `lore mcp` expose le catalogue en lecture seule (`kb_search`, `kb_get`, et le _what-changed_ GitOps) à n'importe quel client MCP — Claude Code, votre éditeur, ou même HolmesGPT. Sans cluster ni modèle : un clone du dépôt de connaissances suffit pour demander, en plein postmortem ou en revue d'une PR d'infra, « est-ce que ça nous a déjà mordus ? ».
+Cette portabilité n'est pas théorique. Le binaire embarque un serveur **MCP** (_Model Context Protocol_) : `lore mcp` expose le catalogue en lecture seule (`kb_search`, `kb_get`, et le _what-changed_ GitOps) à n'importe quel client MCP — Claude Code, ton éditeur, ou même HolmesGPT. Sans cluster ni modèle : un clone du dépôt de connaissances suffit pour demander, en plein postmortem ou en revue d'une PR d'infra, « est-ce que ça nous a déjà mordus ? ».
 
 ```bash
 git clone https://github.com/your-org/runlore-kb && lore mcp ./runlore-kb
@@ -151,95 +135,28 @@ Le parti pris de RunLore est l'inverse : **l'agent n'est pas là pour remplacer 
 Encore faut-il que l'humain *comprenne* — sans quoi « valider » n'est qu'un clic. Tout est donc pensé pour être lu et jugé : des findings en **langage clair**, un savoir en **markdown** relu comme du code, des actions explicites marquées **réversibles** ou non.
 
 * **Sur les actions — read-only par défaut.** La posture supportée est _read-only → suggest → approve_ : l'agent lit, corrèle et recommande ; un humain valide. Le palier `auto` (remédiation non supervisée) est expérimental, gelé, et déconseillé sur un cluster réel.
-* **Sur la connaissance — rien n'est appris sans relecture.** C'est le point qui distingue vraiment : chaque finding jugé fiable et nouveau devient une **Pull Request** dans *votre* dépôt, qu'un humain relit et fusionne. L'agent propose ; l'équipe décide ce qui rejoint sa mémoire. _(D'autres agents apprennent aussi — mais enregistrent tout automatiquement, sans relecture.)_
+* **Sur la connaissance — rien n'est appris sans relecture.** C'est le point qui distingue vraiment : chaque finding jugé fiable et nouveau devient une **Pull Request** dans *ton* dépôt, qu'un humain relit et fusionne. L'agent propose ; l'équipe décide ce qui rejoint sa mémoire. _(D'autres agents apprennent aussi — mais enregistrent tout automatiquement, sans relecture.)_
 * **Ce qu'il ne sait pas, il le délègue.** Un `unresolved` **assumé comme une réponse à part entière** : l'agent liste explicitement ce qui exige un accès ou un jugement qu'il n'a pas, au lieu de combler les trous par une supposition plausible.
 * **Des signaux faits pour décider, pas pour rassurer.** Pour que la relecture humaine soit réelle et non un tampon, l'agent est calibré contre lui-même : un **score de confiance** sur chaque finding ; une passe de **vérification adverse** qui ne peut **que faire baisser** la confiance ; une mémoire **dérivée des résultats observés** et **plafonnée à 90 %**, jamais affirmée.
 * **Et c'est vérifié, pas décrété.** Un **harnais d'évaluation** livré avec le projet — un _eval_ nocturne et une suite end-to-end sur k3d — rejoue des incidents connus et contrôle que rappel, vérification et décroissance se comportent comme annoncé.
 
 Garder l'humain à la décision — sur ce qui est fait comme sur ce qui est appris — n'est pas une limite qu'on s'impose : c'est ce qui rend l'agent utilisable là où le raisonnement seul échoue une fois sur deux.
 
-## 🔬 Les alternatives
+## 👀 Voici ce que ça donne
 
-RunLore n'arrive pas sur un terrain vierge : la **RCA** (_Root Cause Analysis_, l'identification automatisée de cause racine) est un domaine déjà bien occupé. Voici comment je le situe par rapport à l'existant :
-
-| Outil | Ce que c'est | Ce que RunLore ajoute |
-|---|---|---|
-| [**k8sgpt**](https://github.com/k8sgpt-ai/k8sgpt) | Un _détecteur_ (analyzers + explication par LLM) | Une boucle d'investigation, la corrélation multi-signaux, de vrais diffs Git et l'apprentissage |
-| [**HolmesGPT**](https://github.com/HolmesGPT/holmesgpt) | Le meilleur agent d'investigation open source | HolmesGPT s'appuie sur **vos** runbooks écrits à la main et n'apprend pas ; RunLore est _what-changed-first_ et s'améliore seul |
-| [**OpenSRE**](https://github.com/swapnildahiphale/OpenSRE) | Le rival le plus proche : un agent multi-agents qui **apprend** réellement (mémoire épisodique + graphe de connaissances des incidents passés) | OpenSRE stocke chaque investigation **automatiquement, sans relecture** ; RunLore capitalise dans un catalogue **relu par PR, dont vous êtes propriétaire, et dont la confiance décroît selon les résultats réels** |
-| [**kagent**](https://github.com/kagent-dev/kagent) | Un _framework_ d'agents in-cluster générique | Un agent SRE focalisé et opinionated (RunLore pourrait tourner _sur_ kagent) |
-| **Komodor · Anyshift** (commerciaux) | RCA orientée changement, propriétaire | Le même signal, mais alimentant un catalogue **ouvert et portable** |
-
-Soyons lucides : la **RCA orientée changement n'a rien d'unique** — des outils commerciaux calculent des diffs de changements depuis longtemps. Le vrai espace que RunLore occupe, c'est la **combinaison** que les outils ouverts n'ont pas : ce signal alimentant un **catalogue ouvert, portable et relu**, opéré par un agent qui **garde l'humain à la décision**.
-
-## 🛠️ En pratique : de l'installation à un incident réel
-
-Pour tester RunLore en conditions réalistes, je m'appuie sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), mon dépôt de référence : une plateforme complète sur **EKS** combinant Cilium, VictoriaMetrics, Crossplane et Flux. C'est exactement le _golden path_ de RunLore.
-
-### 🚀 Déployer RunLore
-
-L'installation tient en un chart Helm et un `values.yaml`. Quatre prérequis : au moins une **source de données** (ici Flux et VictoriaMetrics), un **LLM**, un **dépôt GitHub privé** pour la base de connaissances (avec une GitHub App dédiée), et une **destination de notification**. Les credentials vont dans un `Secret` Kubernetes ; le `values.yaml` fait le câblage :
-
-```yaml
-# values.yaml (extrait) — tel que déployé sur cloud-native-ref
-config:
-  gitops:
-    engine: flux                     # ou "argocd"
-  sources:
-    alertmanager: {}                 # webhook Alertmanager/VMAlert
-    gitops:
-      enabled: true                  # réagit aussi aux échecs Flux (Ready=False)
-  model:                             # n'importe quel endpoint OpenAI-compatible
-    provider: openai
-    model: glm-5.2
-    base_url: https://api.z.ai/api/paas/v4/
-    api_key_env: GLM_API_KEY
-  metrics:
-    url: http://vmsingle-victoria-metrics-k8s-stack.observability.svc:8428
-  logs:
-    url: http://victoria-logs-victoria-logs-single-server.observability.svc:9428
-  notify:
-    slack:                           # bot token : détail threadé + boutons 👍/👎
-      bot_token_env: SLACK_BOT_TOKEN
-      signing_secret_env: SLACK_SIGNING_SECRET
-      channel: "#alerts"
-      feedback_buttons: true
-  forge:
-    kb_repo: your-org/runlore-kb     # le dépôt qui recevra les PRs de curation
-```
-
-{{% notice tip "GLM 5.2 : qualité solide, facture allégée 🧠" %}}
-cloud-native-ref ne tourne pas sur un modèle « pro » américain mais sur **GLM 5.2** (Zhipu AI, via l'API OpenAI-compatible de Z.ai). Sur des tâches de raisonnement comme la RCA, il tient une qualité **très proche des modèles frontière** (Claude, GPT) pour un **coût par token nettement inférieur** — décisif quand un agent branché sur Alertmanager peut lancer beaucoup d'investigations. Et comme RunLore accepte n'importe quel endpoint OpenAI-compatible, **changer de modèle tient en une ligne** : GLM aujourd'hui, un vLLM auto-hébergé demain si vous voulez tout garder dans votre périmètre.
-{{% /notice %}}
-
-```bash
-helm install runlore deploy/helm/runlore -n runlore --create-namespace -f values.yaml
-```
-
-Il ne reste qu'à router les alertes d'Alertmanager vers `http://runlore.runlore.svc:8080/webhook/alertmanager`, et les investigations démarrent. Je m'en tiens volontairement à l'essentiel : le [guide de démarrage complet](https://github.com/Smana/runlore/blob/main/docs/getting-started.md) couvre la création de la GitHub App, la référence exhaustive du `values.yaml` et les étapes de vérification.
-
-{{% notice tip "Démarrer sans faire flamber la facture de tokens 💸" %}}
-Un agent branché sur Alertmanager peut vite déclencher beaucoup d'investigations — donc beaucoup d'appels LLM. RunLore expose plusieurs garde-fous pour cadrer le coût dès le départ :
-
-* **`triggers.incidents.debounce`** — retient une alerte quelques instants avant d'investiguer, et l'ignore si elle se résout d'elle-même dans l'intervalle (le bruit auto-résolutif ne coûte rien).
-* **`triggers.incidents.dedup.window`** — ne relance pas une alerte déjà en cours d'investigation.
-* **`investigation.coalesce`** — replie une _tempête_ d'alertes corrélées en une seule investigation.
-* **`investigation.rate_limit`** — plafonne le nombre d'investigations par fenêtre de temps (`max_per_window` sur une `window`, ex. 3 par heure).
-* **`investigation.max_tokens_per_investigation`** — un budget de tokens strict par investigation, qui coupe court à toute dérive.
-* **`model.pricing`** — renseignez les tarifs (USD par million de tokens) et chaque notification affiche le **coût estimé** de l'investigation ; la métrique `investigation_cost_usd` permet de le suivre dans le temps.
-
-Commencez volontairement bas (rate limit serré, budget modeste), observez, puis desserrez.
-{{% /notice %}}
+Assez décrit — voici RunLore **à l'œuvre**. L'incident ci-dessous a été réellement investigué sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), mon dépôt de référence : une plateforme complète sur **EKS** combinant Cilium, VictoriaMetrics, Crossplane et Flux.
 
 ### 🔍 L'incident : `HarborRegistryDown`
 
-Voici un incident réellement investigué. Une alerte **`HarborRegistryDown`** se déclenche. RunLore investigue et corrèle plusieurs signaux :
+Une alerte **`HarborRegistryDown`** se déclenche. RunLore investigue et corrèle plusieurs signaux :
 
 * le **statut du pod** : `harbor-registry` échoue en `CreateContainerConfigError` — `couldn't find key username in Secret tooling/xplane-harbor-access-key` ;
 * les **événements Kubernetes** du namespace `tooling` : un Warning persistant sur la ressource Crossplane `AccessKey/xplane-harbor` — `LimitExceeded: Cannot exceed quota for AccessKeysPerUser: 2` ;
 * le **lien de cause à effet** : c'est cette ressource Crossplane en échec qui doit créer le Secret consommé par le pod Harbor.
 
 L'agent identifie alors la cause racine avec une **forte confiance** : la ressource Crossplane a atteint le quota AWS IAM `AccessKeysPerUser: 2`, ce qui l'empêche de créer les credentials du registre. Il publie le tout dans Slack, propose une remédiation (supprimer une clé d'accès inutilisée, marquée `reversible=false`), et — c'est important — **liste ce qu'il ne sait pas** (les _data gaps_).
+
+La notification est _verdict-first_ : elle s'ouvre sur un **verdict d'actionnabilité** clair — _aucune action_, _action suggérée_, _action requise_ ou _non concluant_ — avant même les détails. L'astreinte sait en un coup d'œil si elle doit intervenir.
 
 {{< img src="runlore-investigation.png" alt="Notification Slack d'une investigation complète RunLore : un verdict « Action required », la cause racine (quota IAM), la remédiation suggérée, les hypothèses écartées, les lacunes de données, et le coût en tokens" width="760" caption="La notification _verdict-first_ d'une investigation complète : verdict d'actionnabilité, cause racine, preuves, hypothèses écartées, lacunes de données — et, en pied, le coût réel (7 appels modèle, ~58k tokens)" >}}
 
@@ -295,9 +212,91 @@ Le contraste est net — les deux pieds de notification le chiffrent. La premiè
 `KubePodNotReady` n'a presque rien en commun, lexicalement, avec un runbook intitulé « Harbor Registry Down — IAM quota ». Le rappel ne se fie donc pas à la seule recherche **BM25** : un **pré-filtre structurel** (la ressource affectée — ici `tooling/harbor-registry`) réduit d'abord les candidats, puis un **reranker LLM** tranche, sur une confiance **calibrée** (indépendante du corpus), si le runbook candidat couvre bien *cette* ressource et *ce* symptôme. La cause précise, elle, est **re-confirmée contre l'état live du cluster** après le match — jamais supposée.
 {{% /notice %}}
 
-### 📊 Observer l'agent
+## 🔬 Les alternatives
 
-Un agent qui investigue vos incidents doit lui-même être **observable**. RunLore expose des **métriques Prometheus** et livre un **dashboard Grafana** avec le chart — organisé **autour de la boucle d'apprentissage**, pas seulement de la santé technique. Sa première rangée répond à une seule question, « _la boucle fonctionne-t-elle ?_ » :
+RunLore n'arrive pas sur un terrain vierge : la **RCA** (_Root Cause Analysis_, l'identification automatisée de cause racine) est un domaine déjà bien occupé. Voici comment je le situe par rapport à l'existant :
+
+| Outil | Ce que c'est | Ce que RunLore ajoute |
+|---|---|---|
+| [**k8sgpt**](https://github.com/k8sgpt-ai/k8sgpt) | Un _détecteur_ (analyzers + explication par LLM) | Une boucle d'investigation, la corrélation multi-signaux, de vrais diffs Git et l'apprentissage |
+| [**HolmesGPT**](https://github.com/HolmesGPT/holmesgpt) | Le meilleur agent d'investigation open source | HolmesGPT s'appuie sur **tes** runbooks écrits à la main et n'apprend pas ; RunLore est _what-changed-first_ et s'améliore seul |
+| [**OpenSRE**](https://github.com/swapnildahiphale/OpenSRE) | Le rival le plus proche : un agent multi-agents qui **apprend** réellement (mémoire épisodique + graphe de connaissances des incidents passés) | OpenSRE stocke chaque investigation **automatiquement, sans relecture** ; RunLore construit un catalogue **relu par PR, dont tu es propriétaire, et dont la confiance décroît selon les résultats réels** |
+| [**kagent**](https://github.com/kagent-dev/kagent) | Un _framework_ d'agents in-cluster générique | Un agent SRE focalisé et opinionated (RunLore pourrait tourner _sur_ kagent) |
+| **Komodor · Anyshift** (commerciaux) | RCA orientée changement, propriétaire | Le même signal, mais alimentant un catalogue **ouvert et portable** |
+
+Soyons lucides : la **RCA orientée changement n'a rien d'unique** — des outils commerciaux calculent des diffs de changements depuis longtemps. Le vrai espace que RunLore occupe, c'est la **combinaison** que les outils ouverts n'ont pas : ce signal alimentant un **catalogue ouvert, portable et relu**, opéré par un agent qui **garde l'humain à la décision**.
+
+## 🛠️ Tu peux le tester simplement
+
+Envie de l'essayer ? L'installation tient en un **chart Helm** et un `values.yaml`. Il te faut au moins une **source de données**, un **LLM**, un **dépôt GitHub privé** pour la base de connaissances (avec une GitHub App dédiée) et une **destination de notification**. Les credentials vont dans un `Secret` Kubernetes ; le `values.yaml` fait le câblage.
+
+RunLore branche une longue liste de signaux — **GitOps** (Flux/Argo CD), **métriques**, **logs**, **flux réseau**, **cloud**, plusieurs **LLM** et **notifieurs** — chacun _pluggable_ : une source non configurée désactive simplement l'outil correspondant. La **matrice complète des intégrations**, qui évolue au fil des versions, vit dans le [README du dépôt](https://github.com/Smana/runlore#-supported-integrations).
+
+```yaml
+# values.yaml (extrait) — un exemple standard : Argo CD + Prometheus + VictoriaLogs + Slack
+config:
+  gitops:
+    engine: argocd                   # ou "flux"
+  sources:
+    alertmanager: {}                 # webhook Alertmanager
+    gitops:
+      enabled: true                  # réagit aussi aux échecs Argo CD
+  model:                             # n'importe quel endpoint OpenAI-compatible
+    provider: openai
+    model: glm-5.2
+    base_url: https://api.z.ai/api/paas/v4/
+    api_key_env: GLM_API_KEY
+  metrics:
+    url: http://kube-prometheus-stack-prometheus.monitoring.svc:9090   # Prometheus
+  logs:
+    url: http://victoria-logs-single-server.observability.svc:9428     # VictoriaLogs
+  cloud:
+    provider: aws
+    region: eu-west-3
+  notify:
+    slack:                           # bot token : détail threadé + boutons 👍/👎
+      bot_token_env: SLACK_BOT_TOKEN
+      signing_secret_env: SLACK_SIGNING_SECRET
+      channel: "#alerts"
+      feedback_buttons: true
+  forge:
+    kb_repo: your-org/runlore-kb     # le dépôt qui recevra les PRs de curation
+```
+
+```bash
+helm install runlore deploy/helm/runlore -n runlore --create-namespace -f values.yaml
+```
+
+Il ne reste qu'à router les alertes d'Alertmanager vers `http://runlore.runlore.svc:8080/webhook/alertmanager`, et les investigations démarrent. Je m'en tiens volontairement à l'essentiel : le [guide de démarrage complet](https://github.com/Smana/runlore/blob/main/docs/getting-started.md) couvre la création de la GitHub App, la référence exhaustive du `values.yaml` et les étapes de vérification.
+
+{{% notice info "Et la sécurité ? 🔒" %}}
+Brancher un agent LLM sur son cluster soulève une question immédiate : que voit-il, et où cela part-il ? RunLore y répond par construction :
+
+* **Redaction des secrets à trois frontières de confiance** : le texte de l'incident, chaque sortie d'outil avant d'atteindre le modèle, et l'investigation finale avant toute publication (PR ou chat) ;
+* **RBAC minimal** : la lecture des logs de pods est restreinte à une liste de namespaces (par défaut `flux-system` uniquement) ;
+* **Journal d'audit** en append-only, chaîné par hash : chaque décision est traçable et infalsifiable.
+{{% /notice %}}
+
+{{% notice tip "Le modèle : GLM 5.2, et n'importe quel endpoint OpenAI-compatible 🧠" %}}
+Perso, **j'utilise GLM 5.2** (Zhipu AI, via l'API OpenAI-compatible de Z.ai). Sur des tâches de raisonnement comme la RCA, il tient une qualité **très proche des modèles frontière** (Claude, GPT) pour un **coût par token nettement inférieur** — décisif quand un agent branché sur Alertmanager peut lancer beaucoup d'investigations. Et comme RunLore accepte n'importe quel endpoint OpenAI-compatible, **changer de modèle tient en une ligne** — tu peux même tout garder dans ton périmètre avec une [stack LLM auto-hébergée](/fr/post/series/agentic_ai/llm-self-hosted-stack/) (vLLM, Ollama).
+{{% /notice %}}
+
+{{% notice tip "Le contrôle total du coût — commence à 2 investigations/heure 💸" %}}
+Un agent branché sur Alertmanager peut vite lancer beaucoup d'investigations — donc beaucoup d'appels LLM. Tu gardes la main : commence **volontairement bas**, par exemple **2 investigations par heure**, observe, puis desserre. Les garde-fous disponibles :
+
+* **`investigation.rate_limit`** — plafonne le nombre d'investigations par fenêtre (`max_per_window` sur une `window`) ; **commence à 2/heure**.
+* **`triggers.incidents.debounce`** — retient une alerte quelques instants et l'ignore si elle se résout d'elle-même dans l'intervalle.
+* **`triggers.incidents.dedup.window`** — ne relance pas une alerte déjà en cours d'investigation.
+* **`investigation.coalesce`** — replie une _tempête_ d'alertes corrélées en une seule investigation.
+* **`investigation.max_tokens_per_investigation`** — un budget de tokens strict par investigation.
+* **`model.pricing`** — renseigne les tarifs (USD/million de tokens) : chaque notification affiche le **coût estimé**, suivi via la métrique `investigation_cost_usd`.
+{{% /notice %}}
+
+RunLore est **jeune et ouvert** (Apache-2.0) : si tu le testes, [ouvre une issue](https://github.com/Smana/runlore/issues) pour un bug ou une idée, ou propose une PR. Les retours de terrain sont exactement ce qui fait avancer le projet.
+
+## 📊 Observer l'agent
+
+Un agent qui investigue tes incidents doit lui-même être **observable**. RunLore expose des **métriques Prometheus** et livre un **dashboard Grafana** avec le chart — organisé **autour de la boucle d'apprentissage**, pas seulement de la santé technique. Sa première rangée répond à une seule question, « _la boucle fonctionne-t-elle ?_ » :
 
 * **Fire-rate & precision du rappel** — à quelle fréquence il se déclenche, et s'il vise juste.
 * **Taux de résolution** — le signal clé : les réponses rappelées résolvent-elles vraiment l'incident ?
@@ -320,14 +319,14 @@ Il y a une forme de cohérence dans tout ça : la **discipline de vérification 
 
 Parlons franchement, parce que c'est tout l'esprit du projet : **RunLore est très jeune**. Il a quelques semaines d'existence, il est **pre-1.0**, et ses interfaces bougent encore. Le _golden path_ testé en continu (Flux ou Argo CD + VictoriaMetrics + un modèle Anthropic ou OpenAI-compatible + Slack + GitHub) est solide ; le reste — Matrix, Gemini, la source PagerDuty, les intégrations cloud, le réseau Hubble — fonctionne mais a vu moins de kilomètres.
 
-Un point qu'il faut poser clairement : **la qualité des investigations dépend fortement de deux facteurs**. D'abord des **sources de données** branchées — sans métriques, sans logs, sans historique GitOps, l'agent raisonne à l'aveugle ; plus vous lui donnez de signaux corrélables, plus ses conclusions sont solides. Ensuite, et surtout, du **modèle** utilisé. C'est le facteur déterminant : un modèle de raisonnement récent et capable produit des causes racines d'un tout autre niveau qu'un petit modèle local. RunLore accepte n'importe quel endpoint, mais on n'obtient pas la même chose d'un modèle « pro » de dernière génération que d'un modèle contraint tournant sur un laptop.
+Un point qu'il faut poser clairement : **la qualité des investigations dépend fortement de deux facteurs**. D'abord des **sources de données** branchées — sans métriques, sans logs, sans historique GitOps, l'agent raisonne à l'aveugle ; plus tu lui donnes de signaux corrélables, plus ses conclusions sont solides. Ensuite, et surtout, du **modèle** utilisé. C'est le facteur déterminant : un modèle de raisonnement récent et capable produit des causes racines d'un tout autre niveau qu'un petit modèle local. RunLore accepte n'importe quel endpoint, mais on n'obtient pas la même chose d'un modèle « pro » de dernière génération que d'un modèle contraint tournant sur un laptop.
 
-Surtout, **la partie la plus prometteuse est aussi la moins éprouvée**. La valeur d'une mémoire qui se capitalise ne se mesure pas en une démo. Tout le mécanisme de confiance et de décroissance repose sur une hypothèse : que le taux de résolution constaté d'une entrée soit un bon signal de sa fiabilité. Le vérifier demande des **semaines d'usage réel** — voir comment le catalogue se remplit, si le rappel se déclenche au bon moment, si la confiance suit vraiment la réalité, et si la connaissance se compose. Je sais déjà qu'il y a des aspérités : par exemple, un même symptôme avec une cause différente peut s'ancrer à tort sur une investigation passée. C'est précisément le genre de comportement que seul le temps long révèle.
+Surtout, **la partie la plus prometteuse est aussi la moins éprouvée**. La valeur d'une mémoire qui s'enrichit ne se mesure pas en une démo. Tout le mécanisme de confiance et de décroissance repose sur une hypothèse : que le taux de résolution constaté d'une entrée soit un bon signal de sa fiabilité. Le vérifier demande des **semaines d'usage réel** — voir comment le catalogue se remplit, si le rappel se déclenche au bon moment, si la confiance suit vraiment la réalité, et si la connaissance se compose. Je sais déjà qu'il y a des aspérités : par exemple, un même symptôme avec une cause différente peut s'ancrer à tort sur une investigation passée. C'est précisément le genre de comportement que seul le temps long révèle.
 
-Je reviendrai donc avec un **retour d'expérience sur la durée**. D'ici là, j'accueille avec plaisir vos retours et vos issues.
+Je reviendrai donc avec un **retour d'expérience sur la durée**. D'ici là, j'accueille avec plaisir tes retours et tes issues.
 
 {{% notice warning "Points d'attention pour la prod ⚠️" %}}
-La posture supportée est **read-only → suggest → approve** : RunLore lit, corrèle et recommande, un humain relit et fusionne. Le palier d'autonomie `auto` (remédiation automatique sans supervision) est **expérimental, gelé, et déconseillé sur un cluster réel**. Restez sur le _golden path_, avec un humain dans la boucle de validation.
+La posture supportée est **read-only → suggest → approve** : RunLore lit, corrèle et recommande, un humain relit et fusionne. Le palier d'autonomie `auto` (remédiation automatique sans supervision) est **expérimental, gelé, et déconseillé sur un cluster réel**. Reste sur le _golden path_, avec un humain dans la boucle de validation.
 {{% /notice %}}
 
 ## 🔖 Références
