@@ -90,7 +90,7 @@ Brancher un agent LLM sur son cluster soulève une question immédiate : que voi
 
 Des agents qui investiguent un incident, il en existe déjà (nous y reviendrons). Ce qui distingue RunLore tient en trois choix — et c'est leur **combinaison**, plus qu'aucun d'eux isolément, qui compte :
 
-1. 📦 **Un simple binaire, chez vous, sur vos modèles.** Un unique binaire Go dans votre cluster ; vos données et vos LLM ne quittent jamais votre périmètre. Pas de SaaS, pas de _lock-in_.
+1. 📦 **Un simple binaire, chez vous, sur vos modèles.** Un unique binaire Go dans votre cluster ; vous gardez la main sur vos données et vos modèles — et avec un LLM auto-hébergé, rien ne sort de votre périmètre. Pas de SaaS, pas de _lock-in_.
 2. 🧠 **Une mémoire qui se capitalise.** Chaque investigation nourrit un **catalogue de connaissances que vous possédez**, au standard **OKF**. Le même incident, la fois suivante, obtient une réponse instantanée plutôt qu'une nouvelle investigation.
 3. ✋ **L'humain garde la main.** L'agent lit et recommande, il n'agit jamais seul (_read-only → suggest → approve_) — et surtout, **rien n'entre dans sa mémoire sans une PR relue par un humain**. Ce qu'il ne sait pas, il le délègue plutôt que de le deviner.
 
@@ -181,24 +181,36 @@ Pour tester RunLore en conditions réalistes, je m'appuie sur [`cloud-native-ref
 L'installation tient en un chart Helm et un `values.yaml`. Quatre prérequis : au moins une **source de données** (ici Flux et VictoriaMetrics), un **LLM**, un **dépôt GitHub privé** pour la base de connaissances (avec une GitHub App dédiée), et une **destination de notification**. Les credentials vont dans un `Secret` Kubernetes ; le `values.yaml` fait le câblage :
 
 ```yaml
-# values.yaml (extrait) — le golden path : Flux + VictoriaMetrics + Slack + GitHub
+# values.yaml (extrait) — tel que déployé sur cloud-native-ref
 config:
   gitops:
-    engine: flux                  # ou "argocd"
+    engine: flux                     # ou "argocd"
   sources:
-    alertmanager: {}              # active le webhook Alertmanager/VMAlert
-  model:
-    provider: anthropic
-    model: claude-sonnet-5
-    api_key_env: ANTHROPIC_API_KEY
+    alertmanager: {}                 # webhook Alertmanager/VMAlert
+    gitops:
+      enabled: true                  # réagit aussi aux échecs Flux (Ready=False)
+  model:                             # n'importe quel endpoint OpenAI-compatible
+    provider: openai
+    model: glm-5.2
+    base_url: https://api.z.ai/api/paas/v4/
+    api_key_env: GLM_API_KEY
   metrics:
-    url: http://vmsingle.observability.svc:8429
+    url: http://vmsingle-victoria-metrics-k8s-stack.observability.svc:8428
+  logs:
+    url: http://victoria-logs-victoria-logs-single-server.observability.svc:9428
   notify:
-    slack:
-      webhook_url_env: SLACK_WEBHOOK_URL
+    slack:                           # bot token : détail threadé + boutons 👍/👎
+      bot_token_env: SLACK_BOT_TOKEN
+      signing_secret_env: SLACK_SIGNING_SECRET
+      channel: "#alerts"
+      feedback_buttons: true
   forge:
-    kb_repo: your-org/runlore-kb  # le dépôt qui recevra les PRs de curation
+    kb_repo: your-org/runlore-kb     # le dépôt qui recevra les PRs de curation
 ```
+
+{{% notice tip "GLM 5.2 : qualité solide, facture allégée 🧠" %}}
+cloud-native-ref ne tourne pas sur un modèle « pro » américain mais sur **GLM 5.2** (Zhipu AI, via l'API OpenAI-compatible de Z.ai). Sur des tâches de raisonnement comme la RCA, il tient une qualité **très proche des modèles frontière** (Claude, GPT) pour un **coût par token nettement inférieur** — décisif quand un agent branché sur Alertmanager peut lancer beaucoup d'investigations. Et comme RunLore accepte n'importe quel endpoint OpenAI-compatible, **changer de modèle tient en une ligne** : GLM aujourd'hui, un vLLM auto-hébergé demain si vous voulez tout garder dans votre périmètre.
+{{% /notice %}}
 
 ```bash
 helm install runlore deploy/helm/runlore -n runlore --create-namespace -f values.yaml
