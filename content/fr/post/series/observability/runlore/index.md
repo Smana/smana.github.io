@@ -37,7 +37,7 @@ Cet article en présente les idées et un premier exemple concret.
 
 * 🔥 Comprendre le **coût caché** de l'investigation d'incident
 * 🤖 Découvrir **RunLore** et son fonctionnement
-* 🧠 Saisir ses **trois choix de conception** : un binaire simple, une mémoire au standard **OKF**, et l'honnêteté
+* 🧠 Saisir ses **trois choix de conception** : un binaire simple, une mémoire au standard **OKF**, et l'humain à la décision
 * 🛠️ **Déployer** RunLore et voir un **incident réel** investigué sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)
 * 💭 Un retour **honnête** sur un projet encore très jeune
 
@@ -54,6 +54,8 @@ Quand une alerte se déclenche, l'astreinte rejoue à chaque fois le même encha
 Ce pivot permanent entre Git, les métriques, les logs et les flux réseau est exactement le genre de tâche qu'un agent peut prendre en charge. À condition qu'il soit **honnête** sur ce qu'il sait et ne sait pas.
 
 ## 🤖 RunLore en bref
+
+{{< img src="runlore-logo.png" alt="Logo RunLore — une chouette à lunettes posée sur un livre ouvert" width="120" >}}
 
 **RunLore** est un **agent SRE** open source (licence Apache-2.0) qui s'exécute dans votre cluster Kubernetes sous la forme d'un binaire Go unique, déployé via Helm. Son principe est volontairement simple : à partir d'un événement (une alerte, un échec **GitOps** — la livraison continue pilotée par Git…), il investigue et répond à deux questions — _what changed?_ et _what's wrong?_ — puis publie dans votre messagerie une **cause racine** assortie d'un **score de confiance**, des preuves qui l'étayent, et des questions ouvertes à destination d'un humain.
 
@@ -90,9 +92,9 @@ Des agents qui investiguent un incident, il en existe déjà (nous y reviendrons
 
 1. 📦 **Un simple binaire, chez vous, sur vos modèles.** Un unique binaire Go dans votre cluster ; vos données et vos LLM ne quittent jamais votre périmètre. Pas de SaaS, pas de _lock-in_.
 2. 🧠 **Une mémoire qui se capitalise.** Chaque investigation nourrit un **catalogue de connaissances que vous possédez**, au standard **OKF**. Le même incident, la fois suivante, obtient une réponse instantanée plutôt qu'une nouvelle investigation.
-3. 🪞 **Honnête sur son incertitude.** _Read-only_ par défaut, un `unresolved` assumé comme réponse à part entière, et chaque affirmation passée au crible d'un **harnais d'évaluation**.
+3. ✋ **L'humain garde la main.** L'agent lit et recommande, il n'agit jamais seul (_read-only → suggest → approve_) — et surtout, **rien n'entre dans sa mémoire sans une PR relue par un humain**. Ce qu'il ne sait pas, il le délègue plutôt que de le deviner.
 
-Les deux sections qui suivent creusent les deux choix les moins évidents : la mémoire, puis l'honnêteté.
+Les deux sections qui suivent creusent les deux choix les moins évidents : la mémoire, puis la place gardée à l'humain.
 
 ## 🧠 Une mémoire qui se capitalise
 
@@ -107,9 +109,18 @@ RunLore implémente un cycle en quatre temps :
 3. **Curate** — un finding suffisamment fiable et nouveau devient une **Pull Request** rédigée dans votre dépôt de connaissances. C'est le **point de contrôle qualité** : on relit une entrée comme on relit du code.
 4. **Compound** — une fois la PR fusionnée, l'entrée est ré-indexée et devient immédiatement disponible. Le même incident, la prochaine fois, obtient une réponse instantanée — sans ré-investigation.
 
+Tout part donc de **Retrieve**, qui tranche entre deux issues : servir une réponse connue **instantanément**, ou — faute de correspondance fiable — lancer la boucle complète, celle qui nourrit le catalogue.
+
+{{< img src="runlore-learning-loop.png" alt="Les deux issues d'un recall dans RunLore : un hit répond instantanément sans investigation ; un miss déclenche la boucle en quatre temps — Retrieve, Capture, Curate, Compound — qui nourrit un catalogue que vous possédez et rend le même incident instantané la fois suivante" width="1080" caption="Un **hit** répond instantanément, sans investigation ; un **miss** déclenche la boucle complète — investigation, curation, PR fusionnée — qui rend le même incident instantané la fois suivante, la confiance suivant le taux de résolution constaté" >}}
+
 Ce qui fait de ce cycle un véritable **apprentissage**, et pas un simple bloc-notes, c'est que **les résultats bouclent en retour**. RunLore tient un _outcome ledger_ : à chaque fois qu'une entrée est rappelée, il note si l'incident s'est réellement résolu ensuite. La confiance d'une entrée est **dérivée de son taux de résolution constaté**, pas affirmée par le modèle. Une entrée qui résout régulièrement gagne en confiance ; une entrée qui est rappelée mais dont l'incident ne se résout jamais **se dégrade** et finit par ne plus être proposée, jusqu'à ce qu'une nouvelle investigation la corrige. La mémoire reflète ainsi la réalité opérationnelle, et non un état figé à un instant T.
 
-Les deux boutons **👍 / 👎** en pied de chaque notification (visibles sur les captures plus loin) sont l'autre moitié de ce signal. Ils ne sont pas cosmétiques : un vote est une **observation supplémentaire dans le même calcul de confiance** — un 👍 pèse comme une résolution, un 👎 comme un échec, au même poids. Ils servent deux buts. D'abord, ils sont **la seule vérité terrain là où le signal de résolution n'existe pas** : un échec GitOps, une alerte sans `send_resolved`… n'émettent jamais de « resolved », donc sans retour humain la confiance de ces entrées resterait figée à son a priori pour toujours. Ensuite, un 👎 est un **jugement sur le diagnostic lui-même** — ce qu'une alerte qui s'éteint ne prouve jamais — et un 👎 persistant **ré-arme l'investigation immédiatement** : il court-circuite le _cooldown_ de récurrence pour forcer une nouvelle analyse plutôt que de répéter une réponse contestée. Le même clic pilote donc les deux leviers : *ce que l'agent croit* (la confiance d'une entrée) et *quand il a le droit de se répéter*.
+Ce calcul a une autre moitié, **humaine** : sous chaque notification (en option, sur Slack et Matrix), deux boutons **👍 / 👎** laissent l'astreinte trancher. Le clic n'est pas cosmétique — il entre dans le **même calcul de confiance** que les résolutions réelles, au même poids :
+
+* **👍** → une observation positive : l'entrée **gagne en confiance**.
+* **👎** → une observation négative : l'entrée **perd en confiance**, et un 👎 qui persiste **relance aussitôt une investigation** plutôt que de re-servir une réponse contestée.
+
+Surtout, ces votes sont **la seule vérité terrain quand aucun signal de résolution n'arrive** : un échec GitOps ou une alerte sans `send_resolved` n'émettent jamais de « resolved » — sans retour humain, la confiance de ces entrées resterait figée. En un clic, l'humain pilote donc deux choses : **ce que l'agent croit**, et **quand il a le droit de se répéter**.
 
 ### OKF : d'une idée de Karpathy à un standard
 
@@ -131,17 +142,21 @@ Cette portabilité n'est pas théorique. Le binaire embarque un serveur **MCP** 
 git clone https://github.com/your-org/runlore-kb && lore mcp ./runlore-kb
 ```
 
-## 🪞 L'honnêteté comme fonctionnalité
+## ✋ L'humain garde la main
 
-La détection automatique de cause racine est un domaine où il est facile de produire des réponses plausibles mais fausses. RunLore fait le pari inverse : assumer ses limites plutôt que de masquer son incertitude.
+La détection automatique de cause racine est un domaine ingrat : sur des incidents réalistes, même les meilleurs modèles identifient la cause racine **moins d'une fois sur deux** — c'est le constat du benchmark [ITBench](https://github.com/itbench-hub/ITBench) (IBM, ICML 2025). Sur un tel terrain, viser l'automatisation totale est un piège.
 
-* **Read-only par défaut** — la posture supportée est _read-only → suggest → approve_. L'agent lit et recommande, un humain valide.
-* **Score de confiance** sur chaque finding, et un `unresolved` **assumé comme une réponse à part entière** : ce que l'agent n'a pas pu déterminer est listé explicitement.
-* **Passe de vérification adverse** — une passe _verify_ ne peut **que faire baisser** la confiance d'un finding, jamais l'augmenter. Le doute est structurellement favorisé.
-* **Une mémoire tenue en laisse** — la confiance d'une entrée rappelée est dérivée des résultats observés et **plafonnée à 90 %**, jamais affirmée ; et le rappel instantané est **désactivé en mode `auto`**, pour qu'une entrée erronée ne puisse jamais court-circuiter vers une remédiation non supervisée.
-* **Un harnais d'évaluation** livré avec le projet — un _eval_ nocturne et une suite end-to-end sur cluster k3d rejouent des incidents connus et vérifient que le rappel, la vérification et la décroissance se comportent comme annoncé. Les affirmations du README sont testées, pas décrétées.
+Le parti pris de RunLore est l'inverse : **l'agent n'est pas là pour remplacer l'astreinte, mais pour l'outiller — l'humain reste au point de décision**, aux deux endroits qui comptent : ce qui est *fait*, et ce qui est *appris*.
 
-C'est, je crois, la bonne attitude face à une réalité que peu d'outils admettent : sur des incidents réalistes, même les meilleurs modèles identifient la cause racine **moins d'une fois sur deux** — c'est le constat du benchmark [ITBench](https://github.com/itbench-hub/ITBench) (IBM, ICML 2025). Mieux vaut un « je ne sais pas » honnête qu'une fausse certitude.
+Encore faut-il que l'humain *comprenne* — sans quoi « valider » n'est qu'un clic. Tout est donc pensé pour être lu et jugé : des findings en **langage clair**, un savoir en **markdown** relu comme du code, des actions explicites marquées **réversibles** ou non.
+
+* **Sur les actions — read-only par défaut.** La posture supportée est _read-only → suggest → approve_ : l'agent lit, corrèle et recommande ; un humain valide. Le palier `auto` (remédiation non supervisée) est expérimental, gelé, et déconseillé sur un cluster réel.
+* **Sur la connaissance — rien n'est appris sans relecture.** C'est le point qui distingue vraiment : chaque finding jugé fiable et nouveau devient une **Pull Request** dans *votre* dépôt, qu'un humain relit et fusionne. L'agent propose ; l'équipe décide ce qui rejoint sa mémoire. _(D'autres agents apprennent aussi — mais enregistrent tout automatiquement, sans relecture.)_
+* **Ce qu'il ne sait pas, il le délègue.** Un `unresolved` **assumé comme une réponse à part entière** : l'agent liste explicitement ce qui exige un accès ou un jugement qu'il n'a pas, au lieu de combler les trous par une supposition plausible.
+* **Des signaux faits pour décider, pas pour rassurer.** Pour que la relecture humaine soit réelle et non un tampon, l'agent est calibré contre lui-même : un **score de confiance** sur chaque finding ; une passe de **vérification adverse** qui ne peut **que faire baisser** la confiance ; une mémoire **dérivée des résultats observés** et **plafonnée à 90 %**, jamais affirmée.
+* **Et c'est vérifié, pas décrété.** Un **harnais d'évaluation** livré avec le projet — un _eval_ nocturne et une suite end-to-end sur k3d — rejoue des incidents connus et contrôle que rappel, vérification et décroissance se comportent comme annoncé.
+
+Garder l'humain à la décision — sur ce qui est fait comme sur ce qui est appris — n'est pas une limite qu'on s'impose : c'est ce qui rend l'agent utilisable là où le raisonnement seul échoue une fois sur deux.
 
 ## 🔬 Les alternatives
 
@@ -150,11 +165,12 @@ RunLore n'arrive pas sur un terrain vierge : la **RCA** (_Root Cause Analysis_, 
 | Outil | Ce que c'est | Ce que RunLore ajoute |
 |---|---|---|
 | [**k8sgpt**](https://github.com/k8sgpt-ai/k8sgpt) | Un _détecteur_ (analyzers + explication par LLM) | Une boucle d'investigation, la corrélation multi-signaux, de vrais diffs Git et l'apprentissage |
-| [**HolmesGPT**](https://github.com/robusta-dev/holmesgpt) | Le meilleur agent d'investigation open source | HolmesGPT s'appuie sur **vos** runbooks écrits à la main et n'apprend pas ; RunLore est _what-changed-first_ et s'améliore seul |
+| [**HolmesGPT**](https://github.com/HolmesGPT/holmesgpt) | Le meilleur agent d'investigation open source | HolmesGPT s'appuie sur **vos** runbooks écrits à la main et n'apprend pas ; RunLore est _what-changed-first_ et s'améliore seul |
+| [**OpenSRE**](https://github.com/swapnildahiphale/OpenSRE) | Le rival le plus proche : un agent multi-agents qui **apprend** réellement (mémoire épisodique + graphe de connaissances des incidents passés) | OpenSRE stocke chaque investigation **automatiquement, sans relecture** ; RunLore capitalise dans un catalogue **relu par PR, dont vous êtes propriétaire, et dont la confiance décroît selon les résultats réels** |
 | [**kagent**](https://github.com/kagent-dev/kagent) | Un _framework_ d'agents in-cluster générique | Un agent SRE focalisé et opinionated (RunLore pourrait tourner _sur_ kagent) |
 | **Komodor · Anyshift** (commerciaux) | RCA orientée changement, propriétaire | Le même signal, mais alimentant un catalogue **ouvert et portable** |
 
-Soyons lucides : la **RCA orientée changement n'a rien d'unique** — des outils commerciaux calculent des diffs de changements depuis longtemps. Le vrai espace que RunLore occupe, c'est la **combinaison** que les outils ouverts n'ont pas : ce signal alimentant un **catalogue ouvert, portable et relu**, opéré par un agent **honnête sur sa propre incertitude**.
+Soyons lucides : la **RCA orientée changement n'a rien d'unique** — des outils commerciaux calculent des diffs de changements depuis longtemps. Le vrai espace que RunLore occupe, c'est la **combinaison** que les outils ouverts n'ont pas : ce signal alimentant un **catalogue ouvert, portable et relu**, opéré par un agent qui **garde l'humain à la décision**.
 
 ## 🛠️ En pratique : de l'installation à un incident réel
 
@@ -173,7 +189,7 @@ config:
     alertmanager: {}              # active le webhook Alertmanager/VMAlert
   model:
     provider: anthropic
-    model: claude-sonnet-4-6
+    model: claude-sonnet-5
     api_key_env: ANTHROPIC_API_KEY
   metrics:
     url: http://vmsingle.observability.svc:8429
@@ -249,7 +265,7 @@ fingerprint: 2d6bd8279304b3e17a5d5e35a55fb0c115ffbeabde820af8cdd2494a4141a60b
 - Which of the two existing access keys is safe to delete.
 ```
 
-La section `Unresolved` illustre au passage la posture d'honnêteté : l'agent délègue à l'humain ce qui exige un accès ou un jugement qu'il n'a pas — ici, *quelle* clé d'accès supprimer parmi les deux.
+La section `Unresolved` illustre au passage ce principe : l'agent délègue à l'humain ce qui exige un accès ou un jugement qu'il n'a pas — ici, *quelle* clé d'accès supprimer parmi les deux.
 
 ### ⚡ La récurrence : une réponse instantanée
 
@@ -295,4 +311,4 @@ La posture supportée est **read-only → suggest → approve** : RunLore lit, c
 * [Le pattern _LLM-wiki_ d'Andrej Karpathy](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
 * [ITBench — benchmark d'agents SRE (IBM)](https://github.com/itbench-hub/ITBench)
 * [cloud-native-ref — plateforme de référence](https://github.com/Smana/cloud-native-ref)
-* [k8sgpt](https://github.com/k8sgpt-ai/k8sgpt) · [HolmesGPT](https://github.com/robusta-dev/holmesgpt) · [kagent](https://github.com/kagent-dev/kagent)
+* [k8sgpt](https://github.com/k8sgpt-ai/k8sgpt) · [HolmesGPT](https://github.com/HolmesGPT/holmesgpt) · [kagent](https://github.com/kagent-dev/kagent)
