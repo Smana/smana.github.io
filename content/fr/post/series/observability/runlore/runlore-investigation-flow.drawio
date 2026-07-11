@@ -1,0 +1,122 @@
+<mxfile host="app.diagrams.net" agent="drawio" version="24.7.7">
+  <diagram id="runlore-investigation-flow" name="investigation-flow">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1190" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Title ===== -->
+        <mxCell id="title" value="RunLore &#8212; investigation flow" style="text;html=1;fontStyle=1;fontSize=27;fontColor=#0F172A;fontFamily=Helvetica;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="12" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Triggers (left) ===== -->
+        <mxCell id="trig-label" value="Triggers" style="text;html=1;fontStyle=1;fontSize=15;fontColor=#334155;fontFamily=Helvetica;align=left;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="92" width="195" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="trig-alert" value="Alert&lt;br&gt;&lt;i&gt;Alertmanager · VMAlert&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="40" y="125" width="200" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="trig-gitops" value="GitOps failure&lt;br&gt;&lt;i&gt;Flux · Argo CD&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="40" y="209" width="200" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="trig-pd" value="Webhook&lt;br&gt;&lt;i&gt;PagerDuty&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;strokeWidth=1.5;fontColor=#78350F;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="40" y="293" width="200" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- ===== RunLore (center) ===== -->
+        <mxCell id="rl" value="RunLore — SRE agent&#10;(single Go binary, in-cluster)" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=16;shadow=1;verticalAlign=top;align=left;spacingLeft=20;fontStyle=1;fontSize=18;fillColor=#EEF2FF;strokeColor=#6366F1;strokeWidth=2;fontColor=#312E81;fontFamily=Helvetica;spacingTop=12;" vertex="1" parent="1">
+          <mxGeometry x="300" y="66" width="450" height="412" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="① &lt;b&gt;Recall&lt;/b&gt; — look up a trusted past answer&lt;br&gt;in the knowledge base" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#818CF8;strokeWidth=1.5;fontColor=#1E293B;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="rl">
+          <mxGeometry x="26" y="72" width="398" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="② &lt;b&gt;Investigation&lt;/b&gt; — &lt;i&gt;what changed? · what&#39;s wrong?&lt;/i&gt;&lt;br&gt;multi-signal correlation" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#818CF8;strokeWidth=1.5;fontColor=#1E293B;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="rl">
+          <mxGeometry x="26" y="156" width="398" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="③ &lt;b&gt;Verify&lt;/b&gt; — adversarial pass&lt;br&gt;&lt;i&gt;(confidence can only go down)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#818CF8;strokeWidth=1.5;fontColor=#1E293B;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="rl">
+          <mxGeometry x="26" y="240" width="398" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="s4" value="④ &lt;b&gt;Actionability verdict&lt;/b&gt; + root cause&lt;br&gt;confidence score · open questions (&lt;i&gt;unresolved&lt;/i&gt;)" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#818CF8;strokeWidth=1.5;fontColor=#1E293B;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="rl">
+          <mxGeometry x="26" y="324" width="398" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="e-s1-s2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6366F1;strokeWidth=2;endArrow=classic;endFill=1;" edge="1" parent="rl" source="s1" target="s2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-s2-s3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6366F1;strokeWidth=2;endArrow=classic;endFill=1;" edge="1" parent="rl" source="s2" target="s3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-s3-s4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6366F1;strokeWidth=2;endArrow=classic;endFill=1;" edge="1" parent="rl" source="s3" target="s4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Trigger arrows -> RunLore ===== -->
+        <mxCell id="e-t1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#475569;strokeWidth=1.5;endArrow=classic;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.245;" edge="1" parent="1" source="trig-alert" target="rl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-t2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#475569;strokeWidth=1.5;endArrow=classic;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.448;" edge="1" parent="1" source="trig-gitops" target="rl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-t3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#475569;strokeWidth=1.5;endArrow=classic;endFill=1;exitX=1;exitY=0.5;entryX=0;entryY=0.651;" edge="1" parent="1" source="trig-pd" target="rl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Correlated sources (bottom) ===== -->
+        <mxCell id="src" value="Correlated sources — each &lt;i&gt;pluggable&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=16;shadow=1;verticalAlign=top;fontStyle=1;fontSize=16;fillColor=#F1F5F9;strokeColor=#94A3B8;strokeWidth=2;fontColor=#334155;fontFamily=Helvetica;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="180" y="524" width="700" height="196" as="geometry" />
+        </mxCell>
+        <mxCell id="src-gitops" value="&lt;b&gt;GitOps history&lt;/b&gt;&lt;br&gt;Flux · Argo CD — &lt;i&gt;Git diff&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#E0E7FF;strokeColor=#6366F1;strokeWidth=1.5;fontColor=#312E81;fontFamily=Helvetica;fontSize=14;" vertex="1" parent="src">
+          <mxGeometry x="15" y="40" width="220" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="src-metrics" value="Metrics&lt;br&gt;&lt;i&gt;VictoriaMetrics · Prometheus&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontColor=#334155;fontFamily=Helvetica;fontSize=14;" vertex="1" parent="src">
+          <mxGeometry x="245" y="40" width="220" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="src-logs" value="Logs&lt;br&gt;&lt;i&gt;VictoriaLogs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontColor=#334155;fontFamily=Helvetica;fontSize=14;" vertex="1" parent="src">
+          <mxGeometry x="475" y="40" width="210" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="src-k8s" value="Kubernetes&lt;br&gt;&lt;i&gt;pods · events · controller logs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontColor=#334155;fontFamily=Helvetica;fontSize=14;" vertex="1" parent="src">
+          <mxGeometry x="15" y="112" width="220" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="src-net" value="Network flows&lt;br&gt;&lt;i&gt;Hubble · VPC Flow Logs&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontColor=#334155;fontFamily=Helvetica;fontSize=14;" vertex="1" parent="src">
+          <mxGeometry x="245" y="112" width="220" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="src-cloud" value="Cloud&lt;br&gt;&lt;i&gt;AWS — CloudTrail · EC2 · EKS&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=8;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;fontColor=#334155;fontFamily=Helvetica;fontSize=14;" vertex="1" parent="src">
+          <mxGeometry x="475" y="112" width="210" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="e-src" value="correlation" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#64748B;strokeWidth=1.5;fontColor=#475569;fontFamily=Helvetica;fontSize=14;exitX=0.5;exitY=0;entryX=0.5;entryY=1;startArrow=classic;startFill=1;endArrow=classic;endFill=1;" edge="1" parent="1" source="src" target="rl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Outputs (right) ===== -->
+        <mxCell id="out-chat" value="&lt;i&gt;verdict-first&lt;/i&gt; notification&lt;br&gt;&lt;b&gt;Slack&lt;/b&gt; · Matrix · webhook&lt;br&gt;root cause + confidence + &lt;i&gt;unresolved&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;shadow=1;fillColor=#D1FAE5;strokeColor=#059669;strokeWidth=2;fontColor=#064E3B;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="850" y="128" width="285" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="out-kb" value="&lt;b&gt;Knowledge base&lt;/b&gt;&lt;br&gt;Git repo — OKF format&lt;br&gt;curation PR, human-reviewed" style="rounded=1;whiteSpace=wrap;html=1;absoluteArcSize=1;arcSize=10;shadow=1;fillColor=#EDE9FE;strokeColor=#7C3AED;strokeWidth=2;fontColor=#4C1D95;fontFamily=Helvetica;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="850" y="330" width="285" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="e-out-chat" value="publishes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#475569;strokeWidth=1.5;endArrow=classic;endFill=1;fontColor=#475569;fontFamily=Helvetica;fontSize=14;exitX=1;exitY=0.25;entryX=0;entryY=0.5;" edge="1" parent="1" source="s4" target="out-chat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-out-kb" value="opens a PR" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#475569;strokeWidth=1.5;endArrow=classic;endFill=1;fontColor=#475569;fontFamily=Helvetica;fontSize=14;exitX=1;exitY=0.75;entryX=0;entryY=0.5;" edge="1" parent="1" source="s4" target="out-kb">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="795" y="424" />
+              <mxPoint x="795" y="378" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== Learning loop: KB -> Recall ===== -->
+        <mxCell id="e-loop" value="learning loop: merged PR → re-indexed&lt;br&gt;&lt;i&gt;(the same incident gets an instant answer)&lt;/i&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#7C3AED;strokeWidth=1.5;fontColor=#7C3AED;fontFamily=Helvetica;fontSize=14;endArrow=classic;endFill=1;exitX=1;exitY=0.5;entryX=0.8;entryY=0;verticalAlign=bottom;" edge="1" parent="1" source="out-kb" target="s1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1155" y="378" />
+              <mxPoint x="1155" y="30" />
+              <mxPoint x="637" y="30" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

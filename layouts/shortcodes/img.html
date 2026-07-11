@@ -29,6 +29,7 @@
         loading="lazy"
         decoding="async"
         alt="{{ $alt }}"
+        {{- if $cap }} title=" "{{ end }}
         class="image_figure image_internal image_processed"
         width="{{ $image.Width }}"
         height="{{ $image.Height }}"
@@ -42,6 +43,7 @@
         loading="lazy"
         decoding="async"
         alt="{{ $alt }}"
+        {{- if $cap }} title=" "{{ end }}
         class="image_figure image_internal image_unprocessed"
         src="{{ $src | absURL }}"
         {{- with $width }}

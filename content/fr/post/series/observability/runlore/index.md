@@ -59,7 +59,7 @@ Ce pivot permanent entre Git, les métriques, les logs et les flux réseau est e
 
 La notification est _verdict-first_ : elle s'ouvre sur un **verdict d'actionnabilité** clair — _aucune action_, _action suggérée_, _action requise_ ou _non concluant_ — avant même les détails. L'astreinte sait en un coup d'œil si elle doit intervenir.
 
-{{< img src="runlore-investigation-flow.png" alt="Flux d'investigation de RunLore : un événement déclenche une investigation qui corrèle l'historique GitOps, les métriques, les logs et les flux réseau ; la cause racine est publiée dans Slack et une PR est ouverte dans la base de connaissances" width="900" caption="Le flux d'investigation : de l'événement à la cause racine, jusqu'à la capture dans la base de connaissances" >}}
+{{< img src="runlore-investigation-flow.png" alt="Flux d'investigation de RunLore : un événement déclenche une investigation qui corrèle l'historique GitOps, les métriques, les logs et les flux réseau ; la cause racine est publiée dans Slack et une PR est ouverte dans la base de connaissances" width="1080" caption="Le flux d'investigation : de l'événement à la cause racine, jusqu'à la capture dans la base de connaissances" >}}
 
 Le fil conducteur de l'investigation est l'**historique GitOps** (Flux ou Argo CD) : c'est la colonne vertébrale du _what-changed_, qui produit un diff Git exact entre les révisions déployées. Autour de ce signal, RunLore corrèle tout le reste, chaque source étant **pluggable** : une source non configurée désactive simplement l'outil correspondant.
 
@@ -108,6 +108,8 @@ RunLore implémente un cycle en quatre temps :
 4. **Compound** — une fois la PR fusionnée, l'entrée est ré-indexée et devient immédiatement disponible. Le même incident, la prochaine fois, obtient une réponse instantanée — sans ré-investigation.
 
 Ce qui fait de ce cycle un véritable **apprentissage**, et pas un simple bloc-notes, c'est que **les résultats bouclent en retour**. RunLore tient un _outcome ledger_ : à chaque fois qu'une entrée est rappelée, il note si l'incident s'est réellement résolu ensuite. La confiance d'une entrée est **dérivée de son taux de résolution constaté**, pas affirmée par le modèle. Une entrée qui résout régulièrement gagne en confiance ; une entrée qui est rappelée mais dont l'incident ne se résout jamais **se dégrade** et finit par ne plus être proposée, jusqu'à ce qu'une nouvelle investigation la corrige. La mémoire reflète ainsi la réalité opérationnelle, et non un état figé à un instant T.
+
+Les deux boutons **👍 / 👎** en pied de chaque notification (visibles sur les captures plus loin) sont l'autre moitié de ce signal. Ils ne sont pas cosmétiques : un vote est une **observation supplémentaire dans le même calcul de confiance** — un 👍 pèse comme une résolution, un 👎 comme un échec, au même poids. Ils servent deux buts. D'abord, ils sont **la seule vérité terrain là où le signal de résolution n'existe pas** : un échec GitOps, une alerte sans `send_resolved`… n'émettent jamais de « resolved », donc sans retour humain la confiance de ces entrées resterait figée à son a priori pour toujours. Ensuite, un 👎 est un **jugement sur le diagnostic lui-même** — ce qu'une alerte qui s'éteint ne prouve jamais — et un 👎 persistant **ré-arme l'investigation immédiatement** : il court-circuite le _cooldown_ de récurrence pour forcer une nouvelle analyse plutôt que de répéter une réponse contestée. Le même clic pilote donc les deux leviers : *ce que l'agent croit* (la confiance d'une entrée) et *quand il a le droit de se répéter*.
 
 ### OKF : d'une idée de Karpathy à un standard
 
@@ -209,7 +211,9 @@ Voici un incident réellement investigué. Une alerte **`HarborRegistryDown`** s
 * les **événements Kubernetes** du namespace `tooling` : un Warning persistant sur la ressource Crossplane `AccessKey/xplane-harbor` — `LimitExceeded: Cannot exceed quota for AccessKeysPerUser: 2` ;
 * le **lien de cause à effet** : c'est cette ressource Crossplane en échec qui doit créer le Secret consommé par le pod Harbor.
 
-L'agent identifie alors la cause racine avec **95 % de confiance** : la ressource Crossplane a atteint le quota AWS IAM `AccessKeysPerUser: 2`, ce qui l'empêche de créer les credentials du registre. Il publie le tout dans Slack, propose une remédiation (supprimer une clé d'accès inutilisée, marquée `reversible=false`), et — c'est important — **liste ce qu'il ne sait pas**.
+L'agent identifie alors la cause racine avec une **forte confiance** : la ressource Crossplane a atteint le quota AWS IAM `AccessKeysPerUser: 2`, ce qui l'empêche de créer les credentials du registre. Il publie le tout dans Slack, propose une remédiation (supprimer une clé d'accès inutilisée, marquée `reversible=false`), et — c'est important — **liste ce qu'il ne sait pas** (les _data gaps_).
+
+{{< img src="runlore-investigation.png" alt="Notification Slack d'une investigation complète RunLore : un verdict « Action required », la cause racine (quota IAM), la remédiation suggérée, les hypothèses écartées, les lacunes de données, et le coût en tokens" width="760" caption="La notification _verdict-first_ d'une investigation complète : verdict d'actionnabilité, cause racine, preuves, hypothèses écartées, lacunes de données — et, en pied, le coût réel (7 appels modèle, ~58k tokens)" >}}
 
 Une fois l'incident relu et la PR fusionnée, voici l'entrée **OKF** qui rejoint le catalogue :
 
@@ -245,7 +249,23 @@ fingerprint: 2d6bd8279304b3e17a5d5e35a55fb0c115ffbeabde820af8cdd2494a4141a60b
 - Which of the two existing access keys is safe to delete.
 ```
 
-Ce qui rend cet exemple intéressant, c'est que l'investigation a **retrouvé une entrée antérieure** (`HarborRegistryDown`) déjà présente dans le catalogue : la boucle d'apprentissage fonctionne. La première occurrence a coûté une investigation complète ; la connaissance, une fois curée, est désormais réutilisable. Et la section `Unresolved` montre la posture d'honnêteté : l'agent sait déléguer à l'humain ce qui exige un accès ou un jugement qu'il n'a pas.
+La section `Unresolved` illustre au passage la posture d'honnêteté : l'agent délègue à l'humain ce qui exige un accès ou un jugement qu'il n'a pas — ici, *quelle* clé d'accès supprimer parmi les deux.
+
+### ⚡ La récurrence : une réponse instantanée
+
+C'est à la **deuxième occurrence** que la boucle d'apprentissage paie. Quelque temps plus tard, le pod `harbor-registry` retombe — mais l'alerte qui se déclenche est cette fois **générique** : un simple `KubePodNotReady`, dont le texte ne mentionne ni le quota IAM, ni Crossplane, ni même Harbor autrement que par le nom du pod. C'est le cas difficile : quasiment **aucun recouvrement lexical** entre l'alerte et le runbook qui la couvre.
+
+RunLore ne relance pourtant **aucune investigation**. Il reconnaît l'incident, remonte la réponse déjà curée depuis le catalogue et la publie **instantanément** — sans nouvel appel de raisonnement, sans nouvelle PR :
+
+{{< img src="runlore-recall.png" alt="Notification Slack d'un rappel instantané RunLore : un bandeau « réponse instantanée depuis la base de connaissances », la cause et la résolution déjà validées, et un taux de résolution issu de l'outcome ledger" width="760" caption="Le rappel instantané : une alerte générique `KubePodNotReady` retrouve l'incident Harbor connu et remonte la réponse curée, sans ré-investigation" >}}
+
+La notification est explicite : **⚡ réponse instantanée depuis la base de connaissances**, la cause et la résolution déjà validées, et un **taux de résolution** issu de l'_outcome ledger_ — le signal qui rend cette réponse en cache digne de confiance.
+
+Le contraste est net — les deux pieds de notification le chiffrent. La première occurrence a coûté une **investigation complète** : une quinzaine d'outils interrogés, **7 appels modèle, ~58 000 tokens**. La récurrence ne coûte plus que **2 appels légers** — le _reranking_ qui reconnaît l'entrée, puis une brève passe de vérification, soit **~3 700 tokens** — et se résout en quelques secondes. Un ordre de grandeur de moins, pour la même réponse. C'est le quatrième temps de la boucle — **Compound** — rendu concret. Et parce que la confiance est **dérivée du taux de résolution constaté**, une entrée qui cesserait de résoudre ses incidents verrait sa confiance se dégrader et **redéclencherait une investigation fraîche** : la mémoire reste arrimée à la réalité opérationnelle.
+
+{{% notice info "Comment une alerte générique retrouve-t-elle le bon runbook ? 🎯" %}}
+`KubePodNotReady` n'a presque rien en commun, lexicalement, avec un runbook intitulé « Harbor Registry Down — IAM quota ». Le rappel ne se fie donc pas à la seule recherche **BM25** : un **pré-filtre structurel** (la ressource affectée — ici `tooling/harbor-registry`) réduit d'abord les candidats, puis un **reranker LLM** tranche, sur une confiance **calibrée** (indépendante du corpus), si le runbook candidat couvre bien *cette* ressource et *ce* symptôme. La cause précise, elle, est **re-confirmée contre l'état live du cluster** après le match — jamais supposée.
+{{% /notice %}}
 
 ## 🧑‍💻 Construit avec des agents, en toute transparence
 
