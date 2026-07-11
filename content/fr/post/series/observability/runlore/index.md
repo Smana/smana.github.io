@@ -283,6 +283,21 @@ Le contraste est net — les deux pieds de notification le chiffrent. La premiè
 `KubePodNotReady` n'a presque rien en commun, lexicalement, avec un runbook intitulé « Harbor Registry Down — IAM quota ». Le rappel ne se fie donc pas à la seule recherche **BM25** : un **pré-filtre structurel** (la ressource affectée — ici `tooling/harbor-registry`) réduit d'abord les candidats, puis un **reranker LLM** tranche, sur une confiance **calibrée** (indépendante du corpus), si le runbook candidat couvre bien *cette* ressource et *ce* symptôme. La cause précise, elle, est **re-confirmée contre l'état live du cluster** après le match — jamais supposée.
 {{% /notice %}}
 
+### 📊 Observer l'agent
+
+Un agent qui investigue vos incidents doit lui-même être **observable**. RunLore expose des **métriques Prometheus** et livre un **dashboard Grafana** avec le chart — organisé **autour de la boucle d'apprentissage**, pas seulement de la santé technique. Sa première rangée répond à une seule question, « _la boucle fonctionne-t-elle ?_ » :
+
+* **Fire-rate & precision du rappel** — à quelle fréquence il se déclenche, et s'il vise juste.
+* **Taux de résolution** — le signal clé : les réponses rappelées résolvent-elles vraiment l'incident ?
+* **Tokens économisés par le rappel** — le gain concret face à une investigation complète.
+* **Entrées KB invalides** — la connaissance qui se dégrade, à surveiller.
+
+Suivent des vues par étape (_Retrieve_, _Capture_, _Curate_), le **coût par investigation** (`investigation_cost_usd`, déjà croisé plus haut) et les classiques : durées, erreurs outils/modèle, intake d'alertes, HA.
+
+{{< img src="runlore-dashboard.png" alt="Dashboard Grafana de RunLore organisé autour de la boucle d'apprentissage : fire-rate, taux de résolution du rappel, tokens économisés, coût par investigation" width="1080" caption="Le dashboard livré avec le chart : les SLI de la boucle d'apprentissage en tête — rappel, taux de résolution, tokens économisés, coût" >}}
+
+C'est aussi l'instrument qui permettra de trancher, sur la durée, la question posée en clôture : cette mémoire paie-t-elle réellement ?
+
 ## 🧑‍💻 Construit avec des agents, en toute transparence
 
 Je dois être transparent sur un point : **RunLore lui-même a été construit avec mes outils d'agentic coding** — Claude Code, des _skills_, le framework _superpowers_, et des revues multi-agents. C'est un prolongement direct de ce que j'explore dans la série [Agentic AI](/fr/series/agentic-ai/), notamment dans [l'article sur le coding agent](/fr/post/series/agentic_ai/ai-coding-agent/) et celui sur les [astuces et workflows](/fr/post/series/agentic_ai/ai-coding-tips/).
