@@ -132,6 +132,80 @@ Et l'agent n'agit jamais seul : la posture est _read-only → suggest → approv
 
 Garder l'humain à la décision — sur ce qui est fait comme sur ce qui est appris — n'est pas une limite qu'on s'impose : c'est ce qui rend l'agent réellement utilisable.
 
+## 👀 Voici ce que ça donne
+
+Assez décrit — voici RunLore **à l'œuvre**. L'incident ci-dessous a été réellement investigué sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), mon dépôt de référence : une plateforme complète sur **EKS** combinant Cilium, VictoriaMetrics, Crossplane et Flux.
+
+{{% notice info "Le modèle derrière la démo 🧠" %}}
+Toute la démo tourne sur **GLM 5.2** (Zhipu AI, via l'API OpenAI-compatible de Z.ai) — une qualité **très proche des modèles frontière** (Claude, GPT) pour un **coût par token nettement inférieur**, décisif quand un agent branché sur Alertmanager peut lancer beaucoup d'investigations. RunLore acceptant n'importe quel endpoint OpenAI-compatible, **en changer tient en une ligne** — jusqu'à une [stack LLM auto-hébergée](/fr/post/series/agentic_ai/llm-self-hosted-stack/) (vLLM, Ollama) si tu veux tout garder dans ton périmètre.
+{{% /notice %}}
+
+### 🔍 L'incident : `HarborRegistryDown`
+
+Une alerte **`HarborRegistryDown`** se déclenche. RunLore investigue et corrèle plusieurs signaux :
+
+* le **statut du pod** : `harbor-registry` échoue en `CreateContainerConfigError` — `couldn't find key username in Secret tooling/xplane-harbor-access-key` ;
+* les **événements Kubernetes** du namespace `tooling` : un Warning persistant sur la ressource Crossplane `AccessKey/xplane-harbor` — `LimitExceeded: Cannot exceed quota for AccessKeysPerUser: 2` ;
+* le **lien de cause à effet** : c'est cette ressource Crossplane en échec qui doit créer le Secret consommé par le pod Harbor.
+
+L'agent identifie alors la root cause avec une **forte confiance** : la ressource Crossplane a atteint le quota AWS IAM `AccessKeysPerUser: 2`, ce qui l'empêche de créer les credentials du registre. Il publie le tout dans Slack, propose une remédiation (supprimer une clé d'accès inutilisée, marquée `reversible=false`), et — c'est important — **liste ce qu'il ne sait pas** (les _data gaps_).
+
+La notification est _verdict-first_ : elle s'ouvre sur un **verdict d'actionnabilité** clair — _aucune action_, _action suggérée_, _action requise_ ou _non concluant_ — avant même les détails. Le SRE sait en un coup d'œil s'il doit intervenir.
+
+{{< img src="runlore-investigation.png" alt="Notification Slack d'une investigation complète RunLore : un verdict « Action required », la root cause (quota IAM), la remédiation suggérée, les hypothèses écartées, les lacunes de données, et le coût en tokens" width="760" caption="La notification _verdict-first_ d'une investigation complète : verdict d'actionnabilité, root cause, preuves, hypothèses écartées, lacunes de données — et, en pied, le coût réel (7 appels modèle, ~58k tokens)" >}}
+
+Une fois l'incident relu et la PR fusionnée, voici l'entrée **OKF** qui rejoint le catalogue :
+
+```markdown
+# fichier : harbor-registry-down-due-to-iam-access-key-quota-limit.md
+---
+type: Incident
+title: Harbor Registry Down due to IAM Access Key Quota Limit
+resource: tooling/harbor-registry
+tags: [runlore, incident]
+fingerprint: 2d6bd8279304b3e17a5d5e35a55fb0c115ffbeabde820af8cdd2494a4141a60b
+---
+
+## Decision
+- **why keep:** The Crossplane resource `AccessKey/xplane-harbor` has hit an AWS
+  IAM quota limit (`AccessKeysPerUser: 2`), preventing it from creating the
+  credentials required by the Harbor registry.
+- **confidence:** 95%
+
+## Investigate
+- pod_status shows harbor-registry failing with 'CreateContainerConfigError:
+  couldn't find key username in Secret tooling/xplane-harbor-access-key'
+- kube_events shows a persistent Warning on 'AccessKey/xplane-harbor':
+  'LimitExceeded: Cannot exceed quota for AccessKeysPerUser: 2'
+- The knowledge base article 'HarborRegistryDown' describes this exact scenario.
+
+## Resolution
+- An administrator should delete an old or unused access key, then reconcile
+  the `AccessKey/xplane-harbor` resource. (reversible=false)
+
+## Unresolved
+- The name of the specific IAM user that has reached its quota.
+- Which of the two existing access keys is safe to delete.
+```
+
+La section `Unresolved` illustre au passage ce principe : l'agent délègue à l'humain ce qui exige un accès ou un jugement qu'il n'a pas — ici, *quelle* clé d'accès supprimer parmi les deux.
+
+### ⚡ La récurrence : une réponse instantanée
+
+C'est à la **deuxième occurrence** que la boucle d'apprentissage paie. Quelque temps plus tard, le pod `harbor-registry` retombe — mais l'alerte qui se déclenche est cette fois **générique** : un simple `KubePodNotReady`, dont le texte ne mentionne ni le quota IAM, ni Crossplane, ni même Harbor autrement que par le nom du pod. C'est le cas difficile : quasiment **aucun recouvrement lexical** entre l'alerte et le runbook qui la couvre.
+
+RunLore ne relance pourtant **aucune investigation**. Il reconnaît l'incident, remonte la réponse déjà curée depuis le catalogue et la publie **instantanément** — sans nouvel appel de raisonnement, sans nouvelle PR :
+
+{{< img src="runlore-recall.png" alt="Notification Slack d'un rappel instantané RunLore : un bandeau « réponse instantanée depuis la base de connaissances », la cause et la résolution déjà validées, et un taux de résolution issu de l'outcome ledger" width="760" caption="Le rappel instantané : une alerte générique `KubePodNotReady` retrouve l'incident Harbor connu et remonte la réponse curée, sans ré-investigation" >}}
+
+La notification est explicite : **⚡ réponse instantanée depuis la base de connaissances**, la cause et la résolution déjà validées, et un **taux de résolution** issu de l'_outcome ledger_ — le signal qui rend cette réponse en cache digne de confiance.
+
+Le contraste est net — les deux pieds de notification le chiffrent. La première occurrence a coûté une **investigation complète** : une quinzaine d'outils interrogés, **7 appels modèle, ~58 000 tokens**. La récurrence ne coûte plus que **2 appels légers** — le _reranking_ qui reconnaît l'entrée, puis une brève passe de vérification, soit **~3 700 tokens** — et se résout en quelques secondes. Un ordre de grandeur de moins, pour la même réponse. C'est le quatrième temps de la boucle — **Compound** — rendu concret. Et parce que la confiance est **dérivée du taux de résolution constaté**, une entrée qui cesserait de résoudre ses incidents verrait sa confiance se dégrader et **redéclencherait une investigation fraîche** : la mémoire reste arrimée à la réalité opérationnelle.
+
+{{% notice info "Comment une alerte générique retrouve-t-elle le bon runbook ? 🎯" %}}
+`KubePodNotReady` n'a presque rien en commun, lexicalement, avec un runbook intitulé « Harbor Registry Down — IAM quota ». Le rappel ne se fie donc pas à la seule recherche **BM25** : un **pré-filtre structurel** (la ressource affectée — ici `tooling/harbor-registry`) réduit d'abord les candidats, puis un **reranker LLM** tranche, sur une confiance **calibrée** (indépendante du corpus), si le runbook candidat couvre bien *cette* ressource et *ce* symptôme. La cause précise, elle, est **re-confirmée contre l'état live du cluster** après le match — jamais supposée.
+{{% /notice %}}
+
 ## 🔬 Les alternatives
 
 RunLore n'arrive pas sur un terrain vierge : la **RCA** (_Root Cause Analysis_, trouver automatiquement la **root cause**) est un domaine déjà bien occupé. Voici comment je le situe par rapport à l'existant :
@@ -148,8 +222,6 @@ Clairement la **RCA orientée changement n'est pas nouveau** — des outils comm
 ## 🛠️ Tu peux le tester simplement
 
 Envie de l'essayer ? L'installation tient en un **chart Helm** et un `values.yaml`. Il te faut au moins une **source de données**, un **LLM**, un **dépôt GitHub privé** pour la base de connaissances (avec une GitHub App dédiée) et une **destination de notification**. Les credentials vont dans un `Secret` Kubernetes ; le `values.yaml` fait le câblage.
-
-RunLore branche une longue liste de signaux — **GitOps** (Flux/Argo CD), **métriques**, **logs**, **flux réseau**, **cloud**, plusieurs **LLM** et **notifieurs** — chacun _pluggable_ : une source non configurée désactive simplement l'outil correspondant. La **matrice complète des intégrations**, qui évolue au fil des versions, vit dans le [README du dépôt](https://github.com/Smana/runlore#-supported-integrations).
 
 ```yaml
 # values.yaml (extrait) — un exemple standard : Argo CD + Prometheus + VictoriaLogs + Slack
@@ -196,22 +268,17 @@ Brancher un agent LLM sur son cluster soulève une question immédiate : que voi
 * **Journal d'audit** en append-only, chaîné par hash : chaque décision est traçable et infalsifiable.
 {{% /notice %}}
 
-{{% notice tip "Le modèle : GLM 5.2, et n'importe quel endpoint OpenAI-compatible 🧠" %}}
-Perso, **j'utilise GLM 5.2** (Zhipu AI, via l'API OpenAI-compatible de Z.ai). Sur des tâches de raisonnement comme la RCA, il tient une qualité **très proche des modèles frontière** (Claude, GPT) pour un **coût par token nettement inférieur** — décisif quand un agent branché sur Alertmanager peut lancer beaucoup d'investigations. Et comme RunLore accepte n'importe quel endpoint OpenAI-compatible, **changer de modèle tient en une ligne** — tu peux même tout garder dans ton périmètre avec une [stack LLM auto-hébergée](/fr/post/series/agentic_ai/llm-self-hosted-stack/) (vLLM, Ollama).
+**Côté intégrations** : l'exemple ci-dessus est un stack standard, mais tu branches ce que tu veux — **GitOps** (Flux/Argo CD), **métriques**, **logs**, **flux réseau**, **cloud**, plusieurs **LLM** et **notifieurs**, chacun _pluggable_. La **matrice complète**, qui évolue au fil des versions, vit dans le [README du dépôt](https://github.com/Smana/runlore#-supported-integrations).
+
+{{% notice tip "Quelques conseils pour bien démarrer 💸" %}}
+Un agent branché sur Alertmanager peut vite multiplier les appels LLM. Tu gardes la main : commence **volontairement bas** — par exemple **2 investigations/heure** — observe, puis desserre. Les garde-fous :
+
+* **`investigation.rate_limit`** — le plafond d'investigations par fenêtre (commence à 2/heure) ;
+* **`triggers.incidents.debounce`** + **`dedup.window`** — ignorent le bruit auto-résolutif et les alertes déjà en cours ;
+* **`investigation.coalesce`** — replie une _tempête_ d'alertes corrélées en une seule investigation ;
+* **`investigation.max_tokens_per_investigation`** — un budget de tokens strict ;
+* **`model.pricing`** — affiche le **coût estimé** sur chaque notification (métrique `investigation_cost_usd`).
 {{% /notice %}}
-
-{{% notice tip "Le contrôle total du coût — commence à 2 investigations/heure 💸" %}}
-Un agent branché sur Alertmanager peut vite lancer beaucoup d'investigations — donc beaucoup d'appels LLM. Tu gardes la main : commence **volontairement bas**, par exemple **2 investigations par heure**, observe, puis desserre. Les garde-fous disponibles :
-
-* **`investigation.rate_limit`** — plafonne le nombre d'investigations par fenêtre (`max_per_window` sur une `window`) ; **commence à 2/heure**.
-* **`triggers.incidents.debounce`** — retient une alerte quelques instants et l'ignore si elle se résout d'elle-même dans l'intervalle.
-* **`triggers.incidents.dedup.window`** — ne relance pas une alerte déjà en cours d'investigation.
-* **`investigation.coalesce`** — replie une _tempête_ d'alertes corrélées en une seule investigation.
-* **`investigation.max_tokens_per_investigation`** — un budget de tokens strict par investigation.
-* **`model.pricing`** — renseigne les tarifs (USD/million de tokens) : chaque notification affiche le **coût estimé**, suivi via la métrique `investigation_cost_usd`.
-{{% /notice %}}
-
-RunLore est **jeune et ouvert** (Apache-2.0) : si tu le testes, [ouvre une issue](https://github.com/Smana/runlore/issues) pour un bug ou une idée, ou propose une PR. Les retours de terrain sont exactement ce qui fait avancer le projet.
 
 ## 📊 Observer l'agent
 
@@ -224,7 +291,7 @@ Un agent qui investigue tes incidents doit lui-même être **observable**. RunLo
 
 Suivent des vues par étape (_Retrieve_, _Capture_, _Curate_), le **coût par investigation** (`investigation_cost_usd`, déjà croisé plus haut) et les classiques : durées, erreurs outils/modèle, intake d'alertes, HA.
 
-{{< img src="runlore-dashboard.png" alt="Dashboard Grafana de RunLore organisé autour de la boucle d'apprentissage : fire-rate, taux de résolution du rappel, tokens économisés, coût par investigation" width="1080" caption="Le dashboard livré avec le chart : les SLI de la boucle d'apprentissage en tête — rappel, taux de résolution, tokens économisés, coût" >}}
+{{< img src="runlore-dashboard.png" alt="Dashboard Grafana de RunLore organisé autour de la boucle d'apprentissage : fire-rate et taux de résolution du rappel, tokens économisés, entrées KB invalides" width="1080" caption="Le dashboard livré avec le chart : la boucle d'apprentissage en tête — fire-rate et taux de résolution du rappel, tokens économisés, entrées KB invalides" >}}
 
 C'est aussi l'instrument qui permettra de trancher, sur la durée, la question posée en clôture : cette mémoire paie-t-elle réellement ?
 
@@ -242,7 +309,7 @@ Un point qu'il faut poser clairement : **la qualité des investigations dépend 
 
 Surtout, **la partie la plus prometteuse est aussi la moins éprouvée**. La valeur d'une mémoire qui s'enrichit ne se mesure pas en une démo. Tout le mécanisme de confiance et de décroissance repose sur une hypothèse : que le taux de résolution constaté d'une entrée soit un bon signal de sa fiabilité. Le vérifier demande des **semaines d'usage réel** — voir comment le catalogue se remplit, si le rappel se déclenche au bon moment, si la confiance suit vraiment la réalité, et si la connaissance se compose. Je sais déjà qu'il y a des aspérités : par exemple, un même symptôme avec une cause différente peut s'ancrer à tort sur une investigation passée. C'est précisément le genre de comportement que seul le temps long révèle.
 
-Je reviendrai donc avec un **retour d'expérience sur la durée**. D'ici là, j'accueille avec plaisir tes retours et tes issues.
+Je reviendrai donc avec un **retour d'expérience sur la durée**. Et comme le projet est jeune et **ouvert** (Apache-2.0), c'est maintenant que les retours pèsent le plus : [ouvre une issue](https://github.com/Smana/runlore/issues) pour un bug ou une idée, propose une PR, ou raconte-moi simplement comment RunLore se comporte sur ta plateforme. Les retours de terrain sont exactement ce qui fait avancer le projet.
 
 {{% notice warning "Points d'attention pour la prod ⚠️" %}}
 La posture supportée est **read-only → suggest → approve** : RunLore lit, corrèle et recommande, un humain relit et fusionne. Le palier d'autonomie `auto` (remédiation automatique sans supervision) est **expérimental, gelé, et déconseillé sur un cluster réel**. Reste sur le _golden path_, avec un humain dans la boucle de validation.
