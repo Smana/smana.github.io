@@ -346,7 +346,7 @@ C'est le quatrième manque, et il se comble par un champ de statut. `status.serv
 |---|---|
 | `name` | le nom que le client écrira dans son champ `model` |
 | `kind` | `base` (les poids du modèle) ou `adapter` (un LoRA posé par-dessus) |
-| `canaryWeightPercent` | la fraction de trafic que cette entrée capte — présent uniquement là où une entrée de `gateway.canaries` en déclare une, donc jamais sur le modèle de base |
+| `canaryWeightPercent` | la fraction de trafic que cette entrée capte — présent là où une entrée de `gateway.canaries` en déclare une (une entrée de canary ne peut viser qu'un adapter, jamais le modèle de base : reste à confirmer sur le cluster si le modèle de base porte pour autant son poids résiduel) |
 
 Appliqué à `xplane-qwen-coder` tel que la claim le décrit à ce stade de l'article — un modèle de base, deux adapters, un canary à 10 % sur l'un d'eux — le champ porte trois entrées :
 
