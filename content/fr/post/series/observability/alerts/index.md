@@ -19,7 +19,7 @@ thumbnail= "thumbnail.png"
 {{% notice info "Mieux inspecter nos applications 👁️" %}}
 Une fois que notre application est déployée, il est primordial de disposer d'indicateurs permettant d'identifier d'éventuels problèmes ainsi que suivre les évolutions de performance. Parmi ces éléments, les **métriques** et les **logs** jouent un rôle essentiel en fournissant des informations précieuses sur le fonctionnement de l'application. En complément, il est souvent utile de mettre en place un **tracing** détaillé pour suivre précisément toutes les actions réalisées par l'application.
 
-Dans cette [série d'articles](http://localhost:1313/fr/series/observability/), nous allons explorer les différents aspects liés à la supervision applicative. L'objectif étant d'analyser en détail l'état de nos applications, afin d'améliorer leur **disponibilité** et leurs **performances**, tout en garantissant une expérience utilisateur optimale.
+Dans cette [série d'articles](/fr/series/observability/), nous allons explorer les différents aspects liés à la supervision applicative. L'objectif étant d'analyser en détail l'état de nos applications, afin d'améliorer leur **disponibilité** et leurs **performances**, tout en garantissant une expérience utilisateur optimale.
 {{% /notice %}}
 
 Lors d'un [précédent article](https://blog.ogenki.io/fr/post/series/observability/metrics/), nous avons vu comment collecter et visualiser des métriques. Celles-ci permettent d'analyser le comportement et les performances de nos applications. Il est tout aussi primordial de configurer des **alertes** afin d'être notifié en cas d'anomalies sur notre plateforme.
