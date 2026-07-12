@@ -261,17 +261,15 @@ Ce n'est pas de la prescience, c'est de l'emprunt : la lecture de la plateforme 
 
 ## :unlock: L'échappatoire `engineArgs`
 
-Ce troisième manque est le plus gênant à admettre, parce qu'il ne vient pas d'un oubli : il vient d'un refus. Le schéma de la claim n'expose que des champs curés, et j'avais délibérément décidé qu'il n'y aurait rien d'autre.
+Ce troisième manque ne vient pas d'un oubli : il vient d'un refus. Le schéma de la claim n'expose que des champs curés, et j'avais délibérément décidé qu'il n'y aurait rien d'autre. Le problème, c'est le rythme de vLLM : le moteur ajoute des flags à chaque release, bien plus vite qu'une API de plateforme ne peut les modéliser un par un. Chaque flag absent du schéma se payait donc au prix fort : une PR sur la composition KCL, les tests unitaires, la republication de l'image OCI, le bump du tag dans la `Composition`, puis Flux. **Une release de plateforme pour un essai d'une après-midi.**
 
-Le problème, c'est le rythme de vLLM. Le moteur ajoute des flags à chaque release — une politique d'ordonnancement, un format de chargement, un backend d'attention — bien plus vite qu'une API de plateforme ne peut les modéliser un par un. Chaque flag absent du schéma se payait donc au prix fort : une PR sur la composition KCL, les tests unitaires, la republication de l'image OCI, le bump du tag dans la `Composition`, puis Flux. **Une release de plateforme pour un essai d'une après-midi.**
+Sauf qu'une API sans échappatoire ne bloque personne : elle se fait **contourner**. Un `kubectl edit deployment`, le flag ajouté à la main, et jusqu'à la prochaine réconciliation de Crossplane ça marche très bien. Le coût réel n'est pas le contournement, c'est ce qu'il fait à l'abstraction : dès l'instant où l'état réel du cluster ne se lit plus dans la claim, **la claim ment**. Et une abstraction qui ment est pire qu'une abstraction absente, parce qu'elle continue de prétendre décrire le système.
 
-Sauf qu'une API sans échappatoire ne bloque personne. Elle se fait **contourner**. On fait un `kubectl edit deployment`, on ajoute son flag, on teste — et jusqu'à la prochaine réconciliation de Crossplane, ça marche très bien. Le coût réel n'est pas le contournement lui-même, c'est ce qu'il fait à l'abstraction : dès l'instant où l'état réel du cluster ne se lit plus dans la claim, **la claim ment**. Et une abstraction qui ment est pire qu'une abstraction absente, parce qu'elle continue de prétendre décrire le système.
-
-Le réflexe symétrique — un champ fourre-tout, non contraint, où l'on colle ce qu'on veut — n'est pas une solution non plus. Il ne fait que déplacer la casse : au lieu de sortir de l'abstraction pour la trouer, on la troue de l'intérieur, avec sa bénédiction.
+Le réflexe symétrique — un champ fourre-tout, non contraint — ne résout rien non plus : on troue alors l'abstraction de l'intérieur, avec sa bénédiction.
 
 ### Un champ, une contrainte de forme
 
-`spec.engineArgs` est un array de chaînes de caractères, **16 entrées au maximum**, transmises **verbatim** aux arguments du serveur vLLM. Aucune traduction, aucun mapping, aucune opinion : ce que l'utilisateur écrit est exactement ce que le moteur reçoit.
+`spec.engineArgs` est un array de chaînes, **16 entrées au maximum**, transmises **verbatim** aux arguments du serveur vLLM. Aucune traduction, aucun mapping, aucune opinion : ce que l'utilisateur écrit est exactement ce que le moteur reçoit.
 
 ```yaml
 # exemple : trois flags que le schéma curé ne modélise pas
@@ -285,15 +283,15 @@ spec:
     - --rope-scaling={"rope_type":"yarn","factor":2.0}
 ```
 
-Une seule contrainte de forme, et elle n'a rien de cosmétique : **un seul token par entrée**. Soit `--flag`, soit `--flag=value` — jamais `--flag value` éclaté sur deux lignes de la liste. La raison tient à ce qui vient après : les entrées sont **inspectées à l'admission**, et une inspection qui regarde chaque entrée isolément est aveugle à un flag **passé en fraude**, coupé en deux morceaux dont aucun, pris seul, ne ressemble à ce qu'on cherche. La forme normalisée n'est pas une préférence d'écriture, c'est la condition pour que la vérification qui suit soit une vérification. Le troisième flag de l'exemple ci-dessus illustre bien la latitude que laisse cette forme : `--rope-scaling={"rope_type":"yarn","factor":2.0}` loge du JSON entier dans une seule entrée — la valeur peut contenir à peu près n'importe quoi, tant qu'aucun espace ne vient la couper en deux tokens.
+Une seule contrainte de forme, et elle n'a rien de cosmétique : **un seul token par entrée**. Soit `--flag`, soit `--flag=value` — jamais `--flag value` éclaté sur deux lignes. Les entrées sont en effet **inspectées à l'admission**, une par une, et une inspection qui les regarde isolément serait aveugle à un flag réservé **passé en fraude**, coupé en deux morceaux dont aucun ne ressemble, pris seul, à ce qu'on cherche.
 
-Les `engineArgs` sont concaténés **après** tous les arguments produits par la composition (`_vllmArgs = _managedVllmArgs + _engineArgs`) : la position est fixe, donc le résultat est déterministe. Mais que l'on soit clair — **ce n'est pas cet ordre qui protège le contrat de service.** Un moteur qui lit ses arguments de gauche à droite donne, par construction, le dernier mot à celui qui parle en dernier. Ce qui protège le contrat, c'est que certains flags ne peuvent tout simplement **pas entrer** dans cette liste.
+Les `engineArgs` sont concaténés **après** les arguments produits par la composition (`_vllmArgs = _managedVllmArgs + _engineArgs`) : la position est fixe, le résultat déterministe. Mais **ce n'est pas cet ordre qui protège le contrat de service** : un moteur qui lit ses arguments de gauche à droite donne le dernier mot à celui qui parle en dernier. Ce qui protège le contrat, c'est que certains flags ne peuvent tout simplement **pas entrer** dans cette liste.
 
 ### Seize flags qui ne passeront pas
 
-Le tri est simple à énoncer : **tout passe, sauf ce dont l'autoscaling et le routage dépendent.** Ces flags-là sont **réservés**, et l'XRD les refuse à l'admission — `kubectl apply` échoue, la composition ne se déclenche même pas, rien n'atteint le cluster.
+Le tri est simple à énoncer : **tout passe, sauf ce dont l'autoscaling et le routage dépendent.** Ces flags-là sont **réservés**, et l'XRD les refuse à l'admission — `kubectl apply` échoue, rien n'atteint le cluster.
 
-Dix-sept règles CEL portent cette vérification : une règle de forme (toute entrée doit commencer par `--`), et **seize règles de flags réservés, une par flag**. Le découpage peut sembler inutilement bavard — une seule règle bouclant sur une liste aurait fait le même travail de rejet. Elle aurait aussi produit le même message pour les seize : *« `engineArgs` contient un flag réservé »*. Un message qui dit à l'utilisateur qu'il a perdu, sans lui dire quoi faire. Une règle par flag, c'est **un message par flag** — et chaque message nomme le champ curé à utiliser à la place :
+Dix-sept règles CEL portent cette vérification : une règle de forme (toute entrée commence par `--`), et **seize règles de flags réservés, une par flag**. Une règle unique bouclant sur une liste aurait rejeté tout aussi bien, mais elle aurait produit le même message pour les seize — un message qui dit à l'utilisateur qu'il a perdu, sans lui dire quoi faire. Une règle par flag, c'est **un message par flag**, et chaque message nomme le champ curé à utiliser à la place :
 
 | Flag réservé | Ce que répond l'admission |
 |---|---|
@@ -306,49 +304,41 @@ Dix-sept règles CEL portent cette vérification : une règle de forme (toute en
 
 *(Extrait — les seize flags sont listés dans le README de la composition.)*
 
-Prenez `--max-num-seqs`. C'est la taille du batch interne de vLLM, et c'est aussi le **dénominateur** du trigger KEDA vu en partie 3 : le `ScaledObject` divise `vllm:num_requests_running` par cette valeur pour obtenir un taux de saturation. Laissez un utilisateur la redéfinir dans `engineArgs`, et vLLM tourne avec un batch que l'autoscaler ignore — celui-ci continue de calculer un ratio contre une taille de batch qui n'existe plus. Rien ne casse, rien n'alerte : le scaling est simplement **faux**. Même logique pour `--enable-lora` et `--lora-modules` : le routage canary réécrit le nom du modèle vers un adapter que le pod est **censé** avoir chargé au démarrage.
+Prenez `--max-num-seqs` : c'est le **dénominateur** du trigger KEDA vu en partie 3. Laissez un utilisateur le redéfinir, et l'autoscaler continue de calculer son taux de saturation contre une taille de batch qui n'existe plus. Rien ne casse, rien n'alerte : le scaling est simplement **faux**.
 
-### Le détail qui m'a le plus appris : `--port` et `--host`
+Deux flags méritent un arrêt particulier, parce que **la composition ne les émet jamais** : `--port` et `--host`. Elle laisse le moteur prendre ses défauts — le port `8000`, l'écoute sur toutes les interfaces — et pourtant elle les réserve. Ces défauts ne sont pas des détails d'implémentation, ce sont **le contrat de serving** : le `targetPort` du `Service` vise 8000, les probes interrogent 8000, le FQDN du `Backend` rendu par la Gateway pointe 8000. Un `--port=9000` dans `engineArgs`, et les trois pointent dans le vide.
 
-Ces deux-là sont réservés alors que **la composition ne les émet jamais**. Elle ne passe ni `--port`, ni `--host` à vLLM — elle laisse le moteur prendre ses valeurs par défaut : le port `8000`, et l'écoute sur toutes les interfaces.
-
-Sauf que ces défauts ne sont pas des détails d'implémentation, ce sont **le contrat de serving**. Le `targetPort` du `Service` vise 8000. Les probes de liveness et de readiness interrogent 8000. Le FQDN du `Backend` rendu par la Gateway pointe 8000. Trois ressources générées, trois hypothèses silencieuses sur une valeur que personne n'a écrite nulle part. Un `--port=9000` dans `engineArgs`, et les trois pointent dans le vide.
-
-C'est la leçon que je retiens le plus volontiers de cette section, et elle n'a rien à voir avec les LLM : **la denylist d'une échappatoire doit couvrir non seulement ce que l'abstraction écrit, mais ce qu'elle suppose.** Ce sont deux ensembles différents, et le second est celui qu'on oublie — parce qu'un défaut sur lequel on s'appuie sans le déclarer n'apparaît dans aucun diff.
+La leçon dépasse les LLM : **la denylist d'une échappatoire doit couvrir non seulement ce que l'abstraction écrit, mais ce qu'elle suppose.** Le second ensemble est celui qu'on oublie, parce qu'il n'apparaît dans aucun diff.
 
 ### Une seule source d'application
 
-Reste la question qui décide de tout : **où vit la denylist ?**
+Reste la question qui décide de tout : **où vit la denylist ?** À **un seul endroit**, le CEL de l'XRD. La composition, elle, ne vérifie rien : elle appende les `engineArgs` verbatim et fait confiance à l'admission.
 
-La réponse tenue ici : **à un seul endroit**, le CEL de l'XRD. La composition, elle, ne vérifie rien. Elle appende les `engineArgs` verbatim et fait confiance à l'admission — si le contenu est arrivé jusqu'à elle, c'est qu'il est passé.
+La tentation de la « défense en profondeur » était pourtant là : refiltrer côté KCL, par acquit de conscience. Ç'aurait été recréer exactement le problème que la première moitié de cet article vient de supprimer — une liste de seize flags dans l'XRD, une autre dans la composition. **Deux fichiers à garder synchronisés, donc deux dérives possibles, et aucune ne fait de bruit.** Même forme de bug que `route.yaml` : autre fichier, même piège.
 
-La tentation de la « défense en profondeur » était pourtant là : refiltrer côté KCL, par acquit de conscience. Ç'aurait été recréer exactement le problème que la première moitié de cet article vient de supprimer. Une liste de seize flags dans l'XRD, une liste de seize flags dans la composition. **Deux fichiers à garder synchronisés, donc deux dérives possibles, et aucune des deux ne fait de bruit** — un flag ajouté d'un côté seulement, et l'on obtient soit un flag accepté à l'admission puis silencieusement ignoré, soit un flag rejeté que la composition aurait très bien passé. C'est la même forme de bug que `route.yaml`. Autre fichier, autre sujet, même piège.
-
-Mais « un seul endroit » est une promesse qui doit **tenir dans le temps**, et elle est fragile : les seize flags réservés sont précisément ceux que la composition émet. Le jour où quelqu'un ajoute un argument géré au KCL sans l'ajouter à la denylist de l'XRD, le trou se rouvre — et personne ne le verra. Un test verrouille donc les deux ensembles l'un à l'autre : `test_engine_args_denylist_lockstep` lit les flags que la composition produit et vérifie que chacun figure bien dans la denylist.
+Mais « un seul endroit » est une promesse fragile : les seize flags réservés sont précisément ceux que la composition émet. Le jour où quelqu'un ajoute un argument géré au KCL sans l'ajouter à la denylist de l'XRD, le trou se rouvre — et personne ne le verra. Un test verrouille donc les deux ensembles l'un à l'autre : `test_engine_args_denylist_lockstep` lit les flags que la composition produit et vérifie que chacun figure bien dans la denylist.
 
 {{% notice tip "Un test qui ne peut pas échouer ne prouve rien" %}}
-Un test de cohérence entre deux listes a une propriété désagréable : il passe au vert le jour où on l'écrit, et il passerait tout aussi bien s'il ne testait rien du tout. Une faute de frappe dans le nom d'une variable, une assertion qui compare une liste vide à une liste vide — et vous obtenez le pire des artefacts : un test qui **rassure**.
+Un test de cohérence entre deux listes a une propriété désagréable : il passe au vert le jour où on l'écrit, et il passerait tout aussi bien s'il ne testait rien du tout. Une faute de frappe dans un nom de variable, une assertion qui compare une liste vide à une liste vide — et vous obtenez le pire des artefacts : un test qui **rassure**.
 
-D'où l'étape suivante, qui n'a coûté que quelques minutes : **casser volontairement la denylist** (retirer un flag), relancer la suite, et vérifier que `test_engine_args_denylist_lockstep` **échoue bien**. C'est ce qu'on appelle une vérification par **mutation** : on introduit la faute exprès pour s'assurer que le filet la rattrape. Tant que vous n'avez pas vu un test rouge, vous n'avez pas de test — vous avez une ligne dans un rapport de CI.
+D'où l'étape suivante : **casser volontairement la denylist**, relancer la suite, et vérifier que `test_engine_args_denylist_lockstep` **échoue bien**. C'est une vérification par **mutation** : on introduit la faute exprès pour s'assurer que le filet la rattrape. Tant que vous n'avez pas vu un test rouge, vous n'avez pas de test — vous avez une ligne dans un rapport de CI.
 {{% /notice %}}
 
 `engineArgs` ne rend donc pas la plateforme plus permissive : il rend sa permissivité **lisible**. Ce qui n'est pas listé passe, sans demander la permission à personne. Ce qui est listé est refusé à l'`apply`, avec le nom du champ à utiliser à la place. **Liberté là où c'est sûr, garde-fous là où ça ne l'est pas.**
 
-Et c'est sans doute ce qui se transpose le mieux de tout cet article, GPU ou pas : toute API de plateforme finira par rencontrer un utilisateur qui a besoin de quelque chose qu'elle n'a pas prévu. Elle a le choix entre le lui donner **sous conditions**, ou le voir pris **sans conditions**. Il n'y a pas de troisième option — il y a seulement des équipes qui n'ont pas encore découvert laquelle des deux elles avaient choisie.
-
 ## :eyes: Le modèle dit ce qu'il sert
 
-`kubectl get isvc` répondait `READY`, et c'était tout ce qu'il répondait. Une information de santé : un pod tourne, il accepte des requêtes. Pas **à quels noms** il les accepte. Deux sections plus tôt, la question était encore triviale — un pod, un modèle, un nom. Elle ne l'est plus : le même pod répond maintenant à un modèle de base, à deux adapters, et une requête sur dix adressée au premier part discrètement vers l'un des seconds.
+`kubectl get isvc` répondait `READY`, et c'était tout ce qu'il répondait. Une information de santé : un pod tourne, il accepte des requêtes. Pas **à quels noms** il les accepte. La question était triviale tant qu'un pod servait un modèle sous un nom. Elle ne l'est plus : le même pod répond maintenant à un modèle de base et à deux adapters, et une requête sur dix adressée au premier part discrètement vers l'un des seconds.
 
-C'est le quatrième manque, et il se comble par un champ de statut. `status.servedModels` est une liste d'objets, republiée par la composition à chaque réconciliation :
+C'est le quatrième manque, comblé par un champ de statut. `status.servedModels` est une liste d'objets, republiée à chaque réconciliation :
 
 | Champ | Ce qu'il porte |
 |---|---|
 | `name` | le nom que le client écrira dans son champ `model` |
 | `kind` | `base` (les poids du modèle) ou `adapter` (un LoRA posé par-dessus) |
-| `canaryWeightPercent` | la fraction de trafic que cette entrée capte — présent là où une entrée de `gateway.canaries` en déclare une (une entrée de canary ne peut viser qu'un adapter, jamais le modèle de base : reste à confirmer sur le cluster si le modèle de base porte pour autant son poids résiduel) |
+| `canaryWeightPercent` | la fraction de trafic captée, là où `gateway.canaries` en déclare une — un canary ne peut viser qu'un adapter, jamais le modèle de base |
 
-Appliqué à `xplane-qwen-coder` tel que la claim le décrit à ce stade de l'article — un modèle de base, deux adapters, un canary à 10 % sur l'un d'eux — le champ porte trois entrées :
+Sur `xplane-qwen-coder` — un modèle de base, deux adapters, un canary à 10 % sur l'un d'eux — le champ porte trois entrées :
 
 | `name` | `kind` | `canaryWeightPercent` |
 |---|---|---|
@@ -358,72 +348,66 @@ Appliqué à `xplane-qwen-coder` tel que la claim le décrit à ce stade de l'ar
 
 <!-- TODO-e2e: confirmer sur la sortie réelle de status.servedModels que canaryWeightPercent est bien absent de l'entrée base (kind: base), et pas simplement égal à 100 - sum(weightPercent) -->
 
-Et une colonne `SERVED MODELS` porte la même chose jusque dans un `kubectl get isvc`, sans `-o yaml` ni `jq` : la topologie complète du pod, à l'œil, dans la sortie la plus banale du quotidien.
+Et une colonne `SERVED MODELS` porte la même chose jusque dans un `kubectl get isvc`, sans `-o yaml` ni `jq`.
 
 <!-- TODO-e2e: sortie réelle de kubectl get isvc -n llm avec la colonne SERVED MODELS -->
 
 ### C'est de la topologie, pas de la santé
 
-Un détail conditionne toute la lecture de ce champ : `servedModels` est calculé **depuis le spec seul**. La composition ne consulte ni l'`ocds`, ni l'état du `Deployment`, ni celui de la route — elle dérive la liste des noms de ce que la claim déclare, et de rien d'autre. Conséquence directe : le champ est peuplé **dès la première réconciliation**, avant que le pod n'existe, avant que la route ne soit publiée.
+Un détail conditionne toute la lecture de ce champ : `servedModels` est calculé **depuis le spec seul**. La composition ne consulte ni l'`ocds`, ni l'état du `Deployment`, ni celui de la route — elle dérive la liste des noms de ce que la claim déclare. Le champ est donc peuplé **dès la première réconciliation**, avant même que le pod n'existe.
 
-C'est donc une projection de **topologie**, pas un signal de santé. Il répond à « à quels noms cette claim est-elle *censée* répondre ? », jamais à « répond-elle, là, maintenant ? ». Un modèle dont le pod est en `CrashLoopBackOff` affiche exactement les mêmes `servedModels` qu'un modèle en pleine forme — et c'est le comportement voulu, pas une lacune.
-
-Le contresens serait coûteux, autant le désamorcer tout de suite : la santé a déjà ses réponses, et elles sont ailleurs. La condition `READY` de la claim, le latch de readiness qui décide si la route existe, les métriques vLLM de la partie 3. Vouloir que `servedModels` dise aussi la santé reviendrait à attendre le `Deployment` pour peupler le champ — c'est-à-dire à le rendre vide précisément dans la situation où on le consulte le plus : quand quelque chose ne démarre pas et qu'on cherche à comprendre ce que ce truc était censé servir.
+C'est une projection de **topologie**, pas un signal de santé. Il répond à « à quels noms cette claim est-elle *censée* répondre ? », jamais à « répond-elle, là, maintenant ? ». Un pod en `CrashLoopBackOff` affiche les mêmes `servedModels` qu'un modèle en pleine forme — c'est le comportement voulu, pas une lacune. La santé, elle, a déjà ses réponses ailleurs : la condition `READY`, le latch de readiness, les métriques vLLM de la partie 3.
 
 {{% notice note "Le piège : un JSONPath wildcard dans une colonne" %}}
 La colonne `SERVED MODELS` a d'abord pointé le JSONPath qui s'imposait naturellement : `.status.servedModels[*].name` — *tous* les noms de la liste. Elle n'en aurait affiché **qu'un seul**.
 
-Les colonnes de `kubectl get` ne sont pas rendues par le client. Elles sont produites côté serveur, par le **convertisseur de table** de l'API server, qui applique le JSONPath déclaré dans les `additionalPrinterColumns` du CRD — et n'en retient que la **première correspondance**. Une cellule de tableau est un scalaire, pas une liste : le wildcard ne boucle pas, il sélectionne. La colonne aurait donc affiché `xplane-qwen-coder`, et les deux adapters n'auraient existé nulle part. Le pire cas de figure : une valeur juste, et une réponse fausse à la question posée — une colonne censée révéler la topologie, qui en cache précisément la moitié intéressante.
+Les colonnes de `kubectl get` ne sont pas rendues par le client, mais côté serveur, par le **convertisseur de table** de l'API server, qui applique le JSONPath des `additionalPrinterColumns` du CRD — et n'en retient que la **première correspondance**. Une cellule de tableau est un scalaire, pas une liste : le wildcard ne boucle pas, il sélectionne. La colonne aurait donc affiché `xplane-qwen-coder`, et les deux adapters n'auraient existé nulle part.
 
 D'où un second champ, `status.servedModelsSummary` : un scalaire, les noms joints par des virgules, sur lequel la colonne pointe désormais.
 {{% /notice %}}
 
-Deux champs pour une seule vérité, après un article passé à traquer les doubles sources — l'ironie mérite d'être adressée. La différence tient en ceci : `servedModelsSummary` n'est pas une seconde saisie, c'est une **fonction pure** de `servedModels`, calculée au même endroit, dans le même passage de la composition. Il n'existe aucun chemin par lequel les deux divergent. Le champ structuré reste l'API — celle que lisent un contrôleur, un script, un `-o jsonpath` ; le scalaire n'est qu'une projection pour le CLI.
+Deux champs pour une seule vérité, après un article passé à traquer les doubles sources — l'ironie mérite d'être adressée. Mais `servedModelsSummary` n'est pas une seconde saisie : c'est une **fonction pure** de `servedModels`, calculée dans le même passage de la composition, et il n'existe aucun chemin par lequel les deux divergent. Le champ structuré reste l'API ; le scalaire n'est qu'une projection pour le CLI.
 
-Et la leçon transposable est plus large que ce champ-là : **un statut que l'outil de tous les jours ne sait pas afficher n'est pas de la découvrabilité.** C'est de la donnée correcte, rangée dans un endroit que personne ne regarde.
+Et la leçon dépasse ce champ-là : **un statut que l'outil de tous les jours ne sait pas afficher n'est pas de la découvrabilité.** C'est de la donnée correcte, rangée dans un endroit que personne ne regarde.
 
 ## :bar_chart: Mesurer le canary
 
-Tout ce qui précède produit un split : 90 % du trafic sur les poids de base, 10 % sur le fine-tune. Reste la seule question qui justifiait de le faire — **est-ce que ces 10 % se comportent mieux, ou moins bien, que les 90 % restants ?** Sans réponse, on n'a pas déployé un canary : on a détourné une fraction du trafic des utilisateurs vers autre chose, et on a croisé les doigts. **Un canary qu'on ne peut pas mesurer n'est pas un canary, c'est un pari.** D'où cette section ici, immédiatement après le split, et non reléguée dans une annexe « observabilité » : la mesure n'est pas l'accessoire de la fonctionnalité, elle en est la moitié.
+Tout ce qui précède produit un split : 90 % du trafic sur les poids de base, 10 % sur le fine-tune. Reste la seule question qui justifiait de le faire — **est-ce que ces 10 % se comportent mieux, ou moins bien, que les 90 % restants ?** Sans réponse, on n'a pas déployé un canary : on a détourné du trafic utilisateur vers autre chose en croisant les doigts. **Un canary qu'on ne peut pas mesurer n'est pas un canary, c'est un pari.**
 
-La partie 3 a déjà présenté les métriques **`gen_ai.*`** de l'Envoy AI Gateway (v1.0) : le standard [OpenTelemetry Gen AI](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/), qui ne compte pas des requêtes HTTP mais le vocabulaire métier des LLM — tokens consommés, TTFT, latence par token de sortie. Elle les a présentées ; il restait à les **brancher**. C'est ce que fait cette PR.
+La partie 3 a déjà présenté les métriques **`gen_ai.*`** de l'Envoy AI Gateway (v1.0) : le standard [OpenTelemetry Gen AI](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/), qui ne compte pas des requêtes HTTP mais le vocabulaire métier des LLM — tokens consommés, TTFT, latence par token de sortie. Il restait à les **brancher**.
 
-Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'**extproc** (_external processor_) : le sidecar auquel Envoy délègue le traitement spécifique aux LLM. Ce que ce sidecar fait précisément en interne n'est pas documenté dans les faits vérifiés de cette PR, mais le raisonnement de conception tient de lui-même : s'il y a un composant qui lit le champ `model` dans le corps de la requête, applique le `modelNameOverride` et compte les tokens de la réponse, c'est vraisemblablement celui-là, puisqu'il est le seul du chemin de requête à voir à la fois le nom **demandé** et le nom **servi**. C'est cette position qui en ferait le point naturel où brancher le scrape :
+Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'**extproc** (_external processor_) : le sidecar auquel Envoy délègue le traitement spécifique aux LLM, seul sur le chemin de requête à voir à la fois le nom **demandé** et le nom **servi**. C'est là que le scrape se branche :
 
-* **Cible** : le sidecar extproc, pas le conteneur Envoy — d'où un **`VMPodScrape`** (l'objet de l'opérateur VictoriaMetrics qui cible des *pods*) et non un `VMServiceScrape`
+* **Cible** : le sidecar extproc, pas le conteneur Envoy — d'où un **`VMPodScrape`** (l'objet VictoriaMetrics qui cible des *pods*) et non un `VMServiceScrape`
 * **Namespace** : `envoy-gateway-system`
 * **Port** : `1064`, le port d'administration de l'extproc
 
-Les séries atterrissent dans la VictoriaMetrics qui collecte déjà les métriques vLLM, et se lisent dans le même Grafana. Aucun nouvel outil : la promesse de la partie 3, tenue par un objet de plus.
+Les séries atterrissent dans la VictoriaMetrics qui collecte déjà les métriques vLLM, et se lisent dans le même Grafana. Aucun nouvel outil.
 
 ### L'attribution canary vs base : une question ouverte
 
-Le routage repose sur une propriété déjà rencontrée : `modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter avant que la requête n'atteigne vLLM. Une requête tirée dans les 10 % n'est donc pas servie sous le nom `xplane-qwen-coder`, mais sous celui de `xplane-qwen-coder-sql-dpo`.
+`modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter avant que la requête n'atteigne vLLM : une requête tirée dans les 10 % est servie sous le nom `xplane-qwen-coder-sql-dpo`, pas `xplane-qwen-coder`.
 
-Reste une question que la PR #1559 laisse **explicitement ouverte**, et que je préfère nommer plutôt que deviner : les métriques `gen_ai.*`, qui portent le modèle en label, attribuent-elles ce trafic au nom **de l'adapter surchargé** — celui que vLLM a réellement servi — ou au nom **du modèle de base** — celui que le client a demandé ? Rien, dans ce qui précède, ne permet de le déduire : seule une requête envoyée dans le canary, puis retrouvée (ou non) dans les séries sous le nom de l'adapter, le dira.
+Reste une question que la PR #1559 laisse **explicitement ouverte**, et que je préfère nommer plutôt que deviner : les métriques `gen_ai.*`, qui portent le modèle en label, attribuent-elles ce trafic au nom **de l'adapter surchargé** — celui que vLLM a servi — ou au nom **du modèle de base** — celui que le client a demandé ? Seule une requête envoyée dans le canary, puis retrouvée (ou non) sous le nom de l'adapter, le dira.
 
-Ce n'est pas un détail cosmétique. Si l'attribution suit le nom surchargé, le split de routage est **aussi**, et gratuitement, un split de mesure : canary et base ont chacun leur série, sans rien à instrumenter. Si elle retombe sur le nom du modèle de base, canary et base se retrouvent mélangés dans la même série — et l'attribution que le dashboard promet de faire n'existe tout simplement pas.
+Ce n'est pas un détail cosmétique. Si l'attribution suit le nom surchargé, le split de routage est **aussi**, gratuitement, un split de mesure. Sinon, canary et base se mélangent dans la même série, et l'attribution que le dashboard promet n'existe pas.
 
-Le dashboard Grafana **`llm-gateway`** vise le premier scénario : les mêmes séries, découpées canary contre base, sur la même fenêtre de temps et le même trafic réel. Voici ce qu'il donnerait à lire, si l'attribution se confirme :
+Le dashboard Grafana **`llm-gateway`** vise le premier scénario : les mêmes séries, découpées canary contre base. Voici ce qu'il donnerait à lire, si l'attribution se confirme :
 
-* La **latence end-to-end** (`gen_ai.server.request.duration`) et le **TTFT** (`gen_ai.server.time_to_first_token`) : servir une requête à travers un adapter LoRA passe-t-il par le même chemin de coût que la servir sur les poids de base ? Ce sont ces deux courbes, côte à côte, qui permettraient de le dire.
+* La **latence end-to-end** (`gen_ai.server.request.duration`) et le **TTFT** (`gen_ai.server.time_to_first_token`) : servir via un adapter LoRA coûte-t-il le même chemin que servir sur les poids de base ?
 * La **latence par token de sortie** (`gen_ai.server.time_per_output_token`), qui dirait si le fine-tune génère au même rythme.
-* La **consommation de tokens** (`gen_ai.client.token.usage`) : un fine-tune plus bavard que sa base, à qualité égale, serait un fine-tune plus cher.
-* Le **volume de requêtes** de chaque branche — accessoirement, de quoi vérifier que le split fait bien ce qu'il annonce.
+* La **consommation de tokens** (`gen_ai.client.token.usage`) : un fine-tune plus bavard que sa base, à qualité égale, est un fine-tune plus cher.
+* Le **volume de requêtes** de chaque branche — de quoi vérifier que le split fait ce qu'il annonce.
 
 <!-- TODO-e2e: trancher si gen_ai.* attribue le trafic canary au nom de l'adapter surchargé (modelNameOverride) ou au nom du modèle de base — réponse à documenter dans le README de la composition (SPEC-002, question ouverte PR #1559) -->
 <!-- TODO-e2e: screenshot du dashboard Grafana llm-gateway avec l'attribution canary vs base -->
 
-### Ce que ces courbes ne disent pas
-
-Elles disent si le canary est plus lent, ou plus bavard, que la base. Elles ne disent pas s'il est **meilleur** : aucune métrique de gateway ne sait ce qu'est un bon SQL. La qualité reste le domaine de l'éval — [Promptfoo](/fr/post/series/agentic_ai/llm-self-hosted-stack/), vu en partie 3 — et c'est là que la règle de pin décrite plus haut reprend tout son sens : une éval a besoin d'interroger l'adapter **de façon déterministe**, pas de tomber dessus une fois sur dix.
-
-Les deux mesures sont complémentaires, et aucune ne se suffit. Le canary observe du trafic réel sans savoir ce qu'il vaut ; l'éval observe un jeu de tests connu sans savoir ce que fait le vrai trafic. Décider de promouvoir un fine-tune, c'est regarder les deux.
+Ces courbes disent si le canary est plus lent, ou plus bavard, que la base. Elles ne disent pas s'il est **meilleur** : aucune métrique de gateway ne sait ce qu'est un bon SQL. La qualité reste le domaine de l'éval — [Promptfoo](/fr/post/series/agentic_ai/llm-self-hosted-stack/), vu en partie 3 — et c'est là que la règle de pin reprend tout son sens : une éval doit interroger l'adapter **de façon déterministe**, pas tomber dessus une fois sur dix. Promouvoir un fine-tune, c'est regarder les deux.
 
 {{% notice note "Ce qui n'est pas livré : les traces" %}}
-L'AI Gateway sait exporter des **traces OTLP**, et la cible naturelle serait **VictoriaTraces**. Sur cette plateforme, l'export est **volontairement désactivé** : je n'ai pas vérifié la compatibilité du chemin d'ingestion OTLP entre les deux, et tant que ce n'est pas vérifié, la case reste décochée.
+L'AI Gateway sait exporter des **traces OTLP**, et la cible naturelle serait **VictoriaTraces**. Sur cette plateforme, l'export est **volontairement désactivé** : je n'ai pas vérifié la compatibilité du chemin d'ingestion OTLP entre les deux, et tant que ce n'est pas fait, la case reste décochée.
 
-Ce n'est pas de la prudence de façade. Livrer un export vers un endpoint qu'on n'a pas testé, c'est livrer une ligne de configuration qui donne l'**illusion** d'une capacité. Le jour où on en aurait besoin — une requête anormalement lente, et l'envie de savoir où part le temps entre la gateway, l'extproc et vLLM — on découvrirait qu'il n'y a rien au bout. Une case décochée est honnête ; une case cochée qui ne transporte rien ne l'est pas.
+Livrer un export vers un endpoint qu'on n'a pas testé, c'est livrer une ligne de configuration qui donne l'**illusion** d'une capacité : le jour où on voudrait savoir où part le temps entre la gateway, l'extproc et vLLM, on découvrirait qu'il n'y a rien au bout. Une case décochée est honnête ; une case cochée qui ne transporte rien ne l'est pas.
 {{% /notice %}}
 
 ## :compass: Endpoint Picker : au-delà du round-robin
