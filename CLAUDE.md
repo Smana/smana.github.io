@@ -53,7 +53,8 @@ Theme shortcodes (from `themes/hugo-clarity/`):
 - **Theme:** hugo-clarity (git submodule in `themes/hugo-clarity`)
 - **Config:** Split config in `config/_default/` — `config.toml` (base URL, taxonomies, outputs), `params.toml` (theme behavior), `languages.toml` (EN default/weight 1, FR weight 2), `markup.toml`
 - **Menus:** Per-language in `config/_default/menus/`
-- **Deployment:** GitHub Actions (`.github/workflows/gh-pages.yaml`) auto-deploys `main` to GitHub Pages using Hugo 0.139.0 extended
+- **Deployment:** GitHub Actions (`.github/workflows/gh-pages.yaml`) auto-deploys `main` to GitHub Pages using Hugo 0.156.0 extended
+- **Images:** `layouts/shortcodes/img.html` (in-content) and `layouts/partials/figure.html` (thumbnails, featured images) resize and encode to WebP at build time. Generated derivatives live in `resources/_gen` (gitignored, cached in CI) — never reference a raw full-size image directly in a template.
 
 ## Internal links / URL conventions
 
