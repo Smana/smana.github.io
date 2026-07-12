@@ -163,8 +163,7 @@ NAME                             READY   STATUS    RESTARTS   AGE
 tf-controller-7ffdc69b54-c2brg   1/1     Running   0          2m6s
 ```
 
-Dans le repo de demo il y a déjà un certain nombre de ressources AWS déclarées. Par conséquent, au bout de quelques minutes, le cluster se charge de la création de celles-cis:
-[![asciicast](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq.png)](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq?&speed=2)
+Dans le repo de demo il y a déjà un certain nombre de ressources AWS déclarées. Par conséquent, au bout de quelques minutes, le cluster se charge de la création de celles-ci.
 
 {{% notice info Info %}}
 Bien que la majorité des tâches puisse être réalisée de manière déclarative ou via les utilitaires de ligne de commande tels que `kubectl` et `flux`, un autre outil existe qui offre la possibilité d'interagir avec les ressources terraform : [tfctl](https://docs.gitops.weave.works/docs/opentofu/tfctl/)

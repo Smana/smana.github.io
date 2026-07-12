@@ -163,8 +163,7 @@ NAME                             READY   STATUS    RESTARTS   AGE
 tf-controller-7ffdc69b54-c2brg   1/1     Running   0          2m6s
 ```
 
-In this demo, there are already a several AWS resources declared. Therefore, after a few minutes, the cluster takes care of creating these:
-[![asciicast](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq.png)](https://asciinema.org/a/guDIpkVdD51Cyog9P5NYnuWSq?&speed=2)
+In this demo, there are already a several AWS resources declared. Therefore, after a few minutes, the cluster takes care of creating these.
 
 {{% notice info Info %}}
 Although the majority of operations are performed declaratively or via the CLIs `kubectl` and `flux`, another tool allows to manage Terraform resources: [tfctl](https://docs.gitops.weave.works/docs/opentofu/tfctl/)
