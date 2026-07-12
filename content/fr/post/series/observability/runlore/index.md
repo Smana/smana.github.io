@@ -297,9 +297,11 @@ C'est aussi l'instrument qui permettra de trancher, sur la durée, la question p
 
 ## 🧑‍💻 Construit avec des agents, en toute transparence
 
-Je dois être transparent sur un point : **RunLore lui-même a été construit avec mes outils d'agentic coding** — Claude Code, des _skills_, le framework _superpowers_, et des revues multi-agents. C'est un prolongement direct de ce que j'explore dans la série [Agentic AI](/fr/series/agentic-ai/), notamment dans [l'article sur le coding agent](/fr/post/series/agentic_ai/ai-coding-agent/) et celui sur les [astuces et workflows](/fr/post/series/agentic_ai/ai-coding-tips/).
+**RunLore lui-même a été construit avec mes outils d'agentic coding** — Claude Code, des _skills_, le framework _superpowers_ et des revues multi-agents. C'est un prolongement direct de ce que j'explore dans la série [Agentic AI](/fr/series/agentic-ai/), notamment [l'article sur le coding agent](/fr/post/series/agentic_ai/ai-coding-agent/) et celui sur les [astuces et workflows](/fr/post/series/agentic_ai/ai-coding-tips/). Côté modèles, **Fable 5** a beaucoup servi sur la phase specs/plans, et **Opus 4.8** pour l'essentiel du code.
 
-Il y a une forme de cohérence dans tout ça : la **discipline de vérification adverse** que j'utilise pour développer le projet (faire critiquer chaque finding par des agents indépendants avant de l'accepter) est exactement la philosophie embarquée dans le produit. Et puisque RunLore accepte n'importe quel endpoint OpenAI-compatible, il peut tout à fait tourner sur une stack auto-hébergée comme celle décrite dans l'article sur le [LLM self-hosted](/fr/post/series/agentic_ai/llm-self-hosted-stack/) — vLLM, Ollama, et la confidentialité qui va avec.
+Et ça n'a rien d'un pilotage automatique : malgré ces modèles, des **incohérences** ont émergé au fil des itérations — surtout autour de la *learning loop*, la partie la plus subtile. Je code en **Go**, mais surtout de l'**outillage DevOps** sur des projets relativement simples ; les logiques internes de RunLore (recall, scoring, décroissance…) dépassaient largement ce que j'aurais écrit seul, et l'agentic coding a été **indispensable**.
+
+Mais je ne veux pas me cantonner au rôle de **chef d'orchestre** — celui qui écrit les specs et pilote les agents. Je tiens à **comprendre les internals** : je me suis donc fait générer un vrai **plan de formation à partir du code** — les notions, les fonctions clés, les points de décision — pour pouvoir parler du projet **sereinement**. C'est en cours.
 
 ## 💭 Dernières remarques
 
