@@ -172,7 +172,92 @@ Reste que la route appartient désormais à la claim, et c'est là que ça devie
 
 ## :dna: LoRA en deux minutes
 
+La section précédente a lâché « adapters LoRA » en une ligne. Comme tout ce qui suit repose dessus, il faut deux minutes pour dire précisément ce que c'est — et surtout ce que ça n'est **pas**.
+
+Un adapter **LoRA** (_Low-Rank Adaptation_) n'est pas un modèle. C'est un **delta de poids de faible rang** : plutôt que de réentraîner les matrices du modèle de base, on apprend une paire de petites matrices dont le produit vient s'ajouter à celles-ci. Le « faible rang » est tout le levier — sur la plateforme, il est fixé à **64** — et il se lit directement sur la balance : quelques dizaines de Mo pour l'adapter, contre les ~15 Go de poids du modèle de base.
+
+De cette différence de nature découle la seule propriété qui compte pour la suite : **vLLM charge le modèle de base une fois, puis applique les adapters par-dessus, dans le même processus, sur le même GPU** (`--enable-lora`, `--lora-modules`). Servir trois « modèles » — la base et ses deux fine-tunes — ne coûte donc pas trois GPU. C'est un pod, un GPU, et **trois noms auxquels il répond**.
+
+Deux adapters sont déclarés sur `xplane-qwen-coder`, tous deux posés sur exactement le même modèle de base (`Qwen/Qwen2.5-Coder-7B-Instruct`) :
+
+| `loraAdapters[].name` | Source HuggingFace | Spécialisation |
+|---|---|---|
+| `xplane-qwen-coder-sql-dpo` | `jk200201/qwen2.5-coder-7b-sql-dpo` | génération SQL |
+| `xplane-qwen-coder-securecode` | `scthornton/qwen2.5-coder-7b-securecode` | code sécurisé |
+
+Chaque entrée de `spec.loraAdapters` nomme l'adapter — c'est ce nom qu'un client mettra dans son champ `model` — et pointe un dépôt HuggingFace **piné au commit SHA**, exactement comme le modèle de base l'est déjà via `model.repository` / `model.revision`. Un fine-tune qui bouge sous les pieds du serving est une régression que personne ne voit venir.
+
+{{% notice note "Ces adapters, je ne les ai pas entraînés" %}}
+Autant l'assumer : les deux adapters ci-dessus viennent de HuggingFace, entraînés par d'autres. Je les ai retenus parce qu'ils se posent sur le modèle de base que la plateforme sert déjà — pas parce que j'ai évalué leur qualité.
+
+**Fine-tuner soi-même est un autre métier** : constitution du dataset, boucle d'entraînement, évaluation. Ce qui suit traite d'une question d'infrastructure — *comment expose-t-on progressivement un fine-tune au trafic réel ?* — pas d'une question de data science. J'y reviens dans « Et après ? ».
+{{% /notice %}}
+
 ## :hatching_chick: Canary : 10 % du trafic, zéro GPU
+
+Le scénario : `xplane-qwen-coder-sql-dpo` prétend être meilleur que le modèle de base sur la génération SQL. Sur un benchmark, peut-être. Sur **le** trafic — celui des vrais utilisateurs, avec leurs prompts et leurs fichiers à eux — la seule façon de le savoir est de lui en envoyer un peu. Dix pour cent, pendant quelques jours.
+
+Voilà ce que ça coûte dans la claim :
+
+```diff
+# apps/base/ai/llm/qwen-coder.yaml
+ spec:
+   gateway:
+     enabled: true
++    canaries:
++      - adapter: xplane-qwen-coder-sql-dpo
++        weightPercent: 10
+```
+
+Deux lignes utiles. Flux réconcilie, et une requête sur dix adressée à `xplane-qwen-coder` est désormais servie par le fine-tune.
+
+### Sous le capot : un split qui n'envoie rien ailleurs
+
+La règle de l'`AIGatewayRoute` qui répond au nom du modèle de base ne porte plus un seul `backendRef`, mais **un par entrée** : le backend de base d'abord, puis un backend par canary. Le backend de base conserve `100 - sum(weightPercent)`, chaque canary prend son `weightPercent`, et chaque canary reçoit son propre `AIServiceBackend` (`<claim>-canary-<i>`) porteur d'un champ décisif — **`modelNameOverride`**, qui vaut le nom de l'adapter *verbatim*.
+
+| `backendRef` | Poids | `modelNameOverride` | `Backend` visé |
+|---|---|---|---|
+| `AIServiceBackend` de base | **90** (`100 - 10`) | *(aucun)* | `xplane-qwen-coder` |
+| `AIServiceBackend` de canary (`<claim>-canary-<i>`) | **10** | `xplane-qwen-coder-sql-dpo` | `xplane-qwen-coder` |
+
+Relisez la dernière colonne. **Les deux `backendRef` pointent le même `Backend`** — le même `Service`, les mêmes pods, le même GPU. Rien n'est envoyé ailleurs, parce qu'il n'y a pas d'ailleurs. Tout ce que fait le canary, c'est **réétiqueter** 10 % des requêtes : `modelNameOverride` réécrit le nom du modèle avant que la requête n'atteigne vLLM, et vLLM — qui a déjà l'adapter en mémoire, puisqu'il l'a chargé au démarrage — la sert avec le fine-tune plutôt qu'avec les poids de base.
+
+<!-- TODO-e2e: schéma du split canary (tâche 8) -->
+
+C'est là que se joue le « zéro GPU » du titre. Un canary applicatif classique coûte de la capacité : on déploie une v2 à côté de la v1, et pendant toute la durée de l'expérience on paie deux jeux de réplicas. Transposé ici, ce serait un **second pod vLLM**, donc un second GPU, donc un nœud de plus provisionné par Karpenter — pour évaluer un delta de quelques dizaines de Mo. Le canary LoRA n'ajoute ni réplica, ni nœud, ni ligne de facture : le split est une décision de *routage*, prise en amont, sur une flotte qui n'a pas bougé.
+
+<!-- TODO-e2e: split réellement observé via vllm:lora_requests_info (SC-002 : entre 2% et 25% sur ≥50 requêtes, tolérance binomiale) -->
+
+### Le canary n'écrase pas le nommage explicite
+
+Le split n'est pas le seul chemin vers un adapter, et c'est important : chaque entrée de `loraAdapters[]` reçoit **sa propre règle de routage** (`x-ai-eg-model: <name>` → backend de base, poids 100). Une requête qui nomme explicitement l'adapter est donc servie **à 100 % par cet adapter**, indépendamment du canary en cours.
+
+Les deux comportements coexistent, et c'est voulu :
+
+* **Le client qui demande `xplane-qwen-coder`** entre dans le split — 90 % base, 10 % fine-tune. C'est la population d'expérience : elle ne sait pas qu'elle en fait partie, et c'est précisément ce qui rend le signal intéressant.
+* **Le client qui demande `xplane-qwen-coder-sql-dpo`** est **pinné** : il obtient l'adapter, toujours. C'est le mode d'usage explicite — celui de la partie 3 — et c'est aussi ce qui permet à une éval [Promptfoo](/fr/post/series/agentic_ai/llm-self-hosted-stack/) de comparer deux modèles sans dépendre d'un tirage au sort.
+
+Autrement dit, le canary répond à « ce fine-tune tient-il face au trafic réel ? », le pin répond à « que vaut ce fine-tune, toutes choses égales par ailleurs ? ». Les deux questions sont légitimes, et aucune des deux ne doit désactiver l'autre.
+
+### Ce que l'admission refuse
+
+Un pourcentage de trafic est exactement le genre de champ où une faute de frappe se paie en production. Les garde-fous sont donc **à l'admission**, en CEL dans l'XRD : `kubectl apply` échoue, et la composition ne se déclenche même pas.
+
+* Des `canaries` **sans `gateway.enabled: true`** — une pondération sans route à pondérer.
+* Un `canaries[].adapter` **absent de `loraAdapters[].name`** — on ne route pas vers un adapter que le pod ne charge pas.
+* **Deux entrées visant le même adapter** — deux poids pour une seule cible, sans résolution évidente.
+* Un `weightPercent` **hors de 1–99**.
+* Une **somme des `weightPercent` supérieure à 99**.
+
+La dernière règle mérite qu'on s'y arrête, parce que le plafond « naturel » aurait été 100. À 100 %, le modèle de base ne reçoit plus rien : le canary absorbe tout le trafic. Ce n'est plus un canary, c'est un **remplacement déguisé en expérience** — et déclaré dans un champ dont le nom promet exactement le contraire. Un remplacement, ça se lit dans le champ qui le dit (`model.repository`, `model.revision`), ça ne se déduit pas d'un poids qui a discrètement atteint son maximum.
+
+Le plafond à **99** garantit donc qu'il reste toujours du trafic sur le modèle de base. Donc toujours une référence à laquelle comparer le canary, et toujours un chemin de retour immédiat : ramener le poids à 1, ou retirer l'entrée.
+
+{{% notice tip "Pourquoi un array dès le premier jour" %}}
+`gateway.canaries` est un **array** (quatre entrées au maximum), alors que le besoin du jour tenait dans une seule. Un simple objet aurait suffi — et aurait été un piège : passer d'un objet à un array plus tard est un **breaking change** d'API. Nouvelle version du schéma, conversion, migration de toutes les claims existantes… pour un champ qui n'aura rien gagné entre-temps.
+
+Ce n'est pas de la prescience, c'est de l'emprunt : la lecture de la plateforme **Modelplane** — sur laquelle je reviens en fin d'article — a rendu évident que comparer *plusieurs* adapters en même temps est un cas d'usage normal, pas un exotisme. Le coût de l'array au jour 1, c'est quelques lignes de KCL. Le coût de la conversion au jour 100, ça s'appelle une migration.
+{{% /notice %}}
 
 ## :unlock: L'échappatoire `engineArgs`
 
