@@ -485,6 +485,97 @@ Deux capacités restent **descopées** : le chargement `s3://` direct et le rés
 
 ## :telescope: Modelplane : évolution convergente
 
+Le 23 juin 2026 — donc pendant que cette PR se construisait — les créateurs de Crossplane ont publié [**Modelplane**](https://github.com/modelplaneai/modelplane) : un plan de contrôle open-source pour l'inférence, qui traite les **modèles**, et non les clusters, comme l'objet que l'on gère. Un `ModelService` déclare le service rendu, un `ModelEndpoint` déclare la manière dont on l'atteint — et l'endpoint est **retenu tant que le workload n'est pas prêt à répondre**.
+
+<!-- TODO-verif: confirmer les noms d'API Modelplane (ModelService/ModelEndpoint) sur le dépôt avant publication -->
+
+Autant le dire franchement : c'est la thèse de cet article, écrite par d'autres. Le découpage entre ce que l'équipe plateforme possède et ce que l'équipe ML déclare, le refus de publier une route vers un backend qui n'a pas encore chargé ses poids — tout y est. Quand les gens qui ont construit Crossplane arrivent à la même forme, ce n'est pas une coïncidence : c'est que le problème, lui, a une forme.
+
+Sur la chronologie, coupons court : leur billet est postérieur à la v0.6.0 de cette plateforme (9 mai 2026), et je n'en tire rien du tout. Ce n'est pas une course, personne n'a copié personne — c'est une **évolution convergente**, deux équipes qui butent sur le même mur et en sortent avec le même plan. Ce que leurs docs de design ont réellement servi ici, c'est autre chose : une **grille de revue comparative**. Des questions posées par d'autres, à confronter aux choix déjà faits.
+
+### Eux vont large, ici on va profond
+
+La différence n'est pas de qualité, elle est de **périmètre** — et c'est ce qui rend la comparaison lisible.
+
+| | Modelplane | `InferenceService` (ici) |
+|---|---|---|
+| **Unité gérée** | la **flotte** : multi-cluster, multi-cloud, GPU hétérogènes | **un seul cluster** |
+| **Placement** | un scheduler choisit où poser chaque réplica | Karpenter, dans le cluster |
+| **Moteur d'inférence** | agnostique (vLLM, SGLang, topologies de parallélisme arbitraires) | **couplé à vLLM**, avec une échappatoire |
+| **Maturité** | v0.1, API annoncée comme instable | v0.8.0, en GitOps sur un cluster réel |
+
+Le problème qu'ils résolvent — placer un modèle sur le bon GPU, dans le bon cluster, chez le bon fournisseur — **je ne l'ai tout simplement pas**. Cette plateforme est une référence mono-cluster ; prétendre qu'elle adresse la flotte serait du bruit.
+
+En échange, elle va plus profond sur le seul cluster qu'elle connaît. Trois choses y sont livrées que leur v0.1 n'adresse pas à ce jour : le **canary pondéré implémenté**, et pas seulement spécifié — leur design décrit des endpoints pondérés, cet article montre le trafic effectivement splitté, validé à l'admission et couvert par des tests ; le **durcissement production comme défaut**, pas comme remarque de fin — zero-trust Cilium, PSS restricted, secrets, autoscaling sur des signaux de saturation précoces ; et le **GitOps de bout en bout**, où la claim est la seule chose qu'un utilisateur écrit.
+
+Et surtout, leurs propres docs le disent : Modelplane **compose** les projets de niveau cluster plutôt que de les remplacer. Une stack de la forme de celle décrite ici est exactement ce qui vivrait **en dessous** de la leur. Ce ne sont pas deux réponses concurrentes, ce sont deux étages.
+
+### Ce que leur revue a changé, ici
+
+C'est le point le plus intéressant, et le plus honnête : leur design a **modifié le code de cette PR**, et pas à la marge. Ce qu'il apporte tient en une discipline — la **forward-compatibilité** : concevoir un champ non pour le besoin du jour, mais pour que le besoin du mois prochain n'impose pas de casser l'API.
+
+* **Des arrays plutôt que des objets.** Le champ `gateway.canaries` de la section canary est un array **dès le premier jour**, alors qu'une seule entrée suffisait au besoin. Passer d'un objet à un array plus tard est un breaking change ; l'inverse est gratuit.
+* **Aucun nouveau champ requis.** Toute claim v0.6.0 s'applique telle quelle en v0.8.0. `gateway`, `canaries`, `engineArgs`, `endpointPicker` : tout est optionnel, et chaque défaut préserve le comportement d'avant.
+* **Des flags fournis par l'utilisateur plutôt qu'injectés.** L'échappatoire `engineArgs` existe parce que cette revue a rendu évident qu'aucune API de plateforme ne rattrapera jamais le rythme d'un moteur d'inférence. Le choix n'est pas *modéliser ou interdire*, c'est *encadrer ou se faire contourner*.
+
+Reste le caveat qui garde la comparaison honnête, et il joue contre moi : **ils sont engine-agnostic, je ne le suis pas.** La composition décrite ici parle vLLM, produit des flags vLLM, scale sur des métriques vLLM. C'est un choix de périmètre, pas un oubli — et c'est précisément ce qui rend possibles les signaux d'autoscaling curés et la denylist des seize flags réservés. On ne peut pas savoir que `--max-num-seqs` est le dénominateur d'un trigger KEDA **et** être agnostique au moteur qui l'expose. Le couplage est le prix de la profondeur ; l'échappatoire est là pour qu'il ne devienne pas une prison.
+
+---
+
 ## :thought_balloon: Dernières remarques
 
+Cette PR ne rend pas la plateforme plus puissante — un pod vLLM sur un GPU faisait déjà tourner un modèle en partie 3. Elle rend l'abstraction **honnête** : ce que la claim déclare est enfin ce que le cluster fait. Et le chemin pour y arriver a produit quatre leçons qui n'ont, au fond, rien à voir avec les LLM.
+
+* **Si deux fichiers décrivent la même chose, ils divergeront.** Ce n'est pas un problème de discipline, c'est un problème de temps : la dérive est une fonction du nombre de jours, pas du sérieux de l'équipe. La seule issue est structurelle — la composition doit **posséder les deux**, ou il n'y a plus qu'un fichier.
+* **Une route qui apparaît trop tôt envoie du trafic dans le vide ; une route qui disparaît trop vite fait du flapping.** Les deux erreurs sont symétriques, elles ne coûtent pas le même prix. Portail à la création, latch ensuite.
+* **Une API sans échappatoire finit contournée ; une échappatoire sans garde-fous casse les invariants.** Entre les deux : une **denylist explicite**, appliquée en **un seul** endroit. Deux endroits, et on vient de recréer le premier problème.
+* **Si `kubectl get` ne dit pas ce que la ressource fait vraiment, l'abstraction ment.** Un statut correct rangé là où personne ne le lit n'est pas de la découvrabilité.
+
+Ce que je retiens surtout, c'est le déplacement qui les relie toutes les quatre : **l'unité de déploiement n'est plus « un pod qui sert un modèle », c'est « un modèle, avec sa politique de trafic, sa stratégie de rollout et sa découvrabilité »**. Tant qu'une abstraction ne modélise que le pod, tout le reste — la route, le split, les noms servis — retombe sur un humain, dans un fichier à côté, à la main.
+
+### Et après ?
+
+Le chaînon vraiment manquant, c'est le premier de cette liste : **fine-tuner mon propre adapter**. Les deux LoRA de cet article viennent de HuggingFace, entraînés par d'autres ; le canary sait donc exposer progressivement un fine-tune au trafic réel, mais il n'a encore jamais servi à valider *le mien*. C'est là que la boucle se ferme — et c'est un autre métier, que je n'ai pas encore fait.
+
+* **`s3://` en chargement direct et le résolveur LoRA** — les deux capacités descopées de cette PR, qui demandent vLLM v0.9.0. De quoi supprimer le dernier détour par le PVC.
+* **Les traces OTLP vers VictoriaTraces** — case volontairement décochée aujourd'hui, à cocher le jour où la compatibilité du chemin d'ingestion sera vérifiée, pas avant.
+* **Les trois modèles restants**, à basculer sous routage possédé par la composition — et, dans le même mouvement, la suppression définitive de `route.yaml`. C'est ce commit-là, et pas celui de cette PR, qui tuera pour de bon la double comptabilité.
+
+{{% notice note "Où en est la validation, exactement" %}}
+Autant être précis sur ce qui est **prouvé** au moment où j'écris ces lignes :
+
+* `kcl test` : **44/44 PASS**, dont le lockstep XRD ↔ composition vérifié par mutation.
+* `./scripts/validate-kcl-compositions.sh` : **exit 0**.
+* `crossplane render` puis Polaris, contre le **tag réel** de la composition (`0.8.0-pr1559`) : les ressources rendues sont celles décrites ici, et elles passent le durcissement.
+
+Et ce qui **attend encore le passage e2e sur le cluster** : le split de trafic réellement observé, l'attribution `gen_ai` du canary, la sortie de la colonne `SERVED MODELS`, et le gain de cold-start du streamer. Tant que ces mesures ne sont pas faites, elles ne sont pas dans cet article — ni en chiffres, ni en captures d'écran.
+{{% /notice %}}
+
+---
+
 ## :bookmark: Références
+
+### Le code
+
+- [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) — la plateforme complète
+- [PR #1559](https://github.com/Smana/cloud-native-ref/pull/1559) — la composition `InferenceService` v0.6.0 → **v0.8.0**
+- [`docs/specs/`](https://github.com/Smana/cloud-native-ref/tree/main/docs/specs) — les specs de cette PR : **002** (routage possédé + canary), **003** (`engineArgs` et `servedModels`), **004** (InferencePool + Endpoint Picker), **005** (cold-start / Model Streamer), **006** (observabilité `gen_ai`)
+
+### Composants techniques
+
+- [Envoy AI Gateway](https://aigateway.envoyproxy.io/) — la porte d'entrée compatible OpenAI, et ses [métriques `gen_ai`](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/)
+- [Gateway API Inference Extension](https://github.com/kubernetes-sigs/gateway-api-inference-extension) — `InferencePool` et Endpoint Picker
+- [Run:ai Model Streamer](https://github.com/run-ai/runai-model-streamer) — chargement concurrent des poids vers la VRAM
+- [KEDA](https://keda.sh/) — autoscaling sur métriques vLLM
+- [Crossplane](https://www.crossplane.io/) — le moteur de composition
+- [KCL](https://www.kcl-lang.io/) — le langage dans lequel la composition est écrite
+
+### Évolution convergente
+
+- [Modelplane](https://github.com/modelplaneai/modelplane) — le plan de contrôle d'inférence des créateurs de Crossplane, à l'échelle de la flotte
+
+### Articles précédents de la série
+
+- [Agentic Coding : concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/) — Partie 1
+- [Quelques mois avec Claude Code : tips et workflows](/fr/post/series/agentic_ai/ai-coding-tips/) — Partie 2
+- [Self-hosted LLM stack : poser les fondations](/fr/post/series/agentic_ai/llm-self-hosted-stack/) — Partie 3
