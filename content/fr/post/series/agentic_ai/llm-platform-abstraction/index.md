@@ -174,11 +174,28 @@ Reste que la route appartient désormais à la claim, et c'est là que ça devie
 
 ## :dna: LoRA en deux minutes
 
-La section précédente a lâché « adapters LoRA » en une ligne. Comme tout ce qui suit repose dessus, il faut deux minutes pour dire précisément ce que c'est — et surtout ce que ça n'est **pas**.
+La section précédente a lâché « adapters LoRA » en une ligne. Tout ce qui suit repose dessus, alors autant prendre deux minutes — pour dire ce que c'est, mais surtout **à quoi ça sert**.
 
 Un adapter **LoRA** (_Low-Rank Adaptation_) n'est pas un modèle. C'est un **delta de poids de faible rang** : plutôt que de réentraîner les matrices du modèle de base, on apprend une paire de petites matrices dont le produit vient s'ajouter à celles-ci. Le « faible rang » est tout le levier — sur la plateforme, il est fixé à **64** — et il se lit directement sur la balance : un adapter se compte en **dizaines de Mo** (un ordre de grandeur, pas une mesure faite ici), contre les ~15 Go de poids du modèle de base.
 
-De cette différence de nature découle la seule propriété qui compte pour la suite : **vLLM charge le modèle de base une fois, puis applique les adapters par-dessus, dans le même processus, sur le même GPU** (`--enable-lora`, `--lora-modules`). Servir trois « modèles » — la base et ses deux fine-tunes — ne coûte donc pas trois GPU. C'est un pod, un GPU, et **trois noms auxquels il répond**.
+### Ce que ça évite : un second modèle complet
+
+Ce que LoRA résout se comprend mieux par ce qu'il faudrait faire sans lui. Spécialiser un modèle — le rendre meilleur sur le SQL, sur le code sécurisé, sur le jargon maison — c'est le **fine-tuner** : reprendre l'entraînement sur un jeu de données ciblé. Un fine-tuning classique réécrit les poids, et ce qu'on obtient au bout est donc… **un second modèle complet**. Un second jeu de ~15 Go à stocker, à charger, à servir : un second pod, un second GPU, un second nœud sur la facture. Et l'addition se répète à chaque spécialisation — deux fine-tunes, trois GPU.
+
+LoRA casse cette proportionnalité. Le fine-tune ne remplace pas les poids de base, il **s'ajoute** à eux : quelques dizaines de Mo posés par-dessus les ~15 Go que la plateforme sert déjà. Et comme c'est un delta, rien n'empêche d'en poser plusieurs, sur la même base, en même temps.
+
+C'est vLLM qui encaisse cette propriété, et c'est là que tout se joue : **il charge le modèle de base une fois, puis applique les adapters par-dessus, dans le même processus, sur le même GPU** (`--enable-lora`, `--lora-modules`). Servir trois « modèles » — la base et ses deux fine-tunes — ne coûte donc pas trois GPU. C'est **un pod, un GPU, et trois noms auxquels il répond**. Retenez cette phrase : c'est d'elle, et de nulle part ailleurs, que vient le « zéro GPU » de la section suivante.
+
+### Quand on sort un adapter — et quand on ne le fait pas
+
+Le cas d'usage a une forme reconnaissable : **le modèle de base est presque bon, et on veut l'infléchir, pas le remplacer.** Les deux adapters de cette plateforme en sont l'illustration — l'un spécialisé en génération SQL, l'autre en code sécurisé — mais la famille est plus large :
+
+* **Un vocabulaire de domaine** — les termes, les schémas et les usages d'un métier qu'un modèle généraliste connaît mal.
+* **Un style de code maison** — les patterns, la structure de projet et les bibliothèques qu'une équipe utilise réellement.
+* **Des conventions internes** — le format des commits, les règles de nommage, tout ce qu'aucune documentation publique ne contient.
+* **Un ton** — la voix d'un support client, le registre d'une documentation.
+
+Le contre-exemple compte tout autant : **LoRA n'apprend pas à un modèle une capacité qui lui manque fondamentalement.** Quelques dizaines de Mo de delta infléchissent un comportement, elles ne créent pas une compétence absente des poids de base. Un modèle qui ne sait pas raisonner sur du code ne l'apprendra pas par adapter — pour ça, on change de modèle de base, et c'est `model.repository` qui en parle, pas `loraAdapters`.
 
 Deux adapters sont déclarés sur `xplane-qwen-coder`, tous deux posés sur exactement le même modèle de base (`Qwen/Qwen2.5-Coder-7B-Instruct`) :
 
@@ -471,42 +488,37 @@ Deux capacités restent **descopées** : le chargement `s3://` direct et le rés
 
 <!-- TODO-e2e: cold-start mesuré avec et sans le streamer -->
 
-## :telescope: Modelplane : évolution convergente
+## :telescope: Modelplane : deux étages, pas deux camps
 
-Le 23 juin 2026 — donc pendant que cette PR se construisait — les créateurs de Crossplane ont publié [**Modelplane**](https://github.com/modelplaneai/modelplane) : un plan de contrôle open-source pour l'inférence, qui traite les **modèles**, et non les clusters, comme l'objet que l'on gère. Leur API porte la même séparation que celle-ci défend : côté équipe plateforme, `InferenceCluster` et `InferenceClass` déclarent la capacité disponible ; côté équipe ML, `ModelDeployment` et `ModelService` déclarent le modèle à faire tourner et le service qui l'expose ; le tout est servi par une `InferenceGateway` commune aux deux.
+Le 23 juin 2026 — donc pendant que cette PR se construisait — les créateurs de Crossplane ont publié [**Modelplane**](https://github.com/modelplaneai/modelplane) : un plan de contrôle open-source pour l'inférence, à l'échelle de la **flotte**. Le mérite leur revient d'avoir mis le bon objet au centre : ce qu'on gère, ce sont des **modèles**, pas des clusters. Leur API porte d'ailleurs la même séparation des rôles que celle défendue ici — côté équipe plateforme, `InferenceCluster` et `InferenceClass` déclarent la capacité disponible ; côté équipe ML, `ModelDeployment` et `ModelService` déclarent le modèle à faire tourner et le service qui l'expose ; le tout est servi par une `InferenceGateway` commune aux deux.
 
-Autant le dire franchement : c'est la thèse de cet article, écrite par d'autres. Le découpage entre ce que l'équipe plateforme possède et ce que l'équipe ML déclare — `InferenceCluster`/`InferenceClass` d'un côté, `ModelDeployment`/`ModelService` de l'autre — est exactement celui que cette plateforme applique entre la composition et la claim. Quand les gens qui ont construit Crossplane arrivent à la même forme, ce n'est pas une coïncidence : c'est que le problème, lui, a une forme.
+Quand les gens qui ont construit Crossplane arrivent à la même forme, ce n'est pas une coïncidence : c'est que le problème, lui, a une forme. Sur la chronologie, coupons court — leur billet est postérieur à la v0.6.0 de cette plateforme (9 mai 2026), et je n'en tire rien du tout. Personne n'a copié personne : c'est une **évolution convergente**, deux équipes qui butent sur le même mur et en sortent avec le même plan. Et surtout, il n'y a **rien à départager** — ce ne sont pas deux réponses à la même question.
 
-Sur la chronologie, coupons court : leur billet est postérieur à la v0.6.0 de cette plateforme (9 mai 2026), et je n'en tire rien du tout. Ce n'est pas une course, personne n'a copié personne — c'est une **évolution convergente**, deux équipes qui butent sur le même mur et en sortent avec le même plan. Ce que leurs docs de design ont réellement servi ici, c'est autre chose : une **grille de revue comparative**. Des questions posées par d'autres, à confronter aux choix déjà faits.
+### Deux étages du même bâtiment
 
-### Eux vont large, ici on va profond
+Modelplane opère **au-dessus** du cluster : provisionner des clusters GPU chez plusieurs fournisseurs, placer un modèle sur du matériel hétérogène, mettre une seule gateway devant l'ensemble. Ce que décrit cet article opère **à l'intérieur** d'un cluster. Les deux couches s'empilent ; elles ne se disputent pas le même terrain.
 
-La différence n'est pas de qualité, elle est de **périmètre** — et c'est ce qui rend la comparaison lisible.
-
-| | Modelplane | `InferenceService` (ici) |
+| | **Au-dessus du cluster** — Modelplane | **Dans le cluster** — `InferenceService` |
 |---|---|---|
-| **Unité gérée** | la **flotte** : multi-cluster, multi-cloud, GPU hétérogènes | **un seul cluster** |
-| **Placement** | un scheduler choisit où poser chaque réplica | Karpenter, dans le cluster |
-| **Moteur d'inférence** | agnostique (vLLM, SGLang, topologies de parallélisme arbitraires) | **couplé à vLLM**, avec une configuration avancée encadrée |
-| **Maturité** | v0.1, API annoncée comme instable | v0.8.0, rendue et validée contre le tag réel `0.8.0-pr1559` — le passage e2e sur le cluster reste à faire |
+| **La question traitée** | *où* poser ce modèle : quel cluster, quel fournisseur, quel GPU ? | *comment* ce cluster le sert : ses adapters, sa route, son trafic |
+| **L'objet géré** | la flotte : multi-cluster, multi-cloud, GPU hétérogènes | un cluster : la claim et les ressources qu'elle produit |
+| **Le placement** | un scheduler choisit où atterrit chaque réplica | Karpenter, à l'intérieur du cluster |
 
-Le problème qu'ils résolvent — placer un modèle sur le bon GPU, dans le bon cluster, chez le bon fournisseur — **je ne l'ai tout simplement pas**. Cette plateforme est une référence mono-cluster ; prétendre qu'elle adresse la flotte serait du bruit.
+Leurs propres docs le disent sans détour : Modelplane **compose** les projets de niveau cluster plutôt que de les remplacer. Une stack de la forme de celle décrite ici est très exactement ce qui vivrait **en dessous** de la leur. Le problème qu'ils résolvent — placer un modèle sur le bon GPU, dans le bon cluster, chez le bon fournisseur — **je ne l'ai tout simplement pas** : cette plateforme est une référence mono-cluster, et prétendre qu'elle adresse la flotte serait du bruit.
 
-En échange, elle va plus profond sur le seul cluster qu'elle connaît. Trois choses y sont livrées : le **canary pondéré** — implémenté, validé à l'admission, couvert par les tests de la composition (`kcl test` : 44/44), et à coût GPU nul par construction ; le **durcissement production comme défaut**, pas comme remarque de fin — zero-trust Cilium, **PSS restricted** (_Pod Security Standards_, le profil le plus strict de Kubernetes), secrets, autoscaling sur des signaux de saturation précoces de vLLM ; et le **GitOps de bout en bout** — la claim reste la seule chose qu'un utilisateur écrit, tout le reste est rendu par la composition et porté par Flux.
+La contribution de cet article est donc d'un autre ordre : **creuser un seul cluster.** Le **canary LoRA pondéré**, à coût GPU nul par construction, validé à l'admission et couvert par les tests de la composition (`kcl test` : 44/44). Les **signaux d'autoscaling curés**, pris sur les métriques de saturation les plus précoces de vLLM. Et le **durcissement comme plancher**, pas comme remarque de fin : zero-trust Cilium, **PSS restricted** (_Pod Security Standards_, le profil le plus strict de Kubernetes), secrets, et un GitOps de bout en bout où la claim reste la seule chose qu'un utilisateur écrit.
 
-Une réserve, et elle vaut pour les trois : ce qui est prouvé aujourd'hui, c'est le **rendu** — la composition produit bien ces ressources, contre le tag réel `0.8.0-pr1559`. Le split observé sur du trafic vivant, lui, attend encore le passage e2e sur le cluster.
-
-Et surtout, leurs propres docs le disent : Modelplane **compose** les projets de niveau cluster plutôt que de les remplacer. Une stack de la forme de celle décrite ici est exactement ce qui vivrait **en dessous** de la leur. Ce ne sont pas deux réponses concurrentes, ce sont deux étages.
+Une réserve honnête, et elle vaut pour les trois : ce qui est prouvé aujourd'hui, c'est le **rendu** — la composition produit bien ces ressources, contre le tag réel `0.8.0-pr1559`. Le split observé sur du trafic vivant, lui, attend encore le passage e2e sur le cluster.
 
 ### Ce que leur revue a changé, ici
 
-C'est le point le plus intéressant, et le plus honnête : leur design a **modifié le code de cette PR**, et pas à la marge. Ce qu'il apporte tient en une discipline — la **forward-compatibilité** : concevoir un champ non pour le besoin du jour, mais pour que le besoin du mois prochain n'impose pas de casser l'API.
+Ce que leurs docs de design ont réellement servi ici, c'est une **grille de revue** : des questions posées par d'autres, à confronter aux choix déjà faits. Et c'est le point le plus intéressant — cette lecture a **modifié le code de cette PR**, et pas à la marge. Ce qu'elle apporte tient en une discipline : la **forward-compatibilité**, c'est-à-dire concevoir un champ non pour le besoin du jour, mais pour que le besoin du mois prochain n'impose pas de casser l'API.
 
 * **Des arrays plutôt que des objets.** Le champ `gateway.canaries` de la section canary est un array **dès le premier jour**, alors qu'une seule entrée suffisait au besoin. Passer d'un objet à un array plus tard est un breaking change ; l'inverse est gratuit.
 * **Aucun nouveau champ requis.** Toute claim v0.6.0 s'applique telle quelle en v0.8.0. `gateway`, `canaries`, `engineArgs`, `endpointPicker` : tout est optionnel, et chaque défaut préserve le comportement d'avant.
 * **Des flags fournis par l'utilisateur plutôt qu'injectés.** Le champ `engineArgs` existe parce que cette revue a rendu évident qu'aucune API de plateforme ne rattrapera jamais le rythme d'un moteur d'inférence. Le choix n'est pas *modéliser ou interdire*, c'est *encadrer ou se faire contourner*.
 
-Reste le caveat qui garde la comparaison honnête, et il joue contre moi : **ils sont engine-agnostic, je ne le suis pas.** La composition décrite ici parle vLLM, produit des flags vLLM, scale sur des métriques vLLM. C'est un choix de périmètre, pas un oubli — et c'est précisément ce qui rend possibles les signaux d'autoscaling curés et la denylist des flags réservés. On ne peut pas savoir que `--max-num-seqs` est le dénominateur d'un trigger KEDA **et** être agnostique au moteur qui l'expose. Le couplage est le prix de la profondeur ; la configuration avancée est là pour qu'il ne devienne pas une prison.
+Reste le caveat qui garde l'exercice honnête, et il joue contre moi : **ils sont engine-agnostic, je ne le suis pas.** Modelplane parle vLLM, SGLang, TensorRT-LLM, TGI ou llama.cpp, sur NVIDIA, AMD, TPU, Trainium ou Gaudi. La composition décrite ici parle vLLM, produit des flags vLLM, scale sur des métriques vLLM. C'est un choix de périmètre, pas un oubli — et c'est précisément ce qui rend possibles les signaux d'autoscaling curés et la denylist des flags réservés. On ne peut pas savoir que `--max-num-seqs` est le dénominateur d'un trigger KEDA **et** être agnostique au moteur qui l'expose. Le couplage est le prix de la profondeur ; la configuration avancée est là pour qu'il ne devienne pas une prison.
 
 ---
 
