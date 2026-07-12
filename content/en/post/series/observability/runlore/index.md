@@ -127,6 +127,14 @@ RunLore takes a **deliberate stance**: keep a human at the center of the decisio
 
 And the agent never acts alone. The posture is _read-only → suggest → approve_: it reads, correlates, recommends; a human validates.
 
+{{% notice warning "Watch out for \"PR fatigue\" ⚠️" %}}
+The objection is fair: if nobody had time to document incidents yesterday, who will have the energy to review PRs the day after a crisis? The risk is real — either the PRs pile up and rot, or people hit "Merge" without reading, and the memory gets corrupted.
+
+Two answers. First, **the volume is bounded by design**: an incident that's already known produces **no PR at all** (it is served from the catalog), a duplicate is dropped, and an incident that already has an open PR gets a comment on it rather than a new one. Only a **new, verified, reliable enough** finding, with evidence and an action to back it, becomes a PR.
+
+Second, **don't review those PRs by hand as if they were prose**. The efficient move is to use an agent during the diagnosis phase itself: it cross-checks RunLore's proposal against what you understood while resolving the incident, enriches it with your context, and lets you work on several fronts at once. The human keeps the **decision** — not the line-by-line reading chore.
+{{% /notice %}}
+
 Keeping a human in the loop, on what gets done as much as on what gets learned, isn't a self-imposed limit. It's what makes the agent usable at all.
 
 ## 👀 Here's what it looks like
