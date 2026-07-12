@@ -84,7 +84,7 @@ Deux fichiers qu'il faut penser à garder synchronisés, donc deux dérives poss
 
 La bascule d'un modèle est **binaire**. On change `repository` et `revision`, Flux réconcilie, et 100 % du trafic part sur les nouveaux poids. Aucun palier, aucune fraction, aucun retour arrière progressif.
 
-C'est d'autant plus dommage que la composition savait déjà charger des **adapters LoRA** (_Low-Rank Adaptation_ : un fine-tune léger, quelques dizaines de Mo, chargé **par-dessus** les poids du modèle de base, dans le même pod vLLM). La partie 3 n'en a pas dit un mot — et pour cause : un adapter comme `xplane-qwen-coder-sql-dpo` ou `xplane-qwen-coder-securecode` n'était joignable que par un client qui le **nommait explicitement**. Impossible de déplacer 10 % du trafic du modèle de base vers son fine-tune pour le valider sur du trafic réel. Un fine-tune que personne ne nomme est un fine-tune que personne n'évalue.
+C'est d'autant plus dommage que la composition savait déjà charger des **adapters LoRA** (_Low-Rank Adaptation_). La partie 3 n'en a pas dit un mot — et pour cause : un adapter comme `xplane-qwen-coder-sql-dpo` ou `xplane-qwen-coder-securecode` n'était joignable que par un client qui le **nommait explicitement**. Impossible de déplacer 10 % du trafic du modèle de base vers son fine-tune pour le valider sur du trafic réel. Un fine-tune que personne ne nomme est un fine-tune que personne n'évalue.
 
 ### 3. Aucune échappatoire
 
@@ -174,7 +174,7 @@ Reste que la route appartient désormais à la claim, et c'est là que ça devie
 
 La section précédente a lâché « adapters LoRA » en une ligne. Comme tout ce qui suit repose dessus, il faut deux minutes pour dire précisément ce que c'est — et surtout ce que ça n'est **pas**.
 
-Un adapter **LoRA** (_Low-Rank Adaptation_) n'est pas un modèle. C'est un **delta de poids de faible rang** : plutôt que de réentraîner les matrices du modèle de base, on apprend une paire de petites matrices dont le produit vient s'ajouter à celles-ci. Le « faible rang » est tout le levier — sur la plateforme, il est fixé à **64** — et il se lit directement sur la balance : quelques dizaines de Mo pour l'adapter, contre les ~15 Go de poids du modèle de base.
+Un adapter **LoRA** (_Low-Rank Adaptation_) n'est pas un modèle. C'est un **delta de poids de faible rang** : plutôt que de réentraîner les matrices du modèle de base, on apprend une paire de petites matrices dont le produit vient s'ajouter à celles-ci. Le « faible rang » est tout le levier — sur la plateforme, il est fixé à **64** — et il se lit directement sur la balance : un adapter se compte en **dizaines de Mo** (un ordre de grandeur, pas une mesure faite ici), contre les ~15 Go de poids du modèle de base.
 
 De cette différence de nature découle la seule propriété qui compte pour la suite : **vLLM charge le modèle de base une fois, puis applique les adapters par-dessus, dans le même processus, sur le même GPU** (`--enable-lora`, `--lora-modules`). Servir trois « modèles » — la base et ses deux fine-tunes — ne coûte donc pas trois GPU. C'est un pod, un GPU, et **trois noms auxquels il répond**.
 
@@ -209,7 +209,7 @@ Voilà ce que ça coûte dans la claim :
 +        weightPercent: 10
 ```
 
-Deux lignes utiles. Flux réconcilie, et une requête sur dix adressée à `xplane-qwen-coder` est désormais servie par le fine-tune.
+Deux lignes utiles. Flux réconcilie, et une requête sur dix adressée à `xplane-qwen-coder` est routée vers le fine-tune plutôt que vers les poids de base.
 
 ### Sous le capot : un split qui n'envoie rien ailleurs
 
@@ -224,7 +224,7 @@ Relisez la dernière colonne. **Les deux `backendRef` pointent le même `Backend
 
 {{< img src="canary-split.png" alt="Split canary : un pod, un GPU, le modèle de base et deux adapters LoRA" width="1200" >}}
 
-C'est là que se joue le « zéro GPU » du titre. Un canary applicatif classique coûte de la capacité : on déploie une v2 à côté de la v1, et pendant toute la durée de l'expérience on paie deux jeux de réplicas. Transposé ici, ce serait un **second pod vLLM**, donc un second GPU, donc un nœud de plus provisionné par Karpenter — pour évaluer un delta de quelques dizaines de Mo. Le canary LoRA n'ajoute ni réplica, ni nœud, ni ligne de facture : le split est une décision de *routage*, prise en amont, sur une flotte qui n'a pas bougé.
+C'est là que se joue le « zéro GPU » du titre. Un canary applicatif classique coûte de la capacité : on déploie une v2 à côté de la v1, et pendant toute la durée de l'expérience on paie deux jeux de réplicas. Transposé ici, ce serait un **second pod vLLM**, donc un second GPU, donc un nœud de plus provisionné par Karpenter — pour évaluer un delta de poids qui se compte en dizaines de Mo. Le canary LoRA n'ajoute ni réplica, ni nœud, ni ligne de facture : le split est une décision de *routage*, prise en amont, sur une flotte qui n'a pas bougé.
 
 <!-- TODO-e2e: split réellement observé via vllm:lora_requests_info (SC-002 : entre 2% et 25% sur ≥50 requêtes, tolérance binomiale) -->
 
@@ -241,7 +241,7 @@ Autrement dit, le canary répond à « ce fine-tune tient-il face au trafic rée
 
 ### Ce que l'admission refuse
 
-Un pourcentage de trafic est exactement le genre de champ où une faute de frappe se paie en production. Les garde-fous sont donc **à l'admission**, en CEL dans l'XRD : `kubectl apply` échoue, et la composition ne se déclenche même pas.
+Un pourcentage de trafic est exactement le genre de champ où une faute de frappe se paie en production. Les garde-fous sont donc **à l'admission**, écrits en **CEL** (_Common Expression Language_ : le langage d'expressions que l'API server évalue lui-même, au moment de l'`apply`) dans l'**XRD** (_Composite Resource Definition_ : le schéma de l'API que la composition expose à ses utilisateurs). `kubectl apply` échoue, et la composition ne se déclenche même pas.
 
 * Des `canaries` **sans `gateway.enabled: true`** — une pondération sans route à pondérer.
 * Un `canaries[].adapter` **absent de `loraAdapters[].name`** — on ne route pas vers un adapter que le pod ne charge pas.
@@ -304,6 +304,8 @@ Dix-sept règles CEL portent cette vérification : une règle de forme (toute en
 
 *(Extrait — les seize flags sont listés dans le README de la composition.)*
 
+Seize **dans cette version**, et le nombre n'a rien de sacré : la denylist grandit avec la plateforme. Chaque nouveau champ curé réserve le flag qu'il pilote — ceux du Run:ai Model Streamer, plus bas dans cet article, la rejoignent. C'est précisément ce qui rend la question suivante décisive : une liste qui bouge est une liste qui ne doit vivre qu'à **un seul endroit**.
+
 Prenez `--max-num-seqs` : c'est le **dénominateur** du trigger KEDA vu en partie 3. Laissez un utilisateur le redéfinir, et l'autoscaler continue de calculer son taux de saturation contre une taille de batch qui n'existe plus. Rien ne casse, rien n'alerte : le scaling est simplement **faux**.
 
 Deux flags méritent un arrêt particulier, parce que **la composition ne les émet jamais** : `--port` et `--host`. Elle laisse le moteur prendre ses défauts — le port `8000`, l'écoute sur toutes les interfaces — et pourtant elle les réserve. Ces défauts ne sont pas des détails d'implémentation, ce sont **le contrat de serving** : le `targetPort` du `Service` vise 8000, les probes interrogent 8000, le FQDN du `Backend` rendu par la Gateway pointe 8000. Un `--port=9000` dans `engineArgs`, et les trois pointent dans le vide.
@@ -314,9 +316,9 @@ La leçon dépasse les LLM : **la denylist d'une échappatoire doit couvrir non 
 
 Reste la question qui décide de tout : **où vit la denylist ?** À **un seul endroit**, le CEL de l'XRD. La composition, elle, ne vérifie rien : elle appende les `engineArgs` verbatim et fait confiance à l'admission.
 
-La tentation de la « défense en profondeur » était pourtant là : refiltrer côté KCL, par acquit de conscience. Ç'aurait été recréer exactement le problème que la première moitié de cet article vient de supprimer — une liste de seize flags dans l'XRD, une autre dans la composition. **Deux fichiers à garder synchronisés, donc deux dérives possibles, et aucune ne fait de bruit.** Même forme de bug que `route.yaml` : autre fichier, même piège.
+La tentation de la « défense en profondeur » était pourtant là : refiltrer côté KCL, par acquit de conscience. Ç'aurait été recréer exactement le problème que la première moitié de cet article vient de supprimer — une liste de flags réservés dans l'XRD, une autre dans la composition. **Deux fichiers à garder synchronisés, donc deux dérives possibles, et aucune ne fait de bruit.** Même forme de bug que `route.yaml` : autre fichier, même piège.
 
-Mais « un seul endroit » est une promesse fragile : les seize flags réservés sont précisément ceux que la composition émet. Le jour où quelqu'un ajoute un argument géré au KCL sans l'ajouter à la denylist de l'XRD, le trou se rouvre — et personne ne le verra. Un test verrouille donc les deux ensembles l'un à l'autre : `test_engine_args_denylist_lockstep` lit les flags que la composition produit et vérifie que chacun figure bien dans la denylist.
+Mais « un seul endroit » est une promesse fragile, parce que la denylist épouse ce que la composition émet — et que ce que la composition émet grandit à chaque version. Le jour où quelqu'un ajoute un argument géré au KCL sans l'ajouter à la denylist de l'XRD, le trou se rouvre — et personne ne le verra. Un test verrouille donc les deux ensembles l'un à l'autre : `test_engine_args_denylist_lockstep` lit les flags que la composition produit et vérifie que chacun figure bien dans la denylist.
 
 {{% notice tip "Un test qui ne peut pas échouer ne prouve rien" %}}
 Un test de cohérence entre deux listes a une propriété désagréable : il passe au vert le jour où on l'écrit, et il passerait tout aussi bien s'il ne testait rien du tout. Une faute de frappe dans un nom de variable, une assertion qui compare une liste vide à une liste vide — et vous obtenez le pire des artefacts : un test qui **rassure**.
@@ -374,7 +376,7 @@ Et la leçon dépasse ce champ-là : **un statut que l'outil de tous les jours n
 
 Tout ce qui précède produit un split : 90 % du trafic sur les poids de base, 10 % sur le fine-tune. Reste la seule question qui justifiait de le faire — **est-ce que ces 10 % se comportent mieux, ou moins bien, que les 90 % restants ?** Sans réponse, on n'a pas déployé un canary : on a détourné du trafic utilisateur vers autre chose en croisant les doigts. **Un canary qu'on ne peut pas mesurer n'est pas un canary, c'est un pari.**
 
-La partie 3 a déjà présenté les métriques **`gen_ai.*`** de l'Envoy AI Gateway (v1.0) : le standard [OpenTelemetry Gen AI](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/), qui ne compte pas des requêtes HTTP mais le vocabulaire métier des LLM — tokens consommés, TTFT, latence par token de sortie. Il restait à les **brancher**.
+La partie 3 a déjà présenté les métriques **`gen_ai.*`** de l'Envoy AI Gateway (v1.0) : le standard [OpenTelemetry Gen AI](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/), qui ne compte pas des requêtes HTTP mais le vocabulaire métier des LLM — tokens consommés, **TTFT** (_time to first token_ : le délai entre la requête et le premier token de la réponse), latence par token de sortie. Il restait à les **brancher**.
 
 Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'**extproc** (_external processor_) : le sidecar auquel Envoy délègue le traitement spécifique aux LLM, seul sur le chemin de requête à voir à la fois le nom **demandé** et le nom **servi**. C'est là que le scrape se branche :
 
@@ -460,7 +462,7 @@ Il faut donc choisir, aujourd'hui. Un rejet net à l'`apply` vaut mieux qu'une c
 {{% notice tip "Au passage : le dernier maillon du cold-start" %}}
 La partie 3 avait réglé le gros du démarrage à froid avec un **PVC S3 Files**, évitant de retélécharger ~15 Go depuis HuggingFace. Restait un maillon : la lecture de ces poids depuis le volume vers la VRAM.
 
-Le **Run:ai Model Streamer** (`--load-format runai_streamer`) s'attaque à celui-là : selon la documentation du projet, il lit les poids de façon concurrente et les transfère vers le GPU au fil de la lecture, sans attendre qu'ils soient tous chargés en mémoire hôte. Embarqué dans l'image `vllm-openai` depuis la **v0.8.5**, il s'active par `model.streaming` sur le PVC déjà en place. Ses flags rejoignent la denylist `engineArgs`.
+Le **Run:ai Model Streamer** (`--load-format runai_streamer`) s'attaque à celui-là : selon la documentation du projet, il lit les poids de façon concurrente et les transfère vers le GPU au fil de la lecture, sans attendre qu'ils soient tous chargés en mémoire hôte. Embarqué dans l'image `vllm-openai` depuis la **v0.8.5**, il s'active par `model.streaming` sur le PVC déjà en place. Ses flags rejoignent la denylist `engineArgs` — la démonstration, en direct, que cette liste n'est pas figée à seize.
 
 Deux capacités restent **descopées** : le chargement `s3://` direct et le résolveur LoRA, qui demandent **vLLM v0.9.0**. Combien de secondes cela fait-il gagner ? Pas encore mesuré — je le dirai quand je l'aurai fait.
 {{% /notice %}}
@@ -484,11 +486,13 @@ La différence n'est pas de qualité, elle est de **périmètre** — et c'est c
 | **Unité gérée** | la **flotte** : multi-cluster, multi-cloud, GPU hétérogènes | **un seul cluster** |
 | **Placement** | un scheduler choisit où poser chaque réplica | Karpenter, dans le cluster |
 | **Moteur d'inférence** | agnostique (vLLM, SGLang, topologies de parallélisme arbitraires) | **couplé à vLLM**, avec une échappatoire |
-| **Maturité** | v0.1, API annoncée comme instable | v0.8.0, en GitOps sur un cluster réel |
+| **Maturité** | v0.1, API annoncée comme instable | v0.8.0, rendue et validée contre le tag réel `0.8.0-pr1559` — le passage e2e sur le cluster reste à faire |
 
 Le problème qu'ils résolvent — placer un modèle sur le bon GPU, dans le bon cluster, chez le bon fournisseur — **je ne l'ai tout simplement pas**. Cette plateforme est une référence mono-cluster ; prétendre qu'elle adresse la flotte serait du bruit.
 
-En échange, elle va plus profond sur le seul cluster qu'elle connaît. Trois choses y sont livrées ici : le **canary pondéré implémenté** — le trafic est effectivement splitté entre adapters LoRA, validé à l'admission, couvert par des tests, à coût GPU nul ; le **durcissement production comme défaut**, pas comme remarque de fin — zero-trust Cilium, PSS restricted, secrets, autoscaling sur des signaux de saturation précoces de vLLM ; et le **GitOps de bout en bout** — tout ce qui précède arrive par Flux depuis un commit git, la claim restant la seule chose qu'un utilisateur écrit.
+En échange, elle va plus profond sur le seul cluster qu'elle connaît. Trois choses y sont livrées : le **canary pondéré** — implémenté, validé à l'admission, couvert par les tests de la composition (`kcl test` : 44/44), et à coût GPU nul par construction ; le **durcissement production comme défaut**, pas comme remarque de fin — zero-trust Cilium, **PSS restricted** (_Pod Security Standards_, le profil le plus strict de Kubernetes), secrets, autoscaling sur des signaux de saturation précoces de vLLM ; et le **GitOps de bout en bout** — la claim reste la seule chose qu'un utilisateur écrit, tout le reste est rendu par la composition et porté par Flux.
+
+Une réserve, et elle vaut pour les trois : ce qui est prouvé aujourd'hui, c'est le **rendu** — la composition produit bien ces ressources, contre le tag réel `0.8.0-pr1559`. Le split observé sur du trafic vivant, lui, attend encore le passage e2e sur le cluster.
 
 Et surtout, leurs propres docs le disent : Modelplane **compose** les projets de niveau cluster plutôt que de les remplacer. Une stack de la forme de celle décrite ici est exactement ce qui vivrait **en dessous** de la leur. Ce ne sont pas deux réponses concurrentes, ce sont deux étages.
 
@@ -500,7 +504,7 @@ C'est le point le plus intéressant, et le plus honnête : leur design a **modif
 * **Aucun nouveau champ requis.** Toute claim v0.6.0 s'applique telle quelle en v0.8.0. `gateway`, `canaries`, `engineArgs`, `endpointPicker` : tout est optionnel, et chaque défaut préserve le comportement d'avant.
 * **Des flags fournis par l'utilisateur plutôt qu'injectés.** L'échappatoire `engineArgs` existe parce que cette revue a rendu évident qu'aucune API de plateforme ne rattrapera jamais le rythme d'un moteur d'inférence. Le choix n'est pas *modéliser ou interdire*, c'est *encadrer ou se faire contourner*.
 
-Reste le caveat qui garde la comparaison honnête, et il joue contre moi : **ils sont engine-agnostic, je ne le suis pas.** La composition décrite ici parle vLLM, produit des flags vLLM, scale sur des métriques vLLM. C'est un choix de périmètre, pas un oubli — et c'est précisément ce qui rend possibles les signaux d'autoscaling curés et la denylist des seize flags réservés. On ne peut pas savoir que `--max-num-seqs` est le dénominateur d'un trigger KEDA **et** être agnostique au moteur qui l'expose. Le couplage est le prix de la profondeur ; l'échappatoire est là pour qu'il ne devienne pas une prison.
+Reste le caveat qui garde la comparaison honnête, et il joue contre moi : **ils sont engine-agnostic, je ne le suis pas.** La composition décrite ici parle vLLM, produit des flags vLLM, scale sur des métriques vLLM. C'est un choix de périmètre, pas un oubli — et c'est précisément ce qui rend possibles les signaux d'autoscaling curés et la denylist des flags réservés. On ne peut pas savoir que `--max-num-seqs` est le dénominateur d'un trigger KEDA **et** être agnostique au moteur qui l'expose. Le couplage est le prix de la profondeur ; l'échappatoire est là pour qu'il ne devienne pas une prison.
 
 ---
 
@@ -508,12 +512,14 @@ Reste le caveat qui garde la comparaison honnête, et il joue contre moi : **ils
 
 Cette PR ne rend pas la plateforme plus puissante — un pod vLLM sur un GPU faisait déjà tourner un modèle en partie 3. Elle rend l'abstraction **honnête** : ce que la claim déclare est enfin ce que le cluster fait. Et le chemin pour y arriver a produit quatre leçons qui n'ont, au fond, rien à voir avec les LLM.
 
-* **Si deux fichiers décrivent la même chose, ils divergeront.** Ce n'est pas un problème de discipline, c'est un problème de temps : la dérive est une fonction du nombre de jours, pas du sérieux de l'équipe. La seule issue est structurelle — la composition doit **posséder les deux**, ou il n'y a plus qu'un fichier.
-* **Une route qui apparaît trop tôt envoie du trafic dans le vide ; une route qui disparaît trop vite fait du flapping.** Les deux erreurs sont symétriques, elles ne coûtent pas le même prix. Portail à la création, latch ensuite.
+* **Si deux fichiers décrivent la même chose, ils divergeront.** Ce n'est pas un problème de discipline, c'est un problème de temps : la dérive est une fonction du nombre de jours, pas du sérieux de l'équipe. La seule issue est structurelle — la composition doit **posséder les deux**, ou il n'y a plus qu'un fichier. Et posséder une ressource, c'est aussi décider **quand** elle existe : une route qui apparaît trop tôt envoie du trafic dans le vide, une route qui disparaît trop vite fait du flapping. Portail à la création, latch ensuite.
+* **Un rollout progressif ne coûte un GPU de plus que si l'abstraction confond le modèle et le pod.** La politique de trafic appartient au **modèle**, pas au réplica : dès qu'on la déclare au bon niveau, déplacer 10 % du trafic vers un fine-tune devient une décision de routage — pas une deuxième flotte à provisionner et à payer.
 * **Une API sans échappatoire finit contournée ; une échappatoire sans garde-fous casse les invariants.** Entre les deux : une **denylist explicite**, appliquée en **un seul** endroit. Deux endroits, et on vient de recréer le premier problème.
 * **Si `kubectl get` ne dit pas ce que la ressource fait vraiment, l'abstraction ment.** Un statut correct rangé là où personne ne le lit n'est pas de la découvrabilité.
 
 Ce que je retiens surtout, c'est le déplacement qui les relie toutes les quatre : **l'unité de déploiement n'est plus « un pod qui sert un modèle », c'est « un modèle, avec sa politique de trafic, sa stratégie de rollout et sa découvrabilité »**. Tant qu'une abstraction ne modélise que le pod, tout le reste — la route, le split, les noms servis — retombe sur un humain, dans un fichier à côté, à la main.
+
+Avec une réserve que cet article a lui-même établie, et qu'il serait malhonnête de taire : aujourd'hui, `gateway.endpointPicker` et `gateway.canaries` **s'excluent à l'admission**. Dans une même claim, on déclare donc la politique de trafic **ou** la stratégie de rollout — pas encore les deux. L'unité de déploiement est la bonne ; elle n'est pas encore complète.
 
 ### Et après ?
 
@@ -528,7 +534,7 @@ Autant être précis sur ce qui est **prouvé** au moment où j'écris ces ligne
 
 * `kcl test` : **44/44 PASS**, dont le lockstep XRD ↔ composition vérifié par mutation.
 * `./scripts/validate-kcl-compositions.sh` : **exit 0**.
-* `crossplane render` puis Polaris, contre le **tag réel** de la composition (`0.8.0-pr1559`) : les ressources rendues sont celles décrites ici, et elles passent le durcissement.
+* `crossplane render` puis **Polaris** (un linter qui audite des manifestes Kubernetes contre un jeu de bonnes pratiques de sécurité et de fiabilité), contre le **tag réel** de la composition (`0.8.0-pr1559`) : les ressources rendues sont celles décrites ici, et elles passent le durcissement.
 
 Et ce qui **attend encore le passage e2e sur le cluster** : le split de trafic réellement observé, l'attribution `gen_ai` du canary, la sortie de la colonne `SERVED MODELS`, et le gain de cold-start du streamer. Tant que ces mesures ne sont pas faites, elles ne sont pas dans cet article — ni en chiffres, ni en captures d'écran.
 {{% /notice %}}
@@ -541,7 +547,7 @@ Et ce qui **attend encore le passage e2e sur le cluster** : le split de trafic r
 
 - [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) — la plateforme complète
 - [PR #1559](https://github.com/Smana/cloud-native-ref/pull/1559) — la composition `InferenceService` v0.6.0 → **v0.8.0**
-- [`docs/specs/`](https://github.com/Smana/cloud-native-ref/tree/main/docs/specs) — les specs de cette PR : **002** (routage possédé + canary), **003** (`engineArgs` et `servedModels`), **004** (InferencePool + Endpoint Picker), **005** (cold-start / Model Streamer), **006** (observabilité `gen_ai`)
+- [`docs/specs/`](https://github.com/Smana/cloud-native-ref/pull/1559/files) — les specs de cette PR : **002** (routage possédé + canary), **003** (`engineArgs` et `servedModels`), **004** (InferencePool + Endpoint Picker), **005** (cold-start / Model Streamer), **006** (observabilité `gen_ai`). Elles arrivent **avec la PR** — elles ne sont pas encore sur `main`.
 
 ### Composants techniques
 
