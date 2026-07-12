@@ -394,17 +394,22 @@ Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'**extproc** (
 
 Les séries atterrissent dans la VictoriaMetrics qui collecte déjà les métriques vLLM, et se lisent dans le même Grafana. Aucun nouvel outil : la promesse de la partie 3, tenue par un objet de plus.
 
-### L'attribution canary vs base
+### L'attribution canary vs base : une question ouverte
 
-Ce qui rend l'attribution possible tient à une propriété déjà rencontrée : `modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter. Une requête tirée dans les 10 % n'atteint donc pas vLLM sous le nom `xplane-qwen-coder`, mais sous celui de `xplane-qwen-coder-sql-dpo` — et les métriques `gen_ai.*`, qui portent le modèle en label, séparent les deux populations sans qu'on ait rien à instrumenter. Le split de routage est **aussi**, et gratuitement, un split de mesure.
+Le routage repose sur une propriété déjà rencontrée : `modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter avant que la requête n'atteigne vLLM. Une requête tirée dans les 10 % n'est donc pas servie sous le nom `xplane-qwen-coder`, mais sous celui de `xplane-qwen-coder-sql-dpo`.
 
-Le dashboard Grafana **`llm-gateway`** ne fait qu'exploiter ça : les mêmes séries, découpées canary contre base, sur la même fenêtre de temps et le même trafic réel.
+Reste une question que la PR #1559 laisse **explicitement ouverte**, et que je préfère nommer plutôt que deviner : les métriques `gen_ai.*`, qui portent le modèle en label, attribuent-elles ce trafic au nom **de l'adapter surchargé** — celui que vLLM a réellement servi — ou au nom **du modèle de base** — celui que le client a demandé ? Rien, dans ce qui précède, ne permet de le déduire : seule une requête envoyée dans le canary, puis retrouvée (ou non) dans les séries sous le nom de l'adapter, le dira.
 
-* La **latence end-to-end** (`gen_ai.server.request.duration`) et le **TTFT** (`gen_ai.server.time_to_first_token`) : servir une requête à travers un adapter LoRA passe-t-il par le même chemin de coût que la servir sur les poids de base ? C'est exactement ce que ces deux courbes, côte à côte, permettent de trancher.
-* La **latence par token de sortie** (`gen_ai.server.time_per_output_token`), qui dit si le fine-tune génère au même rythme.
-* La **consommation de tokens** (`gen_ai.client.token.usage`) : un fine-tune plus bavard que sa base, à qualité égale, est un fine-tune plus cher.
-* Le **volume de requêtes** de chaque branche — accessoirement, la vérification que le split fait bien ce qu'il annonce.
+Ce n'est pas un détail cosmétique. Si l'attribution suit le nom surchargé, le split de routage est **aussi**, et gratuitement, un split de mesure : canary et base ont chacun leur série, sans rien à instrumenter. Si elle retombe sur le nom du modèle de base, canary et base se retrouvent mélangés dans la même série — et l'attribution que le dashboard promet de faire n'existe tout simplement pas.
 
+Le dashboard Grafana **`llm-gateway`** est construit sur le premier scénario : les mêmes séries, découpées canary contre base, sur la même fenêtre de temps et le même trafic réel. Voici ce qu'il donnerait à lire, si l'attribution se confirme :
+
+* La **latence end-to-end** (`gen_ai.server.request.duration`) et le **TTFT** (`gen_ai.server.time_to_first_token`) : servir une requête à travers un adapter LoRA passe-t-il par le même chemin de coût que la servir sur les poids de base ? Ce sont ces deux courbes, côte à côte, qui permettraient de le dire.
+* La **latence par token de sortie** (`gen_ai.server.time_per_output_token`), qui dirait si le fine-tune génère au même rythme.
+* La **consommation de tokens** (`gen_ai.client.token.usage`) : un fine-tune plus bavard que sa base, à qualité égale, serait un fine-tune plus cher.
+* Le **volume de requêtes** de chaque branche — accessoirement, de quoi vérifier que le split fait bien ce qu'il annonce.
+
+<!-- TODO-e2e: trancher si gen_ai.* attribue le trafic canary au nom de l'adapter surchargé (modelNameOverride) ou au nom du modèle de base — réponse à documenter dans le README de la composition (SPEC-002, question ouverte PR #1559) -->
 <!-- TODO-e2e: screenshot du dashboard Grafana llm-gateway avec l'attribution canary vs base -->
 
 ### Ce que ces courbes ne disent pas
