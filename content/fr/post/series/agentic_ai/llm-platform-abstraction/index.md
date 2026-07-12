@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
-title = "Self-hosted LLM stack : quand l'abstraction grandit"
+title = "Le modèle, pas le pod"
 date = "2026-07-12"
-summary = "Deux mois après avoir posé les fondations, l'abstraction `InferenceService` a révélé quatre manques : deux sources de vérité, aucune stratégie de rollout, aucune échappatoire, aucune découvrabilité. Voici comment on les a comblés — canary LoRA à coût GPU nul compris."
+summary = "Deux mois après avoir posé les fondations, l'abstraction `InferenceService` a révélé quatre manques : deux sources de vérité, aucune stratégie de rollout, aucune échappatoire, aucune découvrabilité. Comment une abstraction de plateforme mûrit — canary LoRA à coût GPU nul compris."
 featured = true
 codeMaxLines = 30
 usePageBundles = true
