@@ -485,11 +485,9 @@ Deux capacités restent **descopées** : le chargement `s3://` direct et le rés
 
 ## :telescope: Modelplane : évolution convergente
 
-Le 23 juin 2026 — donc pendant que cette PR se construisait — les créateurs de Crossplane ont publié [**Modelplane**](https://github.com/modelplaneai/modelplane) : un plan de contrôle open-source pour l'inférence, qui traite les **modèles**, et non les clusters, comme l'objet que l'on gère. Un `ModelService` déclare le service rendu, un `ModelEndpoint` déclare la manière dont on l'atteint — et l'endpoint est **retenu tant que le workload n'est pas prêt à répondre**.
+Le 23 juin 2026 — donc pendant que cette PR se construisait — les créateurs de Crossplane ont publié [**Modelplane**](https://github.com/modelplaneai/modelplane) : un plan de contrôle open-source pour l'inférence, qui traite les **modèles**, et non les clusters, comme l'objet que l'on gère. Leur API porte la même séparation que celle-ci défend : côté équipe plateforme, `InferenceCluster` et `InferenceClass` déclarent la capacité disponible ; côté équipe ML, `ModelDeployment` et `ModelService` déclarent le modèle à faire tourner et le service qui l'expose ; le tout est servi par une `InferenceGateway` commune aux deux.
 
-<!-- TODO-verif: confirmer les noms d'API Modelplane (ModelService/ModelEndpoint) sur le dépôt avant publication -->
-
-Autant le dire franchement : c'est la thèse de cet article, écrite par d'autres. Le découpage entre ce que l'équipe plateforme possède et ce que l'équipe ML déclare, le refus de publier une route vers un backend qui n'a pas encore chargé ses poids — tout y est. Quand les gens qui ont construit Crossplane arrivent à la même forme, ce n'est pas une coïncidence : c'est que le problème, lui, a une forme.
+Autant le dire franchement : c'est la thèse de cet article, écrite par d'autres. Le découpage entre ce que l'équipe plateforme possède et ce que l'équipe ML déclare — `InferenceCluster`/`InferenceClass` d'un côté, `ModelDeployment`/`ModelService` de l'autre — est exactement celui que cette plateforme applique entre la composition et la claim. Quand les gens qui ont construit Crossplane arrivent à la même forme, ce n'est pas une coïncidence : c'est que le problème, lui, a une forme.
 
 Sur la chronologie, coupons court : leur billet est postérieur à la v0.6.0 de cette plateforme (9 mai 2026), et je n'en tire rien du tout. Ce n'est pas une course, personne n'a copié personne — c'est une **évolution convergente**, deux équipes qui butent sur le même mur et en sortent avec le même plan. Ce que leurs docs de design ont réellement servi ici, c'est autre chose : une **grille de revue comparative**. Des questions posées par d'autres, à confronter aux choix déjà faits.
 
