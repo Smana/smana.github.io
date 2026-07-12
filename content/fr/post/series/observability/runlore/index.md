@@ -47,7 +47,7 @@ Quand une alerte se déclenche, le SRE rejoue à chaque fois le même enchaînem
 * **Qu'est-ce qui ne va pas ?** Saturation, réseau, nœuds, dépendances en échec ?
 * **A-t-on déjà vu ça ?** La réponse est souvent « oui », mais personne ne retrouve où elle est documentée.
 
-Ce pivot permanent entre Git, les métriques, les logs et les flux réseau est exactement le genre de tâche qu'un agent peut prendre en charge. **Plusieurs le font déjà** — mais l'enjeu, pour moi, est ailleurs : **garder l'humain au cœur des décisions**, sur ce que l'agent _fait_ comme sur ce qu'il _apprend_.
+Corréler ces différentes sources — Git, métriques, logs, flux réseau — pour parvenir à un **diagnostic** est exactement le genre de tâche qu'un agent peut prendre en charge. **Plusieurs le font déjà** — mais l'enjeu, pour moi, est ailleurs : **garder l'humain au cœur des décisions**, sur ce que l'agent _fait_ comme sur ce qu'il _apprend_.
 
 ## 🤖 RunLore en bref
 
@@ -56,7 +56,7 @@ Ce pivot permanent entre Git, les métriques, les logs et les flux réseau est e
 **RunLore** est un **agent SRE** open source (licence Apache-2.0) qui s'exécute dans ton cluster Kubernetes sous la forme d'un binaire Go unique, déployé via Helm. </br>
 Son principe est volontairement simple : à partir d'un événement (une alerte, un échec **GitOps** — la livraison continue pilotée par Git…), il investigue et répond à deux questions — _what changed?_ et _what's wrong?_ — puis publie dans ta messagerie une **root cause** assortie d'un **score de confiance**, des preuves qui l'étayent, et des questions ouvertes à destination d'un humain.
 
-{{< img src="runlore-investigation-flow.png" alt="Schéma du flux d'investigation de RunLore : un déclencheur (alerte, échec GitOps, webhook) lance une investigation qui corrèle l'historique GitOps, les métriques, les logs et les flux réseau, puis publie un verdict dans Slack ou Matrix et alimente la base de connaissances" width="1080" >}}
+{{< img src="runlore-investigation-flow.png" alt="Schéma du flux d'investigation de RunLore" width="1080" >}}
 </br>
 
 Le schéma se lit en trois temps :
@@ -92,7 +92,7 @@ RunLore implémente un cycle en quatre temps :
 
 Tout part donc de **Retrieve**, qui tranche entre deux issues : servir une réponse connue **instantanément**, ou — faute de correspondance fiable — lancer la boucle complète, celle qui nourrit le catalogue.
 
-{{< img src="runlore-learning-loop.png" alt="Schéma de la boucle d'apprentissage de RunLore en quatre temps : Retrieve, Capture, Curate, Compound" width="1080" >}}
+{{< img src="runlore-learning-loop.png" alt="Boucle d'apprentissage de RunLore" width="1080" >}}
 </br>
 
 Ce qui fait de ce cycle un vrai **apprentissage** — pas un simple bloc-notes — c'est que **les résultats bouclent en retour**. RunLore tient un _outcome ledger_ : à chaque rappel d'une entrée, il note si l'incident s'est **réellement résolu** ensuite. La confiance est donc **dérivée du taux de résolution constaté**, pas affirmée par le modèle :
@@ -149,7 +149,7 @@ L'agent identifie alors la root cause avec une **forte confiance** : la ressourc
 
 La notification est _verdict-first_ : elle s'ouvre sur un **verdict d'actionnabilité** clair — _aucune action_, _action suggérée_, _action requise_ ou _non concluant_ — avant même les détails. Le SRE sait en un coup d'œil s'il doit intervenir.
 
-{{< img src="runlore-investigation.png" alt="Notification Slack d'une investigation complète RunLore : un verdict d'actionnabilité, la root cause (quota IAM sur la ressource Crossplane AccessKey/xplane-harbor), la remédiation suggérée, les hypothèses écartées et les lacunes de données" width="760" >}}
+{{< img src="runlore-investigation.png" alt="Notification Slack d'une investigation RunLore" width="760" >}}
 
 Une fois l'incident relu et la PR fusionnée, voici l'entrée **OKF** qui rejoint le catalogue :
 
@@ -191,7 +191,7 @@ La section `Unresolved` illustre au passage ce principe : l'agent délègue à l
 
 Quelque temps plus tard, le même incident **se reproduit**. Cette fois, RunLore ne relance **aucune investigation** : il **reconnaît** l'incident, ressort du catalogue la réponse **déjà validée** — cause et résolution — et la publie **instantanément** dans Slack.
 
-{{< img src="runlore-recall.png" alt="Notification Slack d'un rappel instantané RunLore : le bandeau « ⚡ Instant recall — answered from your knowledge base, no investigation was run », la cause connue (quota IAM sur AccessKey/xplane-harbor) avec une confiance de 95 %, et l'entrée de base de connaissances retrouvée (harbor-registry)" width="760" >}}
+{{< img src="runlore-recall.png" alt="Notification Slack d'un rappel instantané RunLore" width="760" >}}
 
 Et c'est **radicalement moins cher** : **~58 000 tokens** pour la première investigation, **~3 700** pour ce rappel — même réponse, en quelques secondes.
 
@@ -244,7 +244,7 @@ config:
       channel: "#alerts"
       feedback_buttons: true
   forge:
-    kb_repo: your-org/runlore-kb     # le dépôt qui recevra les PRs de curation
+    kb_repo: your-org/runlore-kb     # le dépôt qui recevra les PRs qui enrichissent la base
 ```
 
 ```bash
@@ -276,7 +276,7 @@ Un agent qui investigue tes incidents doit lui-même être **observable**. RunLo
 
 Suivent de nombreux autres indicateurs : le **coût** (tokens), les **performances**, la **santé** et les **erreurs**.
 
-{{< img src="runlore-dashboard.png" alt="Dashboard Grafana de RunLore organisé autour de la boucle d'apprentissage : fire-rate et taux de résolution du rappel, tokens économisés, entrées KB invalides" width="1080" caption="Le dashboard livré avec le chart : la boucle d'apprentissage en tête — fire-rate et taux de résolution du rappel, tokens économisés, entrées KB invalides" >}}
+{{< img src="runlore-dashboard.png" alt="Dashboard Grafana de RunLore" width="1080" >}}
 
 C'est aussi l'instrument qui permettra de trancher, sur la durée, la question posée en clôture : cette mémoire paie-t-elle réellement ?
 
@@ -298,7 +298,7 @@ Bon, je suis conscient que le projet est **très jeune**, et comme j'en suis le 
 
 * **L'effort de départ n'est pas négligeable.** Sans un minimum de **discipline**, la base de connaissances ne se remplit pas toute seule : sur une prod déjà **bruyante**, compte **quelques heures** d'analyse et de **relecture de PRs** avant qu'elle devienne payante — un investissement, pas un « installe et oublie ».
 
-* **Plus la base se remplit, plus l'agent devient utile.** Chaque investigation résolue que tu valides (ton analyse, ton contexte, une RCA précise) devient une **connaissance réutilisable** : l'incident déjà vu ressort de la KB **en quelques secondes**, sans relancer d'analyse complète, et les entrées qui **résolvent vraiment gagnent en confiance** pendant que celles qui rappellent sans jamais résoudre sont **écartées**. Reste la vraie inconnue — la **curation dans la durée** : comment les investigations s'**associent** aux bonnes entrées, ce qu'il advient quand un **même symptôme cache une cause différente** (RunLore les regroupe et réclame une vérif humaine), et si **doublons et conflits** restent gérables. Des garde-fous existent, mais seules **des semaines de trafic réel** diront s'ils tiennent.
+* **Plus la base se remplit, plus l'agent devient utile.** Chaque investigation résolue que tu valides (ton analyse, ton contexte, une RCA précise) devient une **connaissance réutilisable** : l'incident déjà vu ressort de la KB **en quelques secondes**, sans relancer d'analyse complète, et les entrées qui **résolvent vraiment gagnent en confiance** pendant que celles qui rappellent sans jamais résoudre sont **écartées**. Reste la vraie inconnue — l'**entretien de la base dans la durée** : comment les investigations s'**associent** aux bonnes entrées, ce qu'il advient quand un **même symptôme cache une cause différente** (RunLore les regroupe et réclame une vérif humaine), et si **doublons et conflits** restent gérables. Des garde-fous existent, mais seules **des semaines de trafic réel** diront s'ils tiennent.
 
 Je reviendrai donc avec un **retour d'expérience sur la durée**. D'ici là, le projet est **ouvert** (Apache-2.0) et c'est maintenant que ton avis compte le plus : essaie-le sur ta plateforme et dis-moi comment il se comporte, [ouvre une issue](https://github.com/Smana/runlore/issues) pour un bug, une idée ou un cas d'usage, ou envoie une PR. Chaque retour de terrain oriente la suite.
 
