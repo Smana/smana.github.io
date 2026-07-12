@@ -338,7 +338,86 @@ Et c'est sans doute ce qui se transpose le mieux de tout cet article, GPU ou pas
 
 ## :eyes: Le modèle dit ce qu'il sert
 
+`kubectl get isvc` répondait `READY`, et c'était tout ce qu'il répondait. Une information de santé : un pod tourne, il accepte des requêtes. Pas **à quels noms** il les accepte. Deux sections plus tôt, la question était encore triviale — un pod, un modèle, un nom. Elle ne l'est plus : le même pod répond maintenant à un modèle de base, à deux adapters, et une requête sur dix adressée au premier part discrètement vers l'un des seconds.
+
+C'est le quatrième manque, et il se comble par un champ de statut. `status.servedModels` est une liste d'objets, republiée par la composition à chaque réconciliation :
+
+| Champ | Ce qu'il porte |
+|---|---|
+| `name` | le nom que le client écrira dans son champ `model` |
+| `kind` | `base` (les poids du modèle) ou `adapter` (un LoRA posé par-dessus) |
+| `canaryWeightPercent` | la fraction de trafic que cette entrée capte — présent uniquement là où une entrée de `gateway.canaries` en déclare une, donc jamais sur le modèle de base |
+
+Appliqué à `xplane-qwen-coder` tel que la claim le décrit à ce stade de l'article — un modèle de base, deux adapters, un canary à 10 % sur l'un d'eux — le champ porte trois entrées :
+
+| `name` | `kind` | `canaryWeightPercent` |
+|---|---|---|
+| `xplane-qwen-coder` | `base` | — |
+| `xplane-qwen-coder-sql-dpo` | `adapter` | `10` |
+| `xplane-qwen-coder-securecode` | `adapter` | — |
+
+Et une colonne `SERVED MODELS` porte la même chose jusque dans un `kubectl get isvc`, sans `-o yaml` ni `jq` : la topologie complète du pod, à l'œil, dans la sortie la plus banale du quotidien.
+
+<!-- TODO-e2e: sortie réelle de kubectl get isvc -n llm avec la colonne SERVED MODELS -->
+
+### C'est de la topologie, pas de la santé
+
+Un détail conditionne toute la lecture de ce champ : `servedModels` est calculé **depuis le spec seul**. La composition ne consulte ni l'`ocds`, ni l'état du `Deployment`, ni celui de la route — elle dérive la liste des noms de ce que la claim déclare, et de rien d'autre. Conséquence directe : le champ est peuplé **dès la première réconciliation**, avant que le pod n'existe, avant que la route ne soit publiée.
+
+C'est donc une projection de **topologie**, pas un signal de santé. Il répond à « à quels noms cette claim est-elle *censée* répondre ? », jamais à « répond-elle, là, maintenant ? ». Un modèle dont le pod est en `CrashLoopBackOff` affiche exactement les mêmes `servedModels` qu'un modèle en pleine forme — et c'est le comportement voulu, pas une lacune.
+
+Le contresens serait coûteux, autant le désamorcer tout de suite : la santé a déjà ses réponses, et elles sont ailleurs. La condition `READY` de la claim, le latch de readiness qui décide si la route existe, les métriques vLLM de la partie 3. Vouloir que `servedModels` dise aussi la santé reviendrait à attendre le `Deployment` pour peupler le champ — c'est-à-dire à le rendre vide précisément dans la situation où on le consulte le plus : quand quelque chose ne démarre pas et qu'on cherche à comprendre ce que ce truc était censé servir.
+
+{{% notice note "Le piège : un JSONPath wildcard dans une colonne" %}}
+La colonne `SERVED MODELS` a d'abord pointé le JSONPath qui s'imposait naturellement : `.status.servedModels[*].name` — *tous* les noms de la liste. Elle n'en aurait affiché **qu'un seul**.
+
+Les colonnes de `kubectl get` ne sont pas rendues par le client. Elles sont produites côté serveur, par le **convertisseur de table** de l'API server, qui applique le JSONPath déclaré dans les `additionalPrinterColumns` du CRD — et n'en retient que la **première correspondance**. Une cellule de tableau est un scalaire, pas une liste : le wildcard ne boucle pas, il sélectionne. La colonne aurait donc affiché `xplane-qwen-coder`, et les deux adapters n'auraient existé nulle part. Le pire cas de figure : une valeur juste, et une réponse fausse à la question posée — une colonne censée révéler la topologie, qui en cache précisément la moitié intéressante.
+
+D'où un second champ, `status.servedModelsSummary` : un scalaire, les noms joints par des virgules, sur lequel la colonne pointe désormais.
+{{% /notice %}}
+
+Deux champs pour une seule vérité, après un article passé à traquer les doubles sources — l'ironie mérite d'être adressée. La différence tient en ceci : `servedModelsSummary` n'est pas une seconde saisie, c'est une **fonction pure** de `servedModels`, calculée au même endroit, dans le même passage de la composition. Il n'existe aucun chemin par lequel les deux divergent. Le champ structuré reste l'API — celle que lisent un contrôleur, un script, un `-o jsonpath` ; le scalaire n'est qu'une projection pour le CLI.
+
+Et la leçon transposable est plus large que ce champ-là : **un statut que l'outil de tous les jours ne sait pas afficher n'est pas de la découvrabilité.** C'est de la donnée correcte, rangée dans un endroit que personne ne regarde.
+
 ## :bar_chart: Mesurer le canary
+
+Tout ce qui précède produit un split : 90 % du trafic sur les poids de base, 10 % sur le fine-tune. Reste la seule question qui justifiait de le faire — **est-ce que ces 10 % se comportent mieux, ou moins bien, que les 90 % restants ?** Sans réponse, on n'a pas déployé un canary : on a détourné une fraction du trafic des utilisateurs vers autre chose, et on a croisé les doigts. **Un canary qu'on ne peut pas mesurer n'est pas un canary, c'est un pari.** D'où cette section ici, immédiatement après le split, et non reléguée dans une annexe « observabilité » : la mesure n'est pas l'accessoire de la fonctionnalité, elle en est la moitié.
+
+La partie 3 a déjà présenté les métriques **`gen_ai.*`** de l'Envoy AI Gateway (v1.0) : le standard [OpenTelemetry Gen AI](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/), qui ne compte pas des requêtes HTTP mais le vocabulaire métier des LLM — tokens consommés, TTFT, latence par token de sortie. Elle les a présentées ; il restait à les **brancher**. C'est ce que fait cette PR.
+
+Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'**extproc** (_external processor_) : le sidecar auquel Envoy délègue tout ce qui est spécifique aux LLM — lire le champ `model` dans le corps de la requête, appliquer le `modelNameOverride`, compter les tokens de la réponse. C'est donc lui, et lui seul, qui voit à la fois le nom **demandé** et le nom **servi**. Ce détail d'implémentation dicte la forme du scrape :
+
+* **Cible** : le sidecar extproc, pas le conteneur Envoy — d'où un **`VMPodScrape`** (l'objet de l'opérateur VictoriaMetrics qui cible des *pods*) et non un `VMServiceScrape`
+* **Namespace** : `envoy-gateway-system`
+* **Port** : `1064`, le port d'administration de l'extproc
+
+Les séries atterrissent dans la VictoriaMetrics qui collecte déjà les métriques vLLM, et se lisent dans le même Grafana. Aucun nouvel outil : la promesse de la partie 3, tenue par un objet de plus.
+
+### L'attribution canary vs base
+
+Ce qui rend l'attribution possible tient à une propriété déjà rencontrée : `modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter. Une requête tirée dans les 10 % n'atteint donc pas vLLM sous le nom `xplane-qwen-coder`, mais sous celui de `xplane-qwen-coder-sql-dpo` — et les métriques `gen_ai.*`, qui portent le modèle en label, séparent les deux populations sans qu'on ait rien à instrumenter. Le split de routage est **aussi**, et gratuitement, un split de mesure.
+
+Le dashboard Grafana **`llm-gateway`** ne fait qu'exploiter ça : les mêmes séries, découpées canary contre base, sur la même fenêtre de temps et le même trafic réel.
+
+* La **latence end-to-end** (`gen_ai.server.request.duration`) et le **TTFT** (`gen_ai.server.time_to_first_token`) : servir une requête à travers un adapter LoRA passe-t-il par le même chemin de coût que la servir sur les poids de base ? C'est exactement ce que ces deux courbes, côte à côte, permettent de trancher.
+* La **latence par token de sortie** (`gen_ai.server.time_per_output_token`), qui dit si le fine-tune génère au même rythme.
+* La **consommation de tokens** (`gen_ai.client.token.usage`) : un fine-tune plus bavard que sa base, à qualité égale, est un fine-tune plus cher.
+* Le **volume de requêtes** de chaque branche — accessoirement, la vérification que le split fait bien ce qu'il annonce.
+
+<!-- TODO-e2e: screenshot du dashboard Grafana llm-gateway avec l'attribution canary vs base -->
+
+### Ce que ces courbes ne disent pas
+
+Elles disent si le canary est plus lent, ou plus bavard, que la base. Elles ne disent pas s'il est **meilleur** : aucune métrique de gateway ne sait ce qu'est un bon SQL. La qualité reste le domaine de l'éval — [Promptfoo](/fr/post/series/agentic_ai/llm-self-hosted-stack/), vu en partie 3 — et c'est là que la règle de pin décrite plus haut reprend tout son sens : une éval a besoin d'interroger l'adapter **de façon déterministe**, pas de tomber dessus une fois sur dix.
+
+Les deux mesures sont complémentaires, et aucune ne se suffit. Le canary observe du trafic réel sans savoir ce qu'il vaut ; l'éval observe un jeu de tests connu sans savoir ce que fait le vrai trafic. Décider de promouvoir un fine-tune, c'est regarder les deux.
+
+{{% notice note "Ce qui n'est pas livré : les traces" %}}
+L'AI Gateway sait exporter des **traces OTLP**, et la cible naturelle serait **VictoriaTraces**. Sur cette plateforme, l'export est **volontairement désactivé** : je n'ai pas vérifié la compatibilité du chemin d'ingestion OTLP entre les deux, et tant que ce n'est pas vérifié, la case reste décochée.
+
+Ce n'est pas de la prudence de façade. Livrer un export vers un endpoint qu'on n'a pas testé, c'est livrer une ligne de configuration qui donne l'**illusion** d'une capacité. Le jour où on en aurait besoin — une requête anormalement lente, et l'envie de savoir où part le temps entre la gateway, l'extproc et vLLM — on découvrirait qu'il n'y a rien au bout. Une case décochée est honnête ; une case cochée qui ne transporte rien ne l'est pas.
+{{% /notice %}}
 
 ## :compass: Endpoint Picker : au-delà du round-robin
 
