@@ -127,12 +127,12 @@ RunLore a été construit avec un **parti pris assumé** : garder l'humain au c�
 
 Et l'agent n'agit jamais seul : la posture est _read-only → suggest → approve_ — il lit, corrèle, recommande ; un humain valide.
 
-{{% notice warning "Attention à la « PR fatigue » ⚠️" %}}
-L'objection est légitime : si personne n'avait le temps de documenter les incidents hier, qui aura l'énergie de relire des PRs le lendemain d'une crise ? Le risque est réel — soit les PRs s'accumulent, soit on clique « Merge » sans lire, et la mémoire se corrompt.
+{{% notice note "Et la « PR fatigue » ? 🤔" %}}
+La question vient vite : si personne n'avait le temps de documenter les incidents hier, qui relira ces PRs demain ? C'est le **pari** de RunLore, et il est assumé : la relecture n'est pas une corvée qu'on subit, c'est ce qui distingue une mémoire dont on est propriétaire d'un dépotoir de sorties de LLM.
 
-Deux réponses. D'abord, **le volume est borné par construction** : un incident déjà connu ne produit **aucune PR** (il est servi depuis le catalogue), un doublon est écarté, et une PR déjà ouverte sur le même incident reçoit un commentaire plutôt qu'une nouvelle PR. Seul un finding **nouveau, vérifié et suffisamment fiable**, preuves et action à l'appui, devient une PR.
+Le pari tient parce que **le volume est borné par construction** : un incident déjà connu ne produit **aucune PR** (il est servi depuis le catalogue), un doublon est écarté, et une PR déjà ouverte sur le même incident reçoit un commentaire. Seul un finding **nouveau, vérifié et suffisamment fiable** en ouvre une.
 
-Ensuite, **ne relis pas ces PRs à la main comme un document**. Le plus efficace est d'utiliser un agent pendant la phase de diagnostic elle-même : il recoupe la proposition de RunLore avec ce que tu as compris en résolvant l'incident, l'enrichit de ton contexte, et te permet de travailler sur plusieurs fronts. L'humain garde la **décision** — pas la corvée de lecture ligne à ligne.
+Et rien n'oblige à relire à la main : le plus efficace est de garder un agent dans la boucle **pendant** le diagnostic, pour recouper la proposition de RunLore avec ce que tu viens de comprendre et l'enrichir de ton contexte. Tu gardes la **décision**, pas la lecture ligne à ligne.
 {{% /notice %}}
 
 Garder l'humain à la décision — sur ce qui est fait comme sur ce qui est appris — n'est pas une limite qu'on s'impose : c'est ce qui rend l'agent réellement utilisable.
