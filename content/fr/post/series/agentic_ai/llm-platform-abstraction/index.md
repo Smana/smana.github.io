@@ -356,6 +356,8 @@ Appliqué à `xplane-qwen-coder` tel que la claim le décrit à ce stade de l'ar
 | `xplane-qwen-coder-sql-dpo` | `adapter` | `10` |
 | `xplane-qwen-coder-securecode` | `adapter` | — |
 
+<!-- TODO-e2e: confirmer sur la sortie réelle de status.servedModels que canaryWeightPercent est bien absent de l'entrée base (kind: base), et pas simplement égal à 100 - sum(weightPercent) -->
+
 Et une colonne `SERVED MODELS` porte la même chose jusque dans un `kubectl get isvc`, sans `-o yaml` ni `jq` : la topologie complète du pod, à l'œil, dans la sortie la plus banale du quotidien.
 
 <!-- TODO-e2e: sortie réelle de kubectl get isvc -n llm avec la colonne SERVED MODELS -->
@@ -386,7 +388,7 @@ Tout ce qui précède produit un split : 90 % du trafic sur les poids de base, 1
 
 La partie 3 a déjà présenté les métriques **`gen_ai.*`** de l'Envoy AI Gateway (v1.0) : le standard [OpenTelemetry Gen AI](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/), qui ne compte pas des requêtes HTTP mais le vocabulaire métier des LLM — tokens consommés, TTFT, latence par token de sortie. Elle les a présentées ; il restait à les **brancher**. C'est ce que fait cette PR.
 
-Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'**extproc** (_external processor_) : le sidecar auquel Envoy délègue tout ce qui est spécifique aux LLM — lire le champ `model` dans le corps de la requête, appliquer le `modelNameOverride`, compter les tokens de la réponse. C'est donc lui, et lui seul, qui voit à la fois le nom **demandé** et le nom **servi**. Ce détail d'implémentation dicte la forme du scrape :
+Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'**extproc** (_external processor_) : le sidecar auquel Envoy délègue le traitement spécifique aux LLM. Ce que ce sidecar fait précisément en interne n'est pas documenté dans les faits vérifiés de cette PR, mais le raisonnement de conception tient de lui-même : s'il y a un composant qui lit le champ `model` dans le corps de la requête, applique le `modelNameOverride` et compte les tokens de la réponse, c'est vraisemblablement celui-là, puisqu'il est le seul du chemin de requête à voir à la fois le nom **demandé** et le nom **servi**. C'est cette position qui en ferait le point naturel où brancher le scrape :
 
 * **Cible** : le sidecar extproc, pas le conteneur Envoy — d'où un **`VMPodScrape`** (l'objet de l'opérateur VictoriaMetrics qui cible des *pods*) et non un `VMServiceScrape`
 * **Namespace** : `envoy-gateway-system`
@@ -402,7 +404,7 @@ Reste une question que la PR #1559 laisse **explicitement ouverte**, et que je p
 
 Ce n'est pas un détail cosmétique. Si l'attribution suit le nom surchargé, le split de routage est **aussi**, et gratuitement, un split de mesure : canary et base ont chacun leur série, sans rien à instrumenter. Si elle retombe sur le nom du modèle de base, canary et base se retrouvent mélangés dans la même série — et l'attribution que le dashboard promet de faire n'existe tout simplement pas.
 
-Le dashboard Grafana **`llm-gateway`** est construit sur le premier scénario : les mêmes séries, découpées canary contre base, sur la même fenêtre de temps et le même trafic réel. Voici ce qu'il donnerait à lire, si l'attribution se confirme :
+Le dashboard Grafana **`llm-gateway`** vise le premier scénario : les mêmes séries, découpées canary contre base, sur la même fenêtre de temps et le même trafic réel. Voici ce qu'il donnerait à lire, si l'attribution se confirme :
 
 * La **latence end-to-end** (`gen_ai.server.request.duration`) et le **TTFT** (`gen_ai.server.time_to_first_token`) : servir une requête à travers un adapter LoRA passe-t-il par le même chemin de coût que la servir sur les poids de base ? Ce sont ces deux courbes, côte à côte, qui permettraient de le dire.
 * La **latence par token de sortie** (`gen_ai.server.time_per_output_token`), qui dirait si le fine-tune génère au même rythme.
