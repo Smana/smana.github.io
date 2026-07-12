@@ -127,12 +127,12 @@ RunLore takes a **deliberate stance**: keep a human at the center of the decisio
 
 And the agent never acts alone. The posture is _read-only → suggest → approve_: it reads, correlates, recommends; a human validates.
 
-{{% notice warning "Watch out for \"PR fatigue\" ⚠️" %}}
-The objection is fair: if nobody had time to document incidents yesterday, who will have the energy to review PRs the day after a crisis? The risk is real — either the PRs pile up and rot, or people hit "Merge" without reading, and the memory gets corrupted.
+{{% notice note "What about \"PR fatigue\"? 🤔" %}}
+The question comes up fast: if nobody had time to document incidents yesterday, who reviews these PRs tomorrow? That's RunLore's **bet**, and it's a deliberate one: the review isn't a chore you put up with, it's what separates a memory you own from a dump of LLM output.
 
-Two answers. First, **the volume is bounded by design**: an incident that's already known produces **no PR at all** (it is served from the catalog), a duplicate is dropped, and an incident that already has an open PR gets a comment on it rather than a new one. Only a **new, verified, reliable enough** finding, with evidence and an action to back it, becomes a PR.
+The bet holds because **the volume is bounded by design**: an incident that's already known produces **no PR at all** (it is served from the catalog), a duplicate is dropped, and an incident that already has an open PR gets a comment on it. Only a **new, verified, reliable enough** finding opens one.
 
-Second, **don't review those PRs by hand as if they were prose**. The efficient move is to use an agent during the diagnosis phase itself: it cross-checks RunLore's proposal against what you understood while resolving the incident, enriches it with your context, and lets you work on several fronts at once. The human keeps the **decision** — not the line-by-line reading chore.
+And nothing says you have to review by hand: the efficient move is to keep an agent in the loop **during** the diagnosis, cross-checking RunLore's draft against what you just worked out and enriching it with your context. You keep the **decision**, not the line-by-line reading.
 {{% /notice %}}
 
 Keeping a human in the loop, on what gets done as much as on what gets learned, isn't a self-imposed limit. It's what makes the agent usable at all.
