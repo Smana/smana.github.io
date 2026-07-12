@@ -274,17 +274,18 @@ Le réflexe symétrique — un champ fourre-tout, non contraint, où l'on colle 
 `spec.engineArgs` est un array de chaînes de caractères, **16 entrées au maximum**, transmises **verbatim** aux arguments du serveur vLLM. Aucune traduction, aucun mapping, aucune opinion : ce que l'utilisateur écrit est exactement ce que le moteur reçoit.
 
 ```yaml
-# exemple : deux flags que le schéma curé ne modélise pas
+# exemple : trois flags que le schéma curé ne modélise pas
 spec:
   model:
     repository: Qwen/Qwen2.5-Coder-7B-Instruct
     revision: c03e6d358207e414f1eca0bb1891e29f1db0e242
   engineArgs:
-    - --scheduling-policy=priority
-    - --max-num-batched-tokens=8192
+    - --enforce-eager
+    - --kv-cache-dtype=fp8
+    - --rope-scaling={"rope_type":"yarn","factor":2.0}
 ```
 
-Une seule contrainte de forme, et elle n'a rien de cosmétique : **un seul token par entrée**. Soit `--flag`, soit `--flag=value` — jamais `--flag value` éclaté sur deux lignes de la liste. La raison tient à ce qui vient après : les entrées sont **inspectées à l'admission**, et une inspection qui regarde chaque entrée isolément est aveugle à un flag **passé en fraude**, coupé en deux morceaux dont aucun, pris seul, ne ressemble à ce qu'on cherche. La forme normalisée n'est pas une préférence d'écriture, c'est la condition pour que la vérification qui suit soit une vérification.
+Une seule contrainte de forme, et elle n'a rien de cosmétique : **un seul token par entrée**. Soit `--flag`, soit `--flag=value` — jamais `--flag value` éclaté sur deux lignes de la liste. La raison tient à ce qui vient après : les entrées sont **inspectées à l'admission**, et une inspection qui regarde chaque entrée isolément est aveugle à un flag **passé en fraude**, coupé en deux morceaux dont aucun, pris seul, ne ressemble à ce qu'on cherche. La forme normalisée n'est pas une préférence d'écriture, c'est la condition pour que la vérification qui suit soit une vérification. Le troisième flag de l'exemple ci-dessus illustre bien la latitude que laisse cette forme : `--rope-scaling={"rope_type":"yarn","factor":2.0}` loge du JSON entier dans une seule entrée — la valeur peut contenir à peu près n'importe quoi, tant qu'aucun espace ne vient la couper en deux tokens.
 
 Les `engineArgs` sont concaténés **après** tous les arguments produits par la composition (`_vllmArgs = _managedVllmArgs + _engineArgs`) : la position est fixe, donc le résultat est déterministe. Mais que l'on soit clair — **ce n'est pas cet ordre qui protège le contrat de service.** Un moteur qui lit ses arguments de gauche à droite donne, par construction, le dernier mot à celui qui parle en dernier. Ce qui protège le contrat, c'est que certains flags ne peuvent tout simplement **pas entrer** dans cette liste.
 
