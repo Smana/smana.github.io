@@ -261,6 +261,80 @@ Ce n'est pas de la prescience, c'est de l'emprunt : la lecture de la plateforme 
 
 ## :unlock: L'échappatoire `engineArgs`
 
+Ce troisième manque est le plus gênant à admettre, parce qu'il ne vient pas d'un oubli : il vient d'un refus. Le schéma de la claim n'expose que des champs curés, et j'avais délibérément décidé qu'il n'y aurait rien d'autre.
+
+Le problème, c'est le rythme de vLLM. Le moteur ajoute des flags à chaque release — une politique d'ordonnancement, un format de chargement, un backend d'attention — bien plus vite qu'une API de plateforme ne peut les modéliser un par un. Chaque flag absent du schéma se payait donc au prix fort : une PR sur la composition KCL, les tests unitaires, la republication de l'image OCI, le bump du tag dans la `Composition`, puis Flux. **Une release de plateforme pour un essai d'une après-midi.**
+
+Sauf qu'une API sans échappatoire ne bloque personne. Elle se fait **contourner**. On fait un `kubectl edit deployment`, on ajoute son flag, on teste — et jusqu'à la prochaine réconciliation de Crossplane, ça marche très bien. Le coût réel n'est pas le contournement lui-même, c'est ce qu'il fait à l'abstraction : dès l'instant où l'état réel du cluster ne se lit plus dans la claim, **la claim ment**. Et une abstraction qui ment est pire qu'une abstraction absente, parce qu'elle continue de prétendre décrire le système.
+
+Le réflexe symétrique — un champ fourre-tout, non contraint, où l'on colle ce qu'on veut — n'est pas une solution non plus. Il ne fait que déplacer la casse : au lieu de sortir de l'abstraction pour la trouer, on la troue de l'intérieur, avec sa bénédiction.
+
+### Un champ, une contrainte de forme
+
+`spec.engineArgs` est un array de chaînes de caractères, **16 entrées au maximum**, transmises **verbatim** aux arguments du serveur vLLM. Aucune traduction, aucun mapping, aucune opinion : ce que l'utilisateur écrit est exactement ce que le moteur reçoit.
+
+```yaml
+# exemple : deux flags que le schéma curé ne modélise pas
+spec:
+  model:
+    repository: Qwen/Qwen2.5-Coder-7B-Instruct
+    revision: c03e6d358207e414f1eca0bb1891e29f1db0e242
+  engineArgs:
+    - --scheduling-policy=priority
+    - --max-num-batched-tokens=8192
+```
+
+Une seule contrainte de forme, et elle n'a rien de cosmétique : **un seul token par entrée**. Soit `--flag`, soit `--flag=value` — jamais `--flag value` éclaté sur deux lignes de la liste. La raison tient à ce qui vient après : les entrées sont **inspectées à l'admission**, et une inspection qui regarde chaque entrée isolément est aveugle à un flag **passé en fraude**, coupé en deux morceaux dont aucun, pris seul, ne ressemble à ce qu'on cherche. La forme normalisée n'est pas une préférence d'écriture, c'est la condition pour que la vérification qui suit soit une vérification.
+
+Les `engineArgs` sont concaténés **après** tous les arguments produits par la composition (`_vllmArgs = _managedVllmArgs + _engineArgs`) : la position est fixe, donc le résultat est déterministe. Mais que l'on soit clair — **ce n'est pas cet ordre qui protège le contrat de service.** Un moteur qui lit ses arguments de gauche à droite donne, par construction, le dernier mot à celui qui parle en dernier. Ce qui protège le contrat, c'est que certains flags ne peuvent tout simplement **pas entrer** dans cette liste.
+
+### Seize flags qui ne passeront pas
+
+Le tri est simple à énoncer : **tout passe, sauf ce dont l'autoscaling et le routage dépendent.** Ces flags-là sont **réservés**, et l'XRD les refuse à l'admission — `kubectl apply` échoue, la composition ne se déclenche même pas, rien n'atteint le cluster.
+
+Dix-sept règles CEL portent cette vérification : une règle de forme (toute entrée doit commencer par `--`), et **seize règles de flags réservés, une par flag**. Le découpage peut sembler inutilement bavard — une seule règle bouclant sur une liste aurait fait le même travail de rejet. Elle aurait aussi produit le même message pour les seize : *« `engineArgs` contient un flag réservé »*. Un message qui dit à l'utilisateur qu'il a perdu, sans lui dire quoi faire. Une règle par flag, c'est **un message par flag** — et chaque message nomme le champ curé à utiliser à la place :
+
+| Flag réservé | Ce que répond l'admission |
+|---|---|
+| `--model` | `use spec.model.repository` |
+| `--max-model-len` | `use spec.model.contextWindow` |
+| `--max-num-seqs` | `use spec.model.maxNumSeqs (it is the KEDA scaling denominator)` |
+| `--gpu-memory-utilization` | `composition-managed (fixed at 0.92)` |
+| `--enable-lora` | `use spec.loraAdapters` |
+| `--port` | `serving-contract flag; the vLLM port is fixed at 8000 (Service/probes/Backend depend on it)` |
+
+*(Extrait — les seize flags sont listés dans le README de la composition.)*
+
+Prenez `--max-num-seqs`. C'est la taille du batch interne de vLLM, et c'est aussi le **dénominateur** du trigger KEDA vu en partie 3 : le `ScaledObject` divise `vllm:num_requests_running` par cette valeur pour obtenir un taux de saturation. Laissez un utilisateur la redéfinir dans `engineArgs`, et vLLM tourne avec un batch que l'autoscaler ignore — celui-ci continue de calculer un ratio contre une taille de batch qui n'existe plus. Rien ne casse, rien n'alerte : le scaling est simplement **faux**. Même logique pour `--enable-lora` et `--lora-modules` : le routage canary réécrit le nom du modèle vers un adapter que le pod est **censé** avoir chargé au démarrage.
+
+### Le détail qui m'a le plus appris : `--port` et `--host`
+
+Ces deux-là sont réservés alors que **la composition ne les émet jamais**. Elle ne passe ni `--port`, ni `--host` à vLLM — elle laisse le moteur prendre ses valeurs par défaut : le port `8000`, et l'écoute sur toutes les interfaces.
+
+Sauf que ces défauts ne sont pas des détails d'implémentation, ce sont **le contrat de serving**. Le `targetPort` du `Service` vise 8000. Les probes de liveness et de readiness interrogent 8000. Le FQDN du `Backend` rendu par la Gateway pointe 8000. Trois ressources générées, trois hypothèses silencieuses sur une valeur que personne n'a écrite nulle part. Un `--port=9000` dans `engineArgs`, et les trois pointent dans le vide.
+
+C'est la leçon que je retiens le plus volontiers de cette section, et elle n'a rien à voir avec les LLM : **la denylist d'une échappatoire doit couvrir non seulement ce que l'abstraction écrit, mais ce qu'elle suppose.** Ce sont deux ensembles différents, et le second est celui qu'on oublie — parce qu'un défaut sur lequel on s'appuie sans le déclarer n'apparaît dans aucun diff.
+
+### Une seule source d'application
+
+Reste la question qui décide de tout : **où vit la denylist ?**
+
+La réponse tenue ici : **à un seul endroit**, le CEL de l'XRD. La composition, elle, ne vérifie rien. Elle appende les `engineArgs` verbatim et fait confiance à l'admission — si le contenu est arrivé jusqu'à elle, c'est qu'il est passé.
+
+La tentation de la « défense en profondeur » était pourtant là : refiltrer côté KCL, par acquit de conscience. Ç'aurait été recréer exactement le problème que la première moitié de cet article vient de supprimer. Une liste de seize flags dans l'XRD, une liste de seize flags dans la composition. **Deux fichiers à garder synchronisés, donc deux dérives possibles, et aucune des deux ne fait de bruit** — un flag ajouté d'un côté seulement, et l'on obtient soit un flag accepté à l'admission puis silencieusement ignoré, soit un flag rejeté que la composition aurait très bien passé. C'est la même forme de bug que `route.yaml`. Autre fichier, autre sujet, même piège.
+
+Mais « un seul endroit » est une promesse qui doit **tenir dans le temps**, et elle est fragile : les seize flags réservés sont précisément ceux que la composition émet. Le jour où quelqu'un ajoute un argument géré au KCL sans l'ajouter à la denylist de l'XRD, le trou se rouvre — et personne ne le verra. Un test verrouille donc les deux ensembles l'un à l'autre : `test_engine_args_denylist_lockstep` lit les flags que la composition produit et vérifie que chacun figure bien dans la denylist.
+
+{{% notice tip "Un test qui ne peut pas échouer ne prouve rien" %}}
+Un test de cohérence entre deux listes a une propriété désagréable : il passe au vert le jour où on l'écrit, et il passerait tout aussi bien s'il ne testait rien du tout. Une faute de frappe dans le nom d'une variable, une assertion qui compare une liste vide à une liste vide — et vous obtenez le pire des artefacts : un test qui **rassure**.
+
+D'où l'étape suivante, qui n'a coûté que quelques minutes : **casser volontairement la denylist** (retirer un flag), relancer la suite, et vérifier que `test_engine_args_denylist_lockstep` **échoue bien**. C'est ce qu'on appelle une vérification par **mutation** : on introduit la faute exprès pour s'assurer que le filet la rattrape. Tant que vous n'avez pas vu un test rouge, vous n'avez pas de test — vous avez une ligne dans un rapport de CI.
+{{% /notice %}}
+
+`engineArgs` ne rend donc pas la plateforme plus permissive : il rend sa permissivité **lisible**. Ce qui n'est pas listé passe, sans demander la permission à personne. Ce qui est listé est refusé à l'`apply`, avec le nom du champ à utiliser à la place. **Liberté là où c'est sûr, garde-fous là où ça ne l'est pas.**
+
+Et c'est sans doute ce qui se transpose le mieux de tout cet article, GPU ou pas : toute API de plateforme finira par rencontrer un utilisateur qui a besoin de quelque chose qu'elle n'a pas prévu. Elle a le choix entre le lui donner **sous conditions**, ou le voir pris **sans conditions**. Il n'y a pas de troisième option — il y a seulement des équipes qui n'ont pas encore découvert laquelle des deux elles avaient choisie.
+
 ## :eyes: Le modèle dit ce qu'il sert
 
 ## :bar_chart: Mesurer le canary
