@@ -111,6 +111,65 @@ Mais ils ont tous la même racine, et c'est la thèse de cet article : **l'unit�
 
 ## :door: Le routage rejoint le modèle
 
+Le second fichier n'existe plus. Un champ dans la claim, et la route naît, vit et meurt avec le modèle :
+
+```diff
+# apps/base/ai/llm/qwen-coder.yaml
+ spec:
+   model:
+     repository: Qwen/Qwen2.5-Coder-7B-Instruct
+     revision: c03e6d358207e414f1eca0bb1891e29f1db0e242
+     quantization: fp8
+     contextWindow: 32768
+     toolCallParser: hermes
+   gpu:
+     count: 1
++  gateway:
++    enabled: true
+   scaling:
+     minReplicas: 1
+     maxReplicas: 2
+```
+
+Avec `gateway.enabled: true`, la composition ne rend plus seulement le pod : elle rend aussi les trois ressources qui décrivent **comment on l'atteint**, une série complète par claim.
+
+| Ressource générée | Ce qu'elle déclare |
+|---|---|
+| **`Backend`** | l'adresse réelle du modèle : le FQDN du `Service` de la claim, port `8000` |
+| **`AIServiceBackend`** | le *dialecte* que parle ce backend : le schéma OpenAI |
+| **`AIGatewayRoute`** | la règle de dispatch — quel `model:` atterrit sur quel backend — rattachée à la Gateway (`parentRef: ai-gateway/envoy-ai-gateway-system`) |
+
+Ces trois objets sont désormais des **ressources composées** : Crossplane les possède, exactement comme il possède déjà le `Deployment` ou le `ScaledObject`. Elles portent l'`ownerReference` de la claim, donc **le garbage collector de Kubernetes les emporte avec elle**. Supprimer un modèle supprime sa route — non pas parce qu'on y a pensé, mais parce qu'il n'existe aucun chemin où la route survive à son propriétaire. Le *backend fantôme* de la section précédente devient structurellement impossible, et la dérive inverse aussi : il n'y a plus deux fichiers à garder synchronisés, il n'y en a plus qu'un.
+
+<!-- TODO-e2e: schéma avant/après de la propriété du routage (tâche 8) -->
+
+### Le latch de readiness
+
+Générer la route depuis la claim déplace toutefois une question qui, auparavant, était réglée à la main : **quand** la route doit-elle exister ? Deux échecs symétriques guettent, et ils font mal de façons opposées.
+
+* **Une route qui apparaît trop tôt.** La claim est appliquée, l'`AIGatewayRoute` est publiée dans la foulée — mais le premier réplica vLLM charge encore ses poids. La Gateway route alors vers un backend sans endpoint prêt, et le client prend un `404` ou un `503` en pleine face, sur un modèle que la plateforme prétend servir.
+* **Une route qui disparaît trop vite.** Le réflexe inverse — retirer la route dès que le `Deployment` n'est plus disponible — transforme la moindre indisponibilité passagère (un rolling update, un pod évincé, un nœud GPU recyclé par Karpenter) en *flapping* : la route sort de la config Envoy, y revient trente secondes plus tard, et le client voit alterner « modèle inconnu » et « modèle disponible ».
+
+Le compromis retenu est asymétrique, parce que les deux erreurs ne coûtent pas le même prix. À la création, la route est **retenue** tant que le `Deployment` n'a pas atteint la condition `Available=True` : pas de route tant qu'aucun réplica ne peut répondre. Une fois publiée, en revanche, elle **ne sera plus jamais retirée**. C'est ce que j'appelle le **latch de readiness** : un portail à l'entrée, puis un verrou qui reste enclenché. Une indisponibilité transitoire reste un problème de *santé du backend* — les retries et le health checking d'Envoy sont faits pour ça — pas un problème de *topologie de routage*.
+
+Techniquement, le latch tient sur l'**`ocds`** (_observed composed resource state_) : l'état des ressources déjà composées, tel que Crossplane l'observe au début de chaque réconciliation. La composition y cherche sa propre `AIGatewayRoute` ; si elle l'y trouve, c'est que le portail s'est déjà ouvert, et elle la rend de nouveau sans même regarder l'état du `Deployment`.
+
+{{% notice tip "Le détail qui aurait fini en incident" %}}
+La composition **écrit** la route sous une clé de ressource, et la **relit** sous cette même clé au tour suivant. Deux chaînes de caractères, à deux endroits du code : si elles divergent — un renommage d'un côté seulement — la relecture ne trouve jamais rien, le latch ne s'enclenche jamais, et la route est retirée à la première indisponibilité passagère venue. Un bug invisible en test, qui ne se manifeste qu'en production, au pire moment.
+
+D'où une contrainte volontairement bête : les clés de lecture et d'écriture dérivent toutes deux d'une **constante unique** (`_gatewayRouteSuffix`). Elles ne peuvent pas diverger — il n'y a plus qu'une seule chaîne à renommer.
+{{% /notice %}}
+
+### Une migration, pas un big bang
+
+Le basculement se fait modèle par modèle. `xplane-qwen-coder` passe en `gateway.enabled: true`, et **dans le même commit**, ses entrées sont retirées de `apps/base/ai/llm/ai-gateway-routes/route.yaml`. Un seul commit, parce qu'un instant où les deux sources déclarent la même route serait exactement le désordre qu'on cherche à supprimer. Les trois autres modèles de la plateforme suivront dans une PR ultérieure.
+
+{{% notice note "La double comptabilité n'est pas encore morte" %}}
+Soyons précis sur l'état réel : **un modèle sur quatre** est passé sous routage possédé par la composition. `route.yaml` existe toujours, il porte encore les trois autres, et il faut donc toujours y penser pour eux. Ce qui a changé, ce n'est pas que le fichier a disparu — c'est qu'il a cessé d'être *le seul* endroit possible, et qu'il a maintenant une date de péremption.
+{{% /notice %}}
+
+Reste que la route appartient désormais à la claim, et c'est là que ça devient intéressant : une route que l'on possède est une route que l'on peut **pondérer**.
+
 ## :dna: LoRA en deux minutes
 
 ## :hatching_chick: Canary : 10 % du trafic, zéro GPU
