@@ -428,16 +428,14 @@ Ce n'est pas de la prudence de façade. Livrer un export vers un endpoint qu'on 
 
 ## :compass: Endpoint Picker : au-delà du round-robin
 
-Tout ce qui précède décide **quel modèle** sert une requête. Personne n'a encore décidé **quel réplica**. Jusqu'ici, la réponse venait par défaut, sans que je l'aie choisie : le `Service` ClusterIP, et son **round-robin** — chaque requête au pod suivant, à tour de rôle.
+Tout ce qui précède décide **quel modèle** sert une requête. Reste **quel réplica** — tranché par défaut par le `Service` ClusterIP et son **round-robin** (chaque requête au pod suivant). Sur vLLM, c'est **hostile**, pour deux raisons qui attaquent ce que la [partie 3](/fr/post/series/agentic_ai/llm-self-hosted-stack/) avait mis en place :
 
-Sur du HTTP sans état, c'est exactement ce qu'on veut. Sur vLLM, c'est **hostile**, et pour deux raisons qui attaquent précisément ce que la [partie 3](/fr/post/series/agentic_ai/llm-self-hosted-stack/) avait mis en place :
-
-* **Il détruit la localité du prefix cache.** Le *prefix caching* réutilise le KV cache déjà calculé pour un préfixe partagé — en autocomplete, le fichier autour du curseur, identique d'une frappe à l'autre. Mais ce cache est **local à un pod**. Éparpiller à tour de rôle sur des réplicas différents des requêtes qui partagent leur préfixe, c'est garantir que chacun devra recalculer ce que le voisin a déjà en mémoire : du **prefill** (la passe de calcul initiale sur l'intégralité du prompt, avant le premier token généré) redondant, payé deux fois — en GPU, et en TTFT.
-* **Il est aveugle à la charge.** Le tour de rôle ne regarde ni la file d'attente d'un pod, ni la pression sur son KV cache. Une requête peut donc atterrir sur un réplica au bord de la saturation pendant qu'un autre, juste à côté, tourne à vide.
+* **Il détruit la localité du prefix cache.** Le **prefix caching** réutilise le **KV cache** (les activations déjà calculées pour un préfixe donné), local à un pod. Éparpiller des requêtes qui partagent leur préfixe force chaque réplica à recalculer ce que son voisin a déjà en mémoire : du **prefill** (le calcul initial sur tout le prompt) redondant, payé deux fois, en GPU et en TTFT.
+* **Il est aveugle à la charge.** Round-robin ne regarde ni la file d'attente d'un pod ni la pression sur son KV cache. Une requête peut atterrir sur un réplica saturé pendant qu'un autre tourne à vide.
 
 ### Un flag, un sous-système
 
-L'**Endpoint Picker** (EPP) est le composant de la **Gateway API Inference Extension** (GAIE, v1.5.0 — dont l'objet `InferencePool` est GA depuis septembre 2025) qui prend cette décision à la place du round-robin : pour chaque requête, **lequel** des réplicas la servira. Et il la prend sur des données que la plateforme possédait déjà — il scrape les **mêmes** `/metrics` vLLM que celles collectées dans VictoriaMetrics depuis la partie 3, puis score chaque pod candidat sur quatre signaux : profondeur de la file d'attente, utilisation du KV cache, **affinité de préfixe** (ce pod a-t-il déjà en cache le préfixe de cette requête ?), et présence de l'adapter LoRA demandé.
+L'**Endpoint Picker** (EPP), composant de la **Gateway API Inference Extension** (GAIE, v1.5.0 ; `InferencePool` GA depuis septembre 2025), décide **lequel** des réplicas sert chaque requête. Il score chaque pod sur les **mêmes** `/metrics` vLLM que la plateforme collecte déjà : file d'attente, KV cache, affinité de préfixe, adapter LoRA présent.
 
 Côté claim, ça tient en un booléen :
 
@@ -454,37 +452,33 @@ Derrière ce booléen, la composition rend cinq ressources :
 | Ressource générée | Ce qu'elle apporte |
 |---|---|
 | **`HelmRelease`** (chart `inferencepool`, v1.5.0) | l'installation de l'EPP |
-| **`InferencePool`** | l'ensemble des réplicas à scorer — scopé aux pods de **sa propre claim** (`matchLabels: {app.kubernetes.io/name: <claim>}`), jamais cross-modèle |
+| **`InferencePool`** | les réplicas à scorer, scopés à **sa propre claim**, jamais cross-modèle |
 | **Deployment EPP** | le service de scoring lui-même |
-| **`CiliumNetworkPolicy`** | le default-deny du pod EPP : il ne parle qu'à ce qu'il doit parler |
-| **`VMServiceScrape`** | l'EPP est à son tour observé, comme tout le reste |
-
-Les deux dernières lignes méritent qu'on s'y arrête, parce qu'elles sont la vraie thèse de cette section : **la sécurité n'est pas la note de bas de page de cette liste, elle en est le plancher.** Le pod EPP arrive avec sa politique réseau default-deny et satisfait le profil **PSS restricted** (*Pod Security Standards* : le niveau le plus strict de Kubernetes — pas de privilèges, pas de root, système de fichiers en lecture seule). Personne n'a eu à y penser, personne n'a eu à s'en souvenir : c'est ce que la plateforme émet, parce qu'un utilisateur a coché une case.
+| **`CiliumNetworkPolicy`** | default-deny du pod EPP |
+| **`VMServiceScrape`** | l'EPP est aussi observé |
 
 ### KEDA et l'EPP ne se disputent rien
 
-Le réflexe, en lisant « il route vers le pod le moins chargé », est d'y voir un doublon de l'autoscaler. Ce n'en est pas un : **ils opèrent à deux échelles de temps différentes.** KEDA décide **combien** de réplicas doivent exister — en dizaines de secondes, le temps qu'un pod démarre et, s'il faut un nœud, que Karpenter le provisionne. L'EPP décide **lequel** des réplicas existants sert la requête qui arrive — en millisecondes, sur le chemin de la requête. Les deux lisent les mêmes signaux de saturation vLLM ; ils en tirent des décisions de nature différente.
+Le réflexe est d'y voir un doublon de l'autoscaler. Ce n'en est pas un : **ils opèrent à deux échelles de temps différentes.** KEDA décide **combien** de réplicas exister, en dizaines de secondes ; l'EPP décide **lequel** des réplicas existants sert la requête, en millisecondes. Les deux lisent les mêmes signaux vLLM, pour des décisions différentes.
 
-C'est d'ailleurs le bon moment pour un troisième trigger KEDA, ajouté au passage dans cette PR. Aux deux de la partie 3 — `vllm:num_requests_running` rapporté à `maxNumSeqs`, et `vllm:gpu_cache_usage_perc` — s'ajoute **`vllm:num_requests_waiting`** (`scaling.queueLengthThreshold`, défaut **8**) : le nombre de requêtes que vLLM a acceptées mais n'a pas encore commencé à traiter. C'est le signal de pression **le plus précoce** des trois — la file grossit avant que le batch ne sature. Les triggers KEDA se combinent en **OR** : le premier qui franchit son seuil déclenche le scale-up.
+Troisième trigger KEDA ajouté au passage : aux deux de la partie 3 s'ajoute **`vllm:num_requests_waiting`** (`scaling.queueLengthThreshold`, défaut **8**) — les requêtes acceptées mais pas encore traitées, le signal de pression **le plus précoce** des trois. Les triggers se combinent en **OR** : le premier à franchir son seuil déclenche le scale-up.
 
 Sur le chiffre, restons honnête. Le projet **llm-d** rapporte jusqu'à **57× d'amélioration du TTFT** face au round-robin sous charge. C'est une mesure **externe**, faite par d'autres, sur leur charge et leur matériel — **je ne l'ai pas reproduite ici**, et elle décrit vraisemblablement un cas où le prefix cache a beaucoup à donner. Je la cite pour l'ordre de grandeur du levier, pas comme un résultat de cette plateforme.
 
 {{% notice warning "EPP et canary : il faut choisir" %}}
-Les deux fonctionnalités les plus visibles de cette PR sont **mutuellement exclusives**. Une claim qui active `gateway.endpointPicker` avec un `gateway.canaries` non vide est **rejetée à l'admission** — `kubectl apply` échoue.
+Les deux fonctionnalités les plus visibles de cette PR sont **mutuellement exclusives**. Une claim qui active `gateway.endpointPicker` avec un `gateway.canaries` non vide est **rejetée à l'admission**.
 
-Ce n'est pas un raccourci de la composition, c'est une contrainte de l'objet : un `backendRef` qui pointe une `InferencePool` ne supporte **ni `weight`, ni `modelNameOverride`** — c'est-à-dire exactement les deux mécanismes sur lesquels repose le canary — et une seule `InferencePool` est admise par règle de routage. Il n'y a donc rien à composer : le canary pondéré et le routage intelligent parlent deux langages de `backendRef` différents.
+La cause est structurelle : un `backendRef` pointant une `InferencePool` ne supporte **ni `weight`, ni `modelNameOverride`** — les deux mécanismes du canary — et une seule `InferencePool` est admise par règle. Rien à composer : ils parlent deux langages de `backendRef` incompatibles.
 
-Il faut donc choisir, aujourd'hui : **le canary pondéré, ou le scoring par réplica.** Et un rejet net à l'`apply` vaut mieux qu'une combinaison acceptée qui ignorerait silencieusement l'une des deux — un poids déclaré dans la claim que rien n'applique dans le cluster, c'est très précisément le genre de mensonge que le reste de cet article passe son temps à traquer.
+Il faut donc choisir, aujourd'hui. Un rejet net à l'`apply` vaut mieux qu'une combinaison silencieusement incomplète.
 {{% /notice %}}
 
 {{% notice tip "Au passage : le dernier maillon du cold-start" %}}
-La partie 3 avait réglé le gros du démarrage à froid en stockant les poids sur un **PVC S3 Files** : un pod vLLM monte le volume au lieu de retélécharger ~15 Go depuis HuggingFace. Restait un maillon, en aval : la lecture de ces ~15 Go depuis le volume vers la VRAM.
+La partie 3 avait réglé le gros du démarrage à froid avec un **PVC S3 Files**, évitant de retélécharger ~15 Go depuis HuggingFace. Restait un maillon : la lecture de ces poids depuis le volume vers la VRAM.
 
-Le **Run:ai Model Streamer** (`--load-format runai_streamer`) s'attaque à celui-là — il lit les poids de façon concurrente et les transfère vers le GPU **au fil de la lecture**, au lieu d'attendre que tout soit chargé en mémoire hôte. Il est embarqué dans l'image `vllm-openai` depuis la **v0.8.5**, et s'active par `model.streaming` **sur le chemin PVC déjà en place** : rien à changer au stockage.
+Le **Run:ai Model Streamer** (`--load-format runai_streamer`) s'attaque à celui-là : selon la documentation du projet, il lit les poids de façon concurrente et les transfère vers le GPU au fil de la lecture, sans attendre qu'ils soient tous chargés en mémoire hôte. Embarqué dans l'image `vllm-openai` depuis la **v0.8.5**, il s'active par `model.streaming` sur le PVC déjà en place. Ses flags rejoignent la denylist `engineArgs`.
 
-Ses flags rejoignent la **denylist `engineArgs`**, et c'est la même règle qu'à la section précédente — dès qu'un champ curé pilote un flag, ce flag n'est plus à écrire à la main.
-
-Deux capacités du streamer sont en revanche **descopées** : le chargement `s3://` direct (sans PVC) et le résolveur LoRA. Toutes deux demandent **vLLM v0.9.0**, que l'image ne fournit pas encore. Et combien de secondes tout cela fait-il gagner, réellement ? Je ne l'ai pas encore mesuré — je le dirai quand je l'aurai fait.
+Deux capacités restent **descopées** : le chargement `s3://` direct et le résolveur LoRA, qui demandent **vLLM v0.9.0**. Combien de secondes cela fait-il gagner ? Pas encore mesuré — je le dirai quand je l'aurai fait.
 {{% /notice %}}
 
 <!-- TODO-e2e: cold-start mesuré avec et sans le streamer -->
