@@ -210,6 +210,8 @@ RunLore n'arrive pas sur un terrain vierge : la **RCA** (_Root Cause Analysis_, 
 | [**k8sgpt**](https://github.com/k8sgpt-ai/k8sgpt) | Un _détecteur_ (analyzers + explication par LLM) | Une boucle d'investigation, la corrélation multi-signaux, de vrais diffs Git et l'apprentissage |
 | [**kagent**](https://github.com/kagent-dev/kagent) | Un _framework_ d'agents in-cluster générique | Un agent SRE focalisé et opinionated (RunLore pourrait tourner _sur_ kagent) |
 
+Ce tableau n'a rien d'exhaustif : [**Aurora**](https://github.com/Arvo-AI/aurora) (open source, multi-cloud) joue dans la même cour, et toute une vague d'agents SaaS (Datadog Bits AI SRE, Cleric, Resolve.ai…) adresse le même besoin — mais en boîte fermée, ce qui les place hors du terrain qui m'intéresse ici : l'ouvert et l'auto-hébergeable.
+
 Clairement, la **RCA orientée changement n'est pas nouvelle** — des outils commerciaux calculent des diffs de changements depuis longtemps. Le vrai espace que RunLore occupe, c'est la **combinaison** que les outils ouverts n'ont pas : ce signal alimentant un **catalogue ouvert, portable et relu**, opéré par un agent qui **garde l'humain à la décision**.
 
 ## 🛠️ Tu peux le tester simplement

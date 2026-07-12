@@ -1,0 +1,130 @@
+{{/*
+  Project-level override of the theme partial.
+
+  Upstream renders the original file at full resolution and only offers a WebP /
+  AVIF <source> if a sibling file with that extension already exists on disk.
+  Nothing generates those, so a post card ended up downloading the full-size
+  thumbnail (up to 4.8 MB, 2147px wide) into a ~200px slot.
+
+  Here the image is resized and encoded to WebP at build time, with a resized
+  fallback in the original format. Intrinsic width/height are always emitted so
+  the browser reserves the box before the image lands (no layout shift).
+*/}}
+
+{{- $file := .file -}}
+{{- $image := .image -}}
+{{- $type := .type -}}
+{{- $diskPath := .diskPath -}}
+{{- $webPath := .webPath -}}
+{{- $alt := .alt -}}
+{{- $cap := .cap -}}
+{{- $classes := .classes -}}
+{{- $bundle := .bundle -}}
+
+{{- $fileWeb := .file -}}
+{{- if eq $bundle true -}}
+  {{ $fileWeb = path.Join $webPath $file }}
+  {{ if in $classes "image_svg" }}
+    {{ if strings.HasPrefix $file "http" }}
+      {{ $fileWeb = $file }}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* Formats Hugo can resize. SVG has no raster pipeline; GIF would lose animation. */}}
+{{- $processable := false -}}
+{{- with $image -}}
+  {{- if and .MediaType (in (slice "png" "jpeg" "webp" "tiff" "bmp") .MediaType.SubType) -}}
+    {{- $processable = true -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* Target width per usage, so a card doesn't pull a full-resolution asset. */}}
+{{- $maxWidth := 1200 -}}
+{{- $sizes := "(max-width: 600px) 100vw, min(1200px, 100vw)" -}}
+{{- if eq $type "thumbnail" -}}
+  {{- $maxWidth = 300 -}}
+  {{- $sizes = "300px" -}}
+{{- else if eq $type "featured" -}}
+  {{- $maxWidth = 1600 -}}
+  {{- $sizes = "(max-width: 600px) 100vw, min(1600px, 100vw)" -}}
+{{- end -}}
+
+<figure>
+  <picture>
+
+    {{- if $processable -}}
+      {{- $w1x := math.Min $maxWidth $image.Width | int -}}
+      {{- $w2x := math.Min (mul $maxWidth 2) $image.Width | int -}}
+      {{- $r1x := $image.Resize (printf "%dx" $w1x) -}}
+      {{- $r2x := $image.Resize (printf "%dx" $w2x) -}}
+      {{- $webp1x := try ($r1x.Process "webp q80") -}}
+      {{- $webp2x := try ($r2x.Process "webp q80") -}}
+
+      {{- if and (not $webp1x.Err) (not $webp2x.Err) }}
+      <source type="image/webp"
+              srcset="{{ $webp1x.Value.RelPermalink }} {{ $w1x }}w, {{ $webp2x.Value.RelPermalink }} {{ $w2x }}w"
+              sizes="{{ $sizes }}">
+      {{- else }}
+        {{- warnf "figure: skipping WebP for %q (encoder failed: %s)" $image.Name (or $webp1x.Err $webp2x.Err) -}}
+      {{- end }}
+
+      {{/* Fallback stays in the original format, but resized — never the raw asset. */}}
+      <img
+        loading="lazy"
+        decoding="async"
+        alt="{{ htmlEscape $alt }}"
+        class="{{ $classes }} image_processed"
+        width="{{ $r1x.Width }}"
+        height="{{ $r1x.Height }}"
+        srcset="{{ $r1x.RelPermalink }} {{ $w1x }}w, {{ $r2x.RelPermalink }} {{ $w2x }}w"
+        sizes="{{ $sizes }}"
+        src="{{ $r1x.RelPermalink }}"
+        {{- with $cap }}
+        title="{{ safeHTML $cap }}"
+        {{- end }}
+      />
+    {{- else -}}
+
+      {{/* SVG, GIF, or an image Hugo couldn't resolve: keep the upstream behaviour. */}}
+      {{- with $file -}}
+        {{ $name := replace $file (path.Ext $file) "" }}
+        {{ $ext := slice "avif" "webp" "jxl" }}
+        {{- range $ext -}}
+          {{ $item := printf "%s%s" $name (printf ".%s" .) }}
+          {{ $itemDisk := path.Join $diskPath $item }}
+          {{ $itemWeb := path.Join $webPath $item }}
+          {{- if fileExists $itemDisk -}}
+            <source srcset="{{ $itemWeb }}" type="image/{{ . }}">
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+
+      <img
+        loading="lazy"
+        decoding="async"
+        alt="{{ htmlEscape $alt }}"
+        {{ with $image }}
+          class="{{ $classes }} image_processed"
+          width="{{ .Width }}"
+          height="{{ .Height }}"
+          src="{{ .RelPermalink | absURL }}"
+        {{ else }}
+          class="{{ $classes }} image_unprocessed"
+          src="{{ $fileWeb | absURL }}"
+        {{ end }}
+        {{ with $cap }}
+          title="{{ safeHTML $cap }}"
+        {{ end }}
+      />
+    {{- end -}}
+
+    {{/* Provide caption based on image title, if it is set. */}}
+    {{- with $cap -}}
+      {{- if not (eq $cap " ") -}}
+        <figcaption class="{{ replace $classes "image" "caption" }}">{{ $cap | safeHTML }}</figcaption>
+      {{- end -}}
+    {{- end -}}
+
+  </picture>
+</figure>
