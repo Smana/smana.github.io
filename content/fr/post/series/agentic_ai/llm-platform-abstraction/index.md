@@ -141,7 +141,7 @@ Avec `gateway.enabled: true`, la composition ne rend plus seulement le pod : ell
 
 Ces trois objets sont désormais des **ressources composées** : Crossplane les possède, exactement comme il possède déjà le `Deployment` ou le `ScaledObject`. Elles portent l'`ownerReference` de la **ressource composite** — l'objet interne que Crossplane crée pour honorer la claim, et dont dépendent aussi le `Deployment` et les autres ressources générées — donc **le garbage collector de Kubernetes les emporte avec elle**. Supprimer un modèle supprime sa route — non pas parce qu'on y a pensé, mais parce qu'il n'existe aucun chemin où la route survive à son propriétaire. Le *backend fantôme* de la section précédente devient structurellement impossible, et la dérive inverse aussi : il n'y a plus deux fichiers à garder synchronisés, il n'y en a plus qu'un.
 
-<!-- TODO-e2e: schéma avant/après de la propriété du routage (tâche 8) -->
+{{< img src="routing-ownership.png" alt="Propriété du routage : avant, deux sources de vérité ; après, une seule" width="1200" >}}
 
 ### Le latch de readiness
 
@@ -222,7 +222,7 @@ La règle de l'`AIGatewayRoute` qui répond au nom du modèle de base ne porte p
 
 Relisez la dernière colonne. **Les deux `backendRef` pointent le même `Backend`** — le même `Service`, les mêmes pods, le même GPU. Rien n'est envoyé ailleurs, parce qu'il n'y a pas d'ailleurs. Tout ce que fait le canary, c'est **réétiqueter** 10 % des requêtes : `modelNameOverride` réécrit le nom du modèle avant que la requête n'atteigne vLLM, et vLLM — qui a déjà l'adapter en mémoire, puisqu'il l'a chargé au démarrage — la sert avec le fine-tune plutôt qu'avec les poids de base.
 
-<!-- TODO-e2e: schéma du split canary (tâche 8) -->
+{{< img src="canary-split.png" alt="Split canary : un pod, un GPU, le modèle de base et deux adapters LoRA" width="1200" >}}
 
 C'est là que se joue le « zéro GPU » du titre. Un canary applicatif classique coûte de la capacité : on déploie une v2 à côté de la v1, et pendant toute la durée de l'expérience on paie deux jeux de réplicas. Transposé ici, ce serait un **second pod vLLM**, donc un second GPU, donc un nœud de plus provisionné par Karpenter — pour évaluer un delta de quelques dizaines de Mo. Le canary LoRA n'ajoute ni réplica, ni nœud, ni ligne de facture : le split est une décision de *routage*, prise en amont, sur une flotte qui n'a pas bougé.
 
