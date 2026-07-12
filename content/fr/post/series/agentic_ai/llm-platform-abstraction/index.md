@@ -2,7 +2,7 @@
 author = "Smaine Kahlouch"
 title = "Le modèle, pas le pod"
 date = "2026-07-12"
-summary = "Deux mois après avoir posé les fondations, l'abstraction `InferenceService` a révélé quatre manques : deux sources de vérité, aucune stratégie de rollout, aucune échappatoire, aucune découvrabilité. Comment une abstraction de plateforme mûrit — canary LoRA à coût GPU nul compris."
+summary = "Deux mois d'usage de l'abstraction `InferenceService` ont dégagé quatre axes d'amélioration : le routage possédé par la claim, un rollout par paliers, une configuration avancée encadrée et une topologie lisible. Comment une abstraction de plateforme gagne en maturité et devient évolutive — canary LoRA à coût GPU nul compris."
 featured = true
 codeMaxLines = 30
 usePageBundles = true
@@ -14,12 +14,14 @@ thumbnail = "thumbnail.png"
 +++
 
 {{% notice info "Série Agentic AI — Partie 4" %}}
-Cet article fait suite à [Self-hosted LLM stack : poser les fondations](/fr/post/series/agentic_ai/llm-self-hosted-stack/) (partie 3), qui décrit la plateforme sur laquelle tout ce qui suit s'appuie. **Ici, on la fait vivre** — et on répare ce qui a cassé.
+Cet article fait suite à [Self-hosted LLM stack : poser les fondations](/fr/post/series/agentic_ai/llm-self-hosted-stack/) (partie 3), qui décrit la plateforme sur laquelle tout ce qui suit s'appuie. **Ici, on la fait vivre** — et on la fait mûrir.
 {{% /notice %}}
 
 Ajouter un modèle à la plateforme, c'est un fichier YAML et un `git push`. Le pod démarre, les poids se chargent, la ressource passe `READY`. Et le client, lui, peut très bien prendre un `404` — parce que la **route** qui expose ce modèle sur la Gateway ne vit pas dans ce fichier. Elle vit dans un autre fichier, à côté, écrit à la main.
 
-Ce n'est pas un bug : c'est exactement le contrat que j'ai livré dans la [partie 3](/fr/post/series/agentic_ai/llm-self-hosted-stack/), il y a deux mois. La fondation, elle, a tenu — la **claim** (le manifeste YAML par lequel un utilisateur déclare *ce qu'il veut*, à charge pour la plateforme de produire les ressources Kubernetes correspondantes) fait toujours le job. Mais **la faire vivre** au quotidien a fait remonter quatre manques qui ne sont pas des détails d'implémentation : ce sont des trous dans l'abstraction elle-même.
+Ce n'est pas un bug : c'est exactement le contrat livré dans la [partie 3](/fr/post/series/agentic_ai/llm-self-hosted-stack/), il y a deux mois. Et ce contrat tient. La **claim** (le manifeste YAML par lequel un utilisateur déclare *ce qu'il veut*, à charge pour la plateforme de produire les ressources Kubernetes correspondantes) reste la bonne interface, et la plateforme produit bien les ressources du modèle.
+
+Ce que deux mois d'usage ont montré, c'est que la **promesse** attachée à cette interface — produire *toutes* les ressources dont un modèle a besoin — s'arrêtait avant le routage. Elle ne s'y arrête plus. Et l'analyse qui a mené là a dégagé trois autres axes, ceux qui font passer une abstraction de « ça marche » à « ça évolue sans casser ».
 
 Pour que cet article se lise seul, voici ce que la partie 3 a livré — servir un modèle open-weight sur la plateforme tenait dans ces quelques lignes :
 
@@ -48,10 +50,10 @@ De cette claim, la **composition** Crossplane — le programme qui traduit la cl
 
 ## :dart: Objectifs
 
-* Comprendre pourquoi une abstraction de plateforme doit **posséder le routage** qu'elle génère — et ce qui casse quand elle ne le possède pas
+* Comprendre pourquoi une abstraction de plateforme doit **posséder le routage** qu'elle génère — c'est la promesse de complétude qui en dépend
 * Voir un **canary LoRA** déplacer une fraction du trafic vers un fine-tune, **à coût GPU nul** : même pod, même GPU, aucun réplica supplémentaire
-* Comprendre ce qu'est une **échappatoire encadrée** : laisser passer l'imprévu sans laisser trouer le contrat de service
-* Rendre la topologie **découvrable** : un `kubectl get` doit dire à quels noms le modèle répond réellement
+* Voir comment une **configuration avancée** encadrée laisse passer les options que le schéma curé n'a pas prévues, sans trouer le contrat de service
+* Rendre la topologie **lisible** : un `kubectl get` doit dire à quels noms le modèle répond réellement
 * En tirer **quatre leçons transposables** à n'importe quelle abstraction de plateforme — LLM ou pas
 
 {{% notice tip "Le code" %}}
@@ -60,15 +62,15 @@ Tout ce qui suit est dans [**cloud-native-ref**](https://github.com/Smana/cloud-
 
 ---
 
-## :mag: Ce qui clochait
+## :arrow_upper_right: Quatre axes d'amélioration
 
-Deux mois d'usage, quatre manques. Aucun n'est un incident spectaculaire — ce sont des frictions qui reviennent, et qui ont toutes la même origine : l'abstraction modélisait **le pod**, pas **le service rendu**.
+Le contrat de la partie 3 n'a pas bougé : une claim d'un côté, la plateforme qui en tire les ressources du modèle de l'autre. C'est en le mettant au travail pendant deux mois qu'une analyse délibérée a dégagé quatre axes. Le premier est le plus structurant, parce qu'il porte sur la **complétude** de l'abstraction : sa promesse est de produire *toutes* les ressources dont un modèle a besoin, et le routage y échappait. Les trois autres portent sur son **évolutivité** : rien ne permettait de faire bouger un modèle par paliers, ni de sortir des champs curés, ni de lire ce qu'un pod servait réellement.
 
-### 1. Deux sources de vérité
+### 1. Le routage échappait à la claim
 
 La claim déclare *quel* modèle tourne. Un second fichier, `apps/base/ai/llm/ai-gateway-routes/route.yaml`, déclare *comment* on l'atteint : c'est lui qui dit à l'**Envoy AI Gateway** (le point d'entrée unique de la plateforme, compatible API OpenAI) que `model: xplane-qwen-coder` doit atterrir sur tel backend. Et ce fichier était **écrit à la main**.
 
-Autant l'assumer franchement : la partie 3 listait l'`AIGatewayRoute` parmi les ressources générées par la composition. C'était vrai de l'intention, pas du code.
+Une précision pour qui relit la partie 3 : elle listait l'`AIGatewayRoute` parmi les ressources générées par la composition. C'était vrai de l'intention, pas du code — et c'est exactement la lacune de couverture que cette version comble.
 
 | Où c'est déclaré | Quoi | Qui l'écrit |
 |---|---|---|
@@ -80,32 +82,32 @@ Deux fichiers qu'il faut penser à garder synchronisés, donc deux dérives poss
 * **Un modèle sans route** — le pod tourne, le GPU est facturé, et la Gateway répond `404` à qui le demande.
 * **Une route qui survit à son modèle** — la claim est supprimée, l'entrée de routage reste : un *backend fantôme* vers un `Service` qui n'existe plus.
 
-### 2. Aucune stratégie de rollout
+### 2. Aucun moyen de faire évoluer un modèle par paliers
 
 La bascule d'un modèle est **binaire**. On change `repository` et `revision`, Flux réconcilie, et 100 % du trafic part sur les nouveaux poids. Aucun palier, aucune fraction, aucun retour arrière progressif.
 
-C'est d'autant plus dommage que la composition savait déjà charger des **adapters LoRA** (_Low-Rank Adaptation_). La partie 3 n'en a pas dit un mot — et pour cause : un adapter comme `xplane-qwen-coder-sql-dpo` ou `xplane-qwen-coder-securecode` n'était joignable que par un client qui le **nommait explicitement**. Impossible de déplacer 10 % du trafic du modèle de base vers son fine-tune pour le valider sur du trafic réel. Un fine-tune que personne ne nomme est un fine-tune que personne n'évalue.
+La matière première était pourtant déjà là : la composition savait charger des **adapters LoRA** (_Low-Rank Adaptation_). La partie 3 n'en a pas dit un mot — et pour cause : un adapter comme `xplane-qwen-coder-sql-dpo` ou `xplane-qwen-coder-securecode` n'était joignable que par un client qui le **nommait explicitement**. Impossible de déplacer 10 % du trafic du modèle de base vers son fine-tune pour le valider sur du trafic réel. Un fine-tune que personne ne nomme est un fine-tune que personne n'évalue.
 
-### 3. Aucune échappatoire
+### 3. Aucun moyen de sortir des champs curés
 
 Le schéma de la claim expose des champs **curés** : `quantization`, `contextWindow`, `toolCallParser`… Tout ce qui n'y figure pas est hors d'atteinte. Vouloir essayer un flag vLLM une après-midi coûtait donc : une PR sur la composition KCL, les tests unitaires, la republication de l'image OCI, le bump du tag dans la `Composition`, et enfin Flux. Une release de plateforme pour un essai.
 
-Le réflexe inverse — un champ fourre-tout non contraint — est pire : il laisse l'utilisateur écraser `--served-model-name` ou `--port`, c'est-à-dire casser silencieusement le contrat sur lequel reposent le `Service`, les probes et la route. Faute de savoir encadrer, j'avais choisi d'interdire.
+Le réflexe inverse — un champ fourre-tout non contraint — n'est pas une réponse non plus : il laisse l'utilisateur écraser `--served-model-name` ou `--port`, c'est-à-dire casser silencieusement le contrat sur lequel reposent le `Service`, les probes et la route. La question à trancher était donc de trouver la forme qui laisse passer l'imprévu sans ouvrir cette brèche.
 
-### 4. Aucune découvrabilité
+### 4. La topologie servie n'était pas lisible
 
-`kubectl get isvc` dit qu'un modèle est prêt. Il ne dit pas **à quels noms il répond**. Pour répondre à une question aussi élémentaire que « qu'est-ce que ce pod sert, au juste ? », il fallait ouvrir le fichier de routage, le recouper avec les arguments vLLM du `Deployment`, et reconstituer la topologie à la main. Rétro-ingénierer sa propre plateforme pour savoir ce qu'elle expose : ce n'est plus une abstraction, c'est une devinette.
+`kubectl get isvc` dit qu'un modèle est prêt. Il ne dit pas **à quels noms il répond**. Pour répondre à une question aussi élémentaire que « qu'est-ce que ce pod sert, au juste ? », il fallait ouvrir le fichier de routage, le recouper avec les arguments vLLM du `Deployment`, et reconstituer la topologie à la main. Une abstraction qu'il faut rétro-ingénierer pour savoir ce qu'elle expose s'arrête à mi-chemin.
 
 ---
 
-Chacun de ces manques est comblé dans une section de cet article :
+Chacun de ces axes est traité dans une section de cet article :
 
-| Le manque | Ce qui le comble |
+| L'axe | Ce qui l'adresse |
 |---|---|
-| Deux sources de vérité | La composition **possède** le routage (`gateway.enabled`) |
-| Aucune stratégie de rollout | Des **canaries LoRA** pondérés (`gateway.canaries`) |
-| Aucune échappatoire | `spec.engineArgs`, encadré à l'admission |
-| Aucune découvrabilité | `status.servedModels` et une colonne `SERVED MODELS` |
+| Le routage échappait à la claim | La composition **possède** le routage (`gateway.enabled`) |
+| Aucune évolution par paliers | Des **canaries LoRA** pondérés (`gateway.canaries`) |
+| Aucune sortie des champs curés | `spec.engineArgs`, encadré à l'admission |
+| Topologie servie illisible | `status.servedModels` et une colonne `SERVED MODELS` |
 
 Mais ils ont tous la même racine, et c'est la thèse de cet article : **l'unité de déploiement n'est plus « un pod qui sert un modèle »**. Ce que l'on déploie, c'est un modèle de base, *ses adapters*, *les noms sous lesquels on les atteint*, et *la fraction de trafic qui va à chacun*. Tant que l'abstraction ne modélise que le pod, tout le reste retombe sur l'humain — dans un fichier à côté, à la main.
 
@@ -259,13 +261,13 @@ Le plafond à **99** garantit donc qu'il reste toujours du trafic sur le modèle
 Ce n'est pas de la prescience, c'est de l'emprunt : la lecture de la plateforme **Modelplane** — sur laquelle je reviens en fin d'article — a rendu évident que comparer *plusieurs* adapters en même temps est un cas d'usage normal, pas un exotisme. Le coût de l'array au jour 1, c'est quelques lignes de KCL. Le coût de la conversion au jour 100, ça s'appelle une migration.
 {{% /notice %}}
 
-## :unlock: L'échappatoire `engineArgs`
+## :gear: Configuration avancée : ouvrir sans trouer
 
-Ce troisième manque ne vient pas d'un oubli : il vient d'un refus. Le schéma de la claim n'expose que des champs curés, et j'avais délibérément décidé qu'il n'y aurait rien d'autre. Le problème, c'est le rythme de vLLM : le moteur ajoute des flags à chaque release, bien plus vite qu'une API de plateforme ne peut les modéliser un par un. Chaque flag absent du schéma se payait donc au prix fort : une PR sur la composition KCL, les tests unitaires, la republication de l'image OCI, le bump du tag dans la `Composition`, puis Flux. **Une release de plateforme pour un essai d'une après-midi.**
+Une abstraction curée ne peut pas tout prévoir. Le schéma de la claim n'expose que des champs modélisés un par un, et vLLM ajoute des options à chaque release, plus vite qu'une API de plateforme ne peut les exposer. Chaque flag absent du schéma se payait donc au prix fort : une PR sur la composition KCL, les tests unitaires, la republication de l'image OCI, le bump du tag dans la `Composition`, puis Flux. **Une release de plateforme pour un essai d'une après-midi.**
 
-Sauf qu'une API sans échappatoire ne bloque personne : elle se fait **contourner**. Un `kubectl edit deployment`, le flag ajouté à la main, et jusqu'à la prochaine réconciliation de Crossplane ça marche très bien. Le coût réel n'est pas le contournement, c'est ce qu'il fait à l'abstraction : dès l'instant où l'état réel du cluster ne se lit plus dans la claim, **la claim ment**. Et une abstraction qui ment est pire qu'une abstraction absente, parce qu'elle continue de prétendre décrire le système.
+Une API qui ne laisse aucune sortie ne bloque personne : elle se fait **contourner**. Un `kubectl edit deployment`, le flag ajouté à la main, et jusqu'à la prochaine réconciliation de Crossplane ça marche très bien. Le coût réel n'est pas le contournement, c'est ce qu'il fait à l'abstraction : dès l'instant où l'état réel du cluster ne se lit plus dans la claim, **la claim ment**. Et une abstraction qui ment est pire qu'une abstraction absente, parce qu'elle continue de prétendre décrire le système.
 
-Le réflexe symétrique — un champ fourre-tout, non contraint — ne résout rien non plus : on troue alors l'abstraction de l'intérieur, avec sa bénédiction.
+Le réflexe symétrique — un champ fourre-tout, non contraint — ne résout rien non plus : on troue alors l'abstraction de l'intérieur, avec sa bénédiction. `spec.engineArgs` est la troisième voie : il laisse passer les **options non curées** — celles que le schéma n'a pas anticipées — sauf les seize dont l'autoscaling et le routage dépendent.
 
 ### Un champ, une contrainte de forme
 
@@ -310,7 +312,7 @@ Prenez `--max-num-seqs` : c'est le **dénominateur** du trigger KEDA vu en parti
 
 Deux flags méritent un arrêt particulier, parce que **la composition ne les émet jamais** : `--port` et `--host`. Elle laisse le moteur prendre ses défauts — le port `8000`, l'écoute sur toutes les interfaces — et pourtant elle les réserve. Ces défauts ne sont pas des détails d'implémentation, ce sont **le contrat de serving** : le `targetPort` du `Service` vise 8000, les probes interrogent 8000, le FQDN du `Backend` rendu par la Gateway pointe 8000. Un `--port=9000` dans `engineArgs`, et les trois pointent dans le vide.
 
-La leçon dépasse les LLM : **la denylist d'une échappatoire doit couvrir non seulement ce que l'abstraction écrit, mais ce qu'elle suppose.** Le second ensemble est celui qu'on oublie, parce qu'il n'apparaît dans aucun diff.
+La leçon dépasse les LLM : **les garde-fous d'une configuration avancée doivent couvrir non seulement ce que l'abstraction écrit, mais ce qu'elle suppose.** Le second ensemble est celui qu'on oublie, parce qu'il n'apparaît dans aucun diff.
 
 ### Une seule source d'application
 
@@ -332,7 +334,7 @@ D'où l'étape suivante : **casser volontairement la denylist**, relancer la sui
 
 `kubectl get isvc` répondait `READY`, et c'était tout ce qu'il répondait. Une information de santé : un pod tourne, il accepte des requêtes. Pas **à quels noms** il les accepte. La question était triviale tant qu'un pod servait un modèle sous un nom. Elle ne l'est plus : le même pod répond maintenant à un modèle de base et à deux adapters, et une requête sur dix adressée au premier part discrètement vers l'un des seconds.
 
-C'est le quatrième manque, comblé par un champ de statut. `status.servedModels` est une liste d'objets, republiée à chaque réconciliation :
+C'est le quatrième axe, adressé par un champ de statut. `status.servedModels` est une liste d'objets, republiée à chaque réconciliation :
 
 | Champ | Ce qu'il porte |
 |---|---|
@@ -485,7 +487,7 @@ La différence n'est pas de qualité, elle est de **périmètre** — et c'est c
 |---|---|---|
 | **Unité gérée** | la **flotte** : multi-cluster, multi-cloud, GPU hétérogènes | **un seul cluster** |
 | **Placement** | un scheduler choisit où poser chaque réplica | Karpenter, dans le cluster |
-| **Moteur d'inférence** | agnostique (vLLM, SGLang, topologies de parallélisme arbitraires) | **couplé à vLLM**, avec une échappatoire |
+| **Moteur d'inférence** | agnostique (vLLM, SGLang, topologies de parallélisme arbitraires) | **couplé à vLLM**, avec une configuration avancée encadrée |
 | **Maturité** | v0.1, API annoncée comme instable | v0.8.0, rendue et validée contre le tag réel `0.8.0-pr1559` — le passage e2e sur le cluster reste à faire |
 
 Le problème qu'ils résolvent — placer un modèle sur le bon GPU, dans le bon cluster, chez le bon fournisseur — **je ne l'ai tout simplement pas**. Cette plateforme est une référence mono-cluster ; prétendre qu'elle adresse la flotte serait du bruit.
@@ -502,24 +504,24 @@ C'est le point le plus intéressant, et le plus honnête : leur design a **modif
 
 * **Des arrays plutôt que des objets.** Le champ `gateway.canaries` de la section canary est un array **dès le premier jour**, alors qu'une seule entrée suffisait au besoin. Passer d'un objet à un array plus tard est un breaking change ; l'inverse est gratuit.
 * **Aucun nouveau champ requis.** Toute claim v0.6.0 s'applique telle quelle en v0.8.0. `gateway`, `canaries`, `engineArgs`, `endpointPicker` : tout est optionnel, et chaque défaut préserve le comportement d'avant.
-* **Des flags fournis par l'utilisateur plutôt qu'injectés.** L'échappatoire `engineArgs` existe parce que cette revue a rendu évident qu'aucune API de plateforme ne rattrapera jamais le rythme d'un moteur d'inférence. Le choix n'est pas *modéliser ou interdire*, c'est *encadrer ou se faire contourner*.
+* **Des flags fournis par l'utilisateur plutôt qu'injectés.** Le champ `engineArgs` existe parce que cette revue a rendu évident qu'aucune API de plateforme ne rattrapera jamais le rythme d'un moteur d'inférence. Le choix n'est pas *modéliser ou interdire*, c'est *encadrer ou se faire contourner*.
 
-Reste le caveat qui garde la comparaison honnête, et il joue contre moi : **ils sont engine-agnostic, je ne le suis pas.** La composition décrite ici parle vLLM, produit des flags vLLM, scale sur des métriques vLLM. C'est un choix de périmètre, pas un oubli — et c'est précisément ce qui rend possibles les signaux d'autoscaling curés et la denylist des flags réservés. On ne peut pas savoir que `--max-num-seqs` est le dénominateur d'un trigger KEDA **et** être agnostique au moteur qui l'expose. Le couplage est le prix de la profondeur ; l'échappatoire est là pour qu'il ne devienne pas une prison.
+Reste le caveat qui garde la comparaison honnête, et il joue contre moi : **ils sont engine-agnostic, je ne le suis pas.** La composition décrite ici parle vLLM, produit des flags vLLM, scale sur des métriques vLLM. C'est un choix de périmètre, pas un oubli — et c'est précisément ce qui rend possibles les signaux d'autoscaling curés et la denylist des flags réservés. On ne peut pas savoir que `--max-num-seqs` est le dénominateur d'un trigger KEDA **et** être agnostique au moteur qui l'expose. Le couplage est le prix de la profondeur ; la configuration avancée est là pour qu'il ne devienne pas une prison.
 
 ---
 
 ## :thought_balloon: Dernières remarques
 
-Cette PR ne rend pas la plateforme plus puissante — un pod vLLM sur un GPU faisait déjà tourner un modèle en partie 3. Elle rend l'abstraction **honnête** : ce que la claim déclare est enfin ce que le cluster fait. Et le chemin pour y arriver a produit quatre leçons qui n'ont, au fond, rien à voir avec les LLM.
+Cette PR ne rend pas la plateforme plus puissante — un pod vLLM sur un GPU faisait déjà tourner un modèle en partie 3. Elle rend l'abstraction **complète** et **évolutive** : la claim produit désormais *toutes* les ressources du modèle, routage compris, et elle sait le faire bouger par paliers. Le chemin pour y arriver a produit quatre leçons qui n'ont, au fond, rien à voir avec les LLM.
 
 * **Si deux fichiers décrivent la même chose, ils divergeront.** Ce n'est pas un problème de discipline, c'est un problème de temps : la dérive est une fonction du nombre de jours, pas du sérieux de l'équipe. La seule issue est structurelle — la composition doit **posséder les deux**, ou il n'y a plus qu'un fichier. Et posséder une ressource, c'est aussi décider **quand** elle existe : une route qui apparaît trop tôt envoie du trafic dans le vide, une route qui disparaît trop vite fait du flapping. Portail à la création, latch ensuite.
 * **Un rollout progressif ne coûte un GPU de plus que si l'abstraction confond le modèle et le pod.** La politique de trafic appartient au **modèle**, pas au réplica : dès qu'on la déclare au bon niveau, déplacer 10 % du trafic vers un fine-tune devient une décision de routage — pas une deuxième flotte à provisionner et à payer.
-* **Une API sans échappatoire finit contournée ; une échappatoire sans garde-fous casse les invariants.** Entre les deux : une **denylist explicite**, appliquée en **un seul** endroit. Deux endroits, et on vient de recréer le premier problème.
+* **Une API qui ne laisse aucune sortie finit contournée ; une configuration avancée sans garde-fous casse les invariants.** Entre les deux : une **denylist explicite**, appliquée en **un seul** endroit. Deux endroits, et on vient de recréer le premier problème.
 * **Si `kubectl get` ne dit pas ce que la ressource fait vraiment, l'abstraction ment.** Un statut correct rangé là où personne ne le lit n'est pas de la découvrabilité.
 
 Ce que je retiens surtout, c'est le déplacement qui les relie toutes les quatre : **l'unité de déploiement n'est plus « un pod qui sert un modèle », c'est « un modèle, avec sa politique de trafic, sa stratégie de rollout et sa découvrabilité »**. Tant qu'une abstraction ne modélise que le pod, tout le reste — la route, le split, les noms servis — retombe sur un humain, dans un fichier à côté, à la main.
 
-Avec une réserve que cet article a lui-même établie, et qu'il serait malhonnête de taire : aujourd'hui, `gateway.endpointPicker` et `gateway.canaries` **s'excluent à l'admission**. Dans une même claim, on déclare donc la politique de trafic **ou** la stratégie de rollout — pas encore les deux. L'unité de déploiement est la bonne ; elle n'est pas encore complète.
+Avec une limite que cet article a lui-même établie, et qui reste à lever : aujourd'hui, `gateway.endpointPicker` et `gateway.canaries` **s'excluent à l'admission**. Dans une même claim, on déclare donc la politique de trafic **ou** la stratégie de rollout — pas encore les deux. L'unité de déploiement est la bonne ; le prochain axe d'amélioration est déjà nommé.
 
 ### Et après ?
 
