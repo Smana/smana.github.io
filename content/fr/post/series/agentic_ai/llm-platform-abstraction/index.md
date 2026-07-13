@@ -648,6 +648,30 @@ Derrière ce booléen, la composition rend cinq ressources :
 | **`CiliumNetworkPolicy`** | default-deny du pod EPP |
 | **`VMServiceScrape`** | l'EPP est aussi observé |
 
+{{% notice warning "Envoy Gateway ne sait pas ce qu'est une InferencePool" %}}
+Le piège de cette fonctionnalité n'est pas dans la composition, il est **un étage plus bas**.
+
+Envoy Gateway v1.8.2 ne contient **pas un seul fichier** mentionnant « inference ». Le support de l'`InferencePool` n'est pas natif : il est **entièrement délégué** à l'extension server de l'AI Gateway. Et il faut **lui dire de déléguer** :
+
+```yaml
+extensionManager:
+  backendResources:
+    - group: inference.networking.k8s.io
+      kind: InferencePool
+      version: v1
+```
+
+Sans cette clé, tout le plan de contrôle a l'air parfait — l'`InferencePool` est `Accepted=True`, l'`AIGatewayRoute` aussi — et les requêtes prennent un `500`, sans qu'Envoy ait même *tenté* un upstream. Le pool n'existe simplement pas dans sa configuration.
+{{% /notice %}}
+
+{{% notice tip "Le chart EPP ne passe pas PSS restricted, et n'expose aucune clé pour ça" %}}
+Le chart `inferencepool` (v1.5.0) rend son `Deployment` EPP **sans aucun `securityContext`** — ni au niveau du pod, ni du conteneur — et n'expose **aucune valeur** pour en poser un. Sous **PSS restricted**, le pod est refusé à l'admission, Helm attend, abandonne, réinstalle, en boucle.
+
+Deux issues. Un **webhook mutant cluster-wide** (type Kyverno) corrige tous les pods du cluster — et met une dépendance de plus sur le chemin d'admission de *tout* le monde, pour un besoin qui concerne un chart. Ou un **`postRenderer` Flux**, qui patche la release **et rien d'autre** : scopé à la claim, ramassé par le GC avec elle, invisible pour le reste du cluster.
+
+C'est le second qui a été retenu. Un correctif local pour un problème local — quitte à ce qu'il soit moins élégant qu'une politique globale.
+{{% /notice %}}
+
 ### KEDA et l'EPP ne se disputent rien
 
 Le réflexe est d'y voir un doublon de l'autoscaler. Ce n'en est pas un : **ils opèrent à deux échelles de temps différentes.** KEDA décide **combien** de réplicas exister, en dizaines de secondes ; l'EPP décide **lequel** des réplicas existants sert la requête, en millisecondes. Les deux lisent les mêmes signaux vLLM, pour des décisions différentes.
@@ -655,6 +679,8 @@ Le réflexe est d'y voir un doublon de l'autoscaler. Ce n'en est pas un : **ils 
 Troisième trigger KEDA ajouté au passage : aux deux de la partie 3 s'ajoute **`vllm:num_requests_waiting`** (`scaling.queueLengthThreshold`, défaut **8**) — les requêtes acceptées mais pas encore traitées, le signal de pression **le plus précoce** des trois. Les triggers se combinent en **OR** : le premier à franchir son seuil déclenche le scale-up.
 
 Sur le chiffre, restons honnête. Le projet **llm-d** rapporte jusqu'à **57× d'amélioration du TTFT** face au round-robin sous charge. C'est une mesure **externe**, faite par d'autres, sur leur charge et leur matériel — **je ne l'ai pas reproduite ici**, et elle décrit vraisemblablement un cas où le prefix cache a beaucoup à donner. Je la cite pour l'ordre de grandeur du levier, pas comme un résultat de cette plateforme.
+
+Et la mienne n'est pas mesurée non plus. L'EPP tourne sur le cluster, il score les réplicas sur les métriques vLLM qu'il scrape lui-même, et le chemin de requête est propre. Mais la **distribution par préfixe** — le gain que tout ceci vise — demande de saturer plusieurs réplicas d'un même modèle avec du trafic qui partage ses préfixes. Le `NodePool` GPU est plafonné à quatre GPU, et la flotte de quatre modèles le sature exactement. Le garde-fou fait son travail ; la mesure attend un budget GPU qu'elle n'a pas encore.
 
 {{% notice warning "EPP et canary : il faut choisir" %}}
 Les deux fonctionnalités les plus visibles de cette PR sont **mutuellement exclusives**. Une claim qui active `gateway.endpointPicker` avec un `gateway.canaries` non vide est **rejetée à l'admission**.
