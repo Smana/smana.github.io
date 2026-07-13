@@ -67,7 +67,7 @@ Avant d'entrer dans le détail, une vue à vol d'oiseau. Tout ce que décrit cet
 <!-- DIAGRAM-EN-ATTENTE: schéma global .drawio (construit après le texte) -->
 {{< img src="architecture.png" alt="Vue d'ensemble de la plateforme" width="1200" >}}
 
-**Le plan de requête.** Un client parle à l'**Envoy AI Gateway** (le point d'entrée unique de la plateforme, compatible API OpenAI) en écrivant un nom dans son champ `model`. L'extproc de la Gateway en dérive un en-tête de routage, une `AIGatewayRoute` choisit le backend, et la requête atterrit sur un pod **vLLM** qui sert le modèle de base et ses adapters LoRA — sur un seul GPU.
+**Le plan de requête.** Un client parle à l'**Envoy AI Gateway** (le point d'entrée unique de la plateforme, compatible API OpenAI) en écrivant un nom dans son champ `model`. La Gateway en dérive un en-tête de routage, une `AIGatewayRoute` choisit le backend, et la requête atterrit sur un pod **vLLM** qui sert le modèle de base et ses adapters LoRA — sur un seul GPU.
 
 **Le plan de contrôle.** Rien de tout cela n'est écrit à la main. Une claim `InferenceService` déclare le modèle voulu ; la composition Crossplane (écrite en KCL) en tire une dizaine de ressources — le `Deployment` vLLM, le `Service`, les objets de routage, le `ScaledObject` KEDA, les `CiliumNetworkPolicy`, les règles d'alerte. Crossplane les **possède**, les **réconcilie** en continu, et les **garbage-collecte** ensemble le jour où la claim disparaît.
 
@@ -150,7 +150,7 @@ Reste que la route appartient désormais à la claim. Et une route que l'on poss
 
 Tout ce qui suit repose sur les **adapters LoRA**, alors posons-les — surtout **à quoi ça sert**.
 
-Un adapter **LoRA** (_Low-Rank Adaptation_) n'est pas un modèle : c'est un **delta de poids de faible rang** ajouté à ceux du modèle de base. Plutôt que de réentraîner les grandes matrices, on apprend une paire de petites matrices dont le produit s'ajoute aux premières. Le « faible rang » — ici fixé à **64** — se lit directement sur la balance : un adapter pèse **quelques dizaines de Mo** (un ordre de grandeur, pas une mesure faite ici), contre les ~15 Go de poids du modèle de base.
+Un adapter **LoRA** (_Low-Rank Adaptation_) n'est pas un modèle : c'est un **delta de poids de faible rang** ajouté à ceux du modèle de base. Plutôt que de réentraîner les grandes matrices, on apprend une paire de petites matrices dont le produit s'ajoute aux premières. Le « faible rang » — ici fixé à **64** — se lit directement sur la balance : un adapter pèse **quelques dizaines de Mo** (un ordre de grandeur, pas une mesure faite ici), contre les ~15 Go de poids du modèle de base non quantifié.
 
 Ce que LoRA évite, c'est un **second modèle complet**. Spécialiser un modèle — le rendre meilleur sur le SQL, sur le code sécurisé — c'est le **fine-tuner** : un fine-tuning classique réécrit les poids, et ce qu'on obtient est donc un second jeu de ~15 Go, donc un second pod, un second GPU, une seconde ligne de facture — et l'addition se répète à chaque spécialisation. LoRA casse cette proportionnalité : le fine-tune **s'ajoute** aux poids de base au lieu de les remplacer, et comme c'est un delta, rien n'empêche d'en poser plusieurs sur la même base.
 
