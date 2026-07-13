@@ -97,9 +97,7 @@ Le **routeur sémantique** de la partie 3 — un service qui classe le prompt et
 
 ### 4. Aucun moyen de sortir des champs curés
 
-Le schéma de la claim expose des champs **curés** : `quantization`, `contextWindow`, `toolCallParser`… Tout ce qui n'y figure pas est hors d'atteinte. Vouloir essayer un flag vLLM une après-midi coûtait donc : une PR sur la composition KCL, les tests unitaires, la republication de l'image OCI, le bump du tag dans la `Composition`, et enfin Flux. Une release de plateforme pour un essai.
-
-Le réflexe inverse — un champ fourre-tout non contraint — n'est pas une réponse non plus : il laisse l'utilisateur écraser `--served-model-name` ou `--port`, c'est-à-dire casser silencieusement le contrat sur lequel reposent le `Service`, les probes et la route. La question à trancher était donc de trouver la forme qui laisse passer l'imprévu sans ouvrir cette brèche.
+Le schéma de la claim expose des champs **curés** : `quantization`, `contextWindow`, `toolCallParser`… Tout ce qui n'y figure pas est hors d'atteinte, sans qu'aucune sortie ne soit prévue pour l'imprévu.
 
 ### 5. La topologie servie n'était pas lisible
 
@@ -175,7 +173,9 @@ Sur le cluster, le portail se voit à l'œil nu. Une claim fraîche, `gateway.en
 
 Le pod est resté **`Running` mais `0/1` pendant environ 90 secondes** — il chargeait ses poids sur le GPU — et la route est restée retenue tout ce temps. C'est le point précis qui compte : **le latch s'accroche à la condition `Available` du `Deployment`, pas à la phase du pod.** Un pod qui tourne n'est pas un pod qui sert, et seule la première des deux le sait.
 
-Un détail de conception que le terrain a rendu visible : les deux `Backend` de la section précédente, eux, sont créés **immédiatement**. Ils sont statiquement prêts — un FQDN et un port ne « démarrent » pas. **Seule la route est retenue.** Le portail ne bloque pas la construction du chemin, il bloque sa publication.
+Un détail de conception que le terrain a rendu visible : les deux backends décrits plus haut — le `Backend` et l'`AIServiceBackend` — sont créés **immédiatement**. Ils sont statiquement prêts — un FQDN et un port ne « démarrent » pas. **Seule la route est retenue.** Le portail ne bloque pas la construction du chemin, il bloque sa publication.
+
+Pendant que la route est retenue, les `resourceRefs` de la claim montrent déjà les backends :
 
 ```
 $ kubectl get inferenceservice xplane-scratch-latch -o jsonpath='{...resourceRefs}'
@@ -202,7 +202,7 @@ Le basculement se fait modèle par modèle. `xplane-qwen-coder` passe en `gatewa
 Soyons précis sur l'état réel : **un modèle sur quatre** est passé sous routage possédé par la composition. `route.yaml` existe toujours, il porte encore les trois autres, et il faut donc toujours y penser pour eux. Ce qui a changé, ce n'est pas que le fichier a disparu — c'est qu'il a cessé d'être *le seul* endroit possible, et qu'il a maintenant une date de péremption.
 {{% /notice %}}
 
-Reste que la route appartient désormais à la claim, et c'est là que ça devient intéressant : une route que l'on possède est une route que l'on peut **pondérer**.
+Reste que la route appartient désormais à la claim. Et une route que l'on possède est une route que l'on peut **pondérer**.
 
 ## :dna: LoRA en deux minutes
 
@@ -216,7 +216,7 @@ Ce que LoRA résout se comprend mieux par ce qu'il faudrait faire sans lui. Spé
 
 LoRA casse cette proportionnalité. Le fine-tune ne remplace pas les poids de base, il **s'ajoute** à eux : quelques dizaines de Mo posés par-dessus les ~15 Go que la plateforme sert déjà. Et comme c'est un delta, rien n'empêche d'en poser plusieurs, sur la même base, en même temps.
 
-C'est vLLM qui encaisse cette propriété, et c'est là que tout se joue : **il charge le modèle de base une fois, puis applique les adapters par-dessus, dans le même processus, sur le même GPU** (`--enable-lora`, `--lora-modules`). Servir trois « modèles » — la base et ses deux fine-tunes — ne coûte donc pas trois GPU. C'est **un pod, un GPU, et trois noms auxquels il répond**. Retenez cette phrase : c'est d'elle, et de nulle part ailleurs, que vient le « zéro GPU » de la section suivante.
+C'est vLLM qui encaisse cette propriété, et c'est là que tout se joue : **il charge le modèle de base une fois, puis applique les adapters par-dessus, dans le même processus, sur le même GPU** (`--enable-lora`, `--lora-modules`). Servir trois « modèles » — la base et ses deux fine-tunes — ne coûte donc pas trois GPU. C'est **un pod, un GPU, et trois noms auxquels il répond**. C'est ce qui rend possible le « zéro GPU » de la section suivante.
 
 ### Quand on sort un adapter — et quand on ne le fait pas
 
@@ -224,8 +224,6 @@ Le cas d'usage a une forme reconnaissable : **le modèle de base est presque bon
 
 * **Un vocabulaire de domaine** — les termes, les schémas et les usages d'un métier qu'un modèle généraliste connaît mal.
 * **Un style de code maison** — les patterns, la structure de projet et les bibliothèques qu'une équipe utilise réellement.
-* **Des conventions internes** — le format des commits, les règles de nommage, tout ce qu'aucune documentation publique ne contient.
-* **Un ton** — la voix d'un support client, le registre d'une documentation.
 
 Le contre-exemple compte tout autant : **LoRA n'apprend pas à un modèle une capacité qui lui manque fondamentalement.** Quelques dizaines de Mo de delta infléchissent un comportement, elles ne créent pas une compétence absente des poids de base. Un modèle qui ne sait pas raisonner sur du code ne l'apprendra pas par adapter — pour ça, on change de modèle de base, et c'est `model.repository` qui en parle, pas `loraAdapters`.
 
@@ -303,7 +301,7 @@ running_lora_adapters='xplane-qwen-coder-sql-dpo'   max_lora=2
 
 ### Le canary n'écrase pas le nommage explicite
 
-Le split n'est pas le seul chemin vers un adapter, et c'est important : chaque entrée de `loraAdapters[]` reçoit **sa propre règle de routage** (`x-ai-eg-model: <name>` → backend de base, poids 100). Une requête qui nomme explicitement l'adapter est donc servie **à 100 % par cet adapter**, indépendamment du canary en cours.
+Le split n'est pas le seul chemin vers un adapter, et c'est important : chaque entrée de `loraAdapters[]` reçoit **sa propre règle de routage** (`x-ai-eg-model: <name>` (l'en-tête sur lequel la Gateway route — voir plus bas) → backend de base, poids 100). Une requête qui nomme explicitement l'adapter est donc servie **à 100 % par cet adapter**, indépendamment du canary en cours.
 
 Les deux comportements coexistent, et c'est voulu :
 
@@ -453,25 +451,24 @@ Les `engineArgs` sont concaténés **après** les arguments produits par la comp
 
 Le tri est simple à énoncer : **tout passe, sauf ce dont l'autoscaling et le routage dépendent.** Ces flags-là sont **réservés**, et l'XRD les refuse à l'admission — `kubectl apply` échoue, rien n'atteint le cluster.
 
-**Dix-neuf** règles CEL portent cette vérification : une règle de forme (toute entrée commence par `--`), et **dix-huit règles de flags réservés, une par flag**. Une règle unique bouclant sur une liste aurait rejeté tout aussi bien, mais elle aurait produit le même message pour les dix-huit — un message qui dit à l'utilisateur qu'il a perdu, sans lui dire quoi faire. Une règle par flag, c'est **un message par flag**, et chaque message nomme le champ curé à utiliser à la place :
+**Dix-neuf** règles CEL portent cette vérification : une règle de forme (toute entrée commence par `--`), et **dix-huit règles de flags réservés, une par flag**. Une règle unique bouclant sur une liste aurait rejeté tout aussi bien, mais elle aurait produit le même message pour les dix-huit — un message qui dit à l'utilisateur qu'il a perdu, sans lui dire quoi faire. Une règle par flag, c'est **un message par flag**.
 
 Ce n'est pas une intention, c'est ce que l'API server répond. Verbatim, sur un cluster :
 
 ```
-$ kubectl apply -f claim-avec-max-num-seqs.yaml
+$ kubectl apply --dry-run=server -f claim-avec-max-num-seqs.yaml
 The InferenceService "cel-reserved-maxnumseqs" is invalid: spec: Invalid value:
   --max-num-seqs is composition-managed; use spec.model.maxNumSeqs
   (it is the KEDA scaling denominator)
 
-$ kubectl apply -f claim-avec-flag-eclate.yaml
+$ kubectl apply --dry-run=server -f claim-avec-flag-eclate.yaml
 The InferenceService "cel-bare-value" is invalid: spec: Invalid value:
   each spec.engineArgs entry must be a single token starting with '--'
   (use --flag=value, not --flag value)
 
-$ kubectl apply -f claim-avec-port.yaml
-The InferenceService "cel-reserved-port" is invalid: spec: Invalid value:
-  --port is composition-managed; serving-contract flag; the vLLM port is fixed
-  at 8000 (Service/probes/Backend depend on it)
+$ kubectl apply --dry-run=server -f claim-avec-load-format.yaml
+The InferenceService "cel-reserved-loadformat" is invalid: spec: Invalid value:
+  --load-format is composition-managed; use spec.model.streaming.enabled
 ```
 
 Chaque message **nomme le champ curé à utiliser à la place**. C'est toute la différence entre une API qui dit non et une API qui dit où aller.
@@ -583,9 +580,7 @@ Les séries atterrissent dans la VictoriaMetrics qui collecte déjà les métriq
 
 ### L'attribution canary vs base : la gateway répond
 
-`modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter avant que la requête n'atteigne vLLM. La question qui restait ouverte à la rédaction de la PR : les métriques `gen_ai.*`, qui portent le modèle en label, attribuent-elles ce trafic au nom **de l'adapter servi**, ou au nom **du modèle demandé** ?
-
-La réponse est la meilleure possible : **aux deux.** La gateway émet **deux labels distincts**.
+`modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter avant que la requête n'atteigne vLLM. Le tableau du split reposait sur une propriété qu'il faut maintenant expliciter : la gateway émet **deux labels distincts**.
 
 | Label | Ce qu'il porte |
 |---|---|
@@ -690,6 +685,8 @@ La cause est structurelle : un `backendRef` pointant une `InferencePool` ne supp
 Il faut donc choisir, aujourd'hui. Un rejet net à l'`apply` vaut mieux qu'une combinaison silencieusement incomplète.
 {{% /notice %}}
 
+## :stopwatch: Le streamer tient sa promesse — sur les 30 % qui ne comptent pas
+
 {{% notice tip "Au passage : le dernier maillon du cold-start" %}}
 La partie 3 avait réglé le gros du démarrage à froid avec un **PVC S3 Files**, évitant de retélécharger ~15 Go depuis HuggingFace. Restait un maillon : la lecture de ces poids depuis le volume vers la VRAM.
 
@@ -698,9 +695,7 @@ Le **Run:ai Model Streamer** (`--load-format runai_streamer`) s'attaque à celui
 Deux capacités restent **descopées** : le chargement `s3://` direct et le résolveur LoRA, qui demandent **vLLM v0.9.0**. Combien de secondes cela fait-il gagner ? La mesure suit, juste en dessous.
 {{% /notice %}}
 
-### Le streamer tient sa promesse — sur les 30 % qui ne comptent pas
-
-Même modèle, mêmes 8,8 Gio de poids, un seul changement : `--load-format runai_streamer`.
+Même modèle, mêmes **8,8 Gio** de poids une fois quantifiés en fp8 (les ~15 Go du dépôt HuggingFace), un seul changement : `--load-format runai_streamer`.
 
 ```
                               streaming OFF    streaming ON      delta
@@ -710,7 +705,7 @@ Init du moteur (profiling,
   dont capture de graphes CUDA      33 s    →       33 s      inchangé
 ```
 
-Le streamer fait **exactement ce qu'il annonce** : −11,7 % sur le chargement des poids, un gain réel, reproductible, sans contrepartie.
+Le streamer fait **exactement ce qu'il annonce** : −11,7 % sur le chargement des poids, un gain réel, sans contrepartie.
 
 Et il ne change presque rien. Parce que le chargement des poids ne pèse qu'environ **30 %** d'un démarrage à froid de ~180 s. Les ~68 % restants, c'est l'**initialisation du moteur** — profiling mémoire, allocation du KV cache, warmup, dont 33 secondes de seule capture de graphes CUDA — et le streamer n'y touche pas. Par conception : ce n'est pas son travail.
 
@@ -746,7 +741,7 @@ Ce qui était une réserve à la rédaction ne l'est plus : le rendu est prouvé
 
 Ce que leurs docs de design ont réellement servi ici, c'est une **grille de revue** : des questions posées par d'autres, à confronter aux choix déjà faits. Et c'est le point le plus intéressant — cette lecture a **modifié le code de cette PR**, et pas à la marge. Ce qu'elle apporte tient en une discipline : la **forward-compatibilité**, c'est-à-dire concevoir un champ non pour le besoin du jour, mais pour que le besoin du mois prochain n'impose pas de casser l'API.
 
-* **Des arrays plutôt que des objets.** Le champ `gateway.canaries` de la section canary est un array **dès le premier jour**, alors qu'une seule entrée suffisait au besoin. Passer d'un objet à un array plus tard est un breaking change ; l'inverse est gratuit.
+* **Des arrays plutôt que des objets** — déjà détaillé dans l'encart « Pourquoi un array dès le premier jour » de la section canary.
 * **Aucun nouveau champ requis.** Toute claim v0.6.0 s'applique telle quelle en v0.8.0. `gateway`, `canaries`, `engineArgs`, `endpointPicker` : tout est optionnel, et chaque défaut préserve le comportement d'avant.
 * **Des flags fournis par l'utilisateur plutôt qu'injectés.** Le champ `engineArgs` existe parce que cette revue a rendu évident qu'aucune API de plateforme ne rattrapera jamais le rythme d'un moteur d'inférence. Le choix n'est pas *modéliser ou interdire*, c'est *encadrer ou se faire contourner*.
 
