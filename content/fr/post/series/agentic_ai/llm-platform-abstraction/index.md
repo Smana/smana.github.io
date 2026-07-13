@@ -332,6 +332,24 @@ Le plafond à **99** garantit donc qu'il reste toujours du trafic sur le modèle
 Ce n'est pas de la prescience, c'est de l'emprunt : la lecture de la plateforme **Modelplane** — sur laquelle je reviens en fin d'article — a rendu évident que comparer *plusieurs* adapters en même temps est un cas d'usage normal, pas un exotisme. Le coût de l'array au jour 1, c'est quelques lignes de KCL. Le coût de la conversion au jour 100, ça s'appelle une migration.
 {{% /notice %}}
 
+{{% notice warning "Une règle CEL sur un champ non borné est une règle non bornée" %}}
+Ces règles ont failli ne jamais tourner — pas parce qu'elles étaient fausses, mais parce qu'elles étaient **trop chères**.
+
+L'API server **estime statiquement** le coût de chaque règle CEL avant d'accepter le schéma, et il l'estime sur le **pire cas que le schéma autorise**. La règle qui vérifie que chaque canary vise un adapter déclaré croise deux tableaux :
+
+```
+canaries.all(c, loraAdapters.exists(a, a.name == c.adapter))
+```
+
+Une boucle dans une boucle, sur des comparaisons de chaînes. Tant que `loraAdapters` n'a **ni `maxItems`, ni `maxLength` sur ses noms**, l'estimateur suppose des tableaux infinis de chaînes infinies : le coût part à l'astronomique, et l'API server **rejette le CRD entier** — pas la règle, le CRD. Aucun modèle n'est plus déclarable.
+
+L'asymétrie est frappante : dans le **même fichier**, `engineArgs` était borné (16 entrées, 256 caractères), et ses **dix-neuf** règles passaient sans problème. **Dix-neuf règles bornées coûtent moins cher qu'une seule non bornée.**
+
+La correction n'est donc pas de simplifier la règle, c'est de **borner ce sur quoi elle porte** : `maxItems: 8` sur `loraAdapters`, `maxLength: 63` sur leur nom. Et une contrainte en cascade que le code documente : le `maxLength` de `canaries[].adapter` doit rester **aligné** sur celui de `loraAdapters[].name`, puisque l'estimateur facture la comparaison au plus grand des deux.
+
+Une borne n'est pas de la cosmétique de schéma. C'est ce qui rend une règle **calculable**.
+{{% /notice %}}
+
 ## :brain: Le prompt choisit le modèle
 
 Jusqu'ici, le client **sait ce qu'il veut**. Il écrit `xplane-qwen-coder` dans son champ `model`, donc il connaît le catalogue, les noms, et lequel est bon en code. C'est une hypothèse raisonnable pour un service. C'en est une mauvaise pour un humain devant un chat.
@@ -409,7 +427,7 @@ Une abstraction curée ne peut pas tout prévoir. Le schéma de la claim n'expos
 
 Une API qui ne laisse aucune sortie ne bloque personne : elle se fait **contourner**. Un `kubectl edit deployment`, le flag ajouté à la main, et jusqu'à la prochaine réconciliation de Crossplane ça marche très bien. Le coût réel n'est pas le contournement, c'est ce qu'il fait à l'abstraction : dès l'instant où l'état réel du cluster ne se lit plus dans la claim, **la claim ment**. Et une abstraction qui ment est pire qu'une abstraction absente, parce qu'elle continue de prétendre décrire le système.
 
-Le réflexe symétrique — un champ fourre-tout, non contraint — ne résout rien non plus : on troue alors l'abstraction de l'intérieur, avec sa bénédiction. `spec.engineArgs` est la troisième voie : il laisse passer les **options non curées** — celles que le schéma n'a pas anticipées — sauf les seize dont l'autoscaling et le routage dépendent.
+Le réflexe symétrique — un champ fourre-tout, non contraint — ne résout rien non plus : on troue alors l'abstraction de l'intérieur, avec sa bénédiction. `spec.engineArgs` est la troisième voie : il laisse passer les **options non curées** — celles que le schéma n'a pas anticipées — sauf les **dix-huit** dont l'autoscaling et le routage dépendent.
 
 ### Un champ, une contrainte de forme
 
@@ -431,24 +449,34 @@ Une seule contrainte de forme, et elle n'a rien de cosmétique : **un seul token
 
 Les `engineArgs` sont concaténés **après** les arguments produits par la composition (`_vllmArgs = _managedVllmArgs + _engineArgs`) : la position est fixe, le résultat déterministe. Mais **ce n'est pas cet ordre qui protège le contrat de service** : un moteur qui lit ses arguments de gauche à droite donne le dernier mot à celui qui parle en dernier. Ce qui protège le contrat, c'est que certains flags ne peuvent tout simplement **pas entrer** dans cette liste.
 
-### Seize flags qui ne passeront pas
+### Dix-huit flags qui ne passeront pas
 
 Le tri est simple à énoncer : **tout passe, sauf ce dont l'autoscaling et le routage dépendent.** Ces flags-là sont **réservés**, et l'XRD les refuse à l'admission — `kubectl apply` échoue, rien n'atteint le cluster.
 
-Dix-sept règles CEL portent cette vérification : une règle de forme (toute entrée commence par `--`), et **seize règles de flags réservés, une par flag**. Une règle unique bouclant sur une liste aurait rejeté tout aussi bien, mais elle aurait produit le même message pour les seize — un message qui dit à l'utilisateur qu'il a perdu, sans lui dire quoi faire. Une règle par flag, c'est **un message par flag**, et chaque message nomme le champ curé à utiliser à la place :
+**Dix-neuf** règles CEL portent cette vérification : une règle de forme (toute entrée commence par `--`), et **dix-huit règles de flags réservés, une par flag**. Une règle unique bouclant sur une liste aurait rejeté tout aussi bien, mais elle aurait produit le même message pour les dix-huit — un message qui dit à l'utilisateur qu'il a perdu, sans lui dire quoi faire. Une règle par flag, c'est **un message par flag**, et chaque message nomme le champ curé à utiliser à la place :
 
-| Flag réservé | Ce que répond l'admission |
-|---|---|
-| `--model` | `use spec.model.repository` |
-| `--max-model-len` | `use spec.model.contextWindow` |
-| `--max-num-seqs` | `use spec.model.maxNumSeqs (it is the KEDA scaling denominator)` |
-| `--gpu-memory-utilization` | `composition-managed (fixed at 0.92)` |
-| `--enable-lora` | `use spec.loraAdapters` |
-| `--port` | `serving-contract flag; the vLLM port is fixed at 8000 (Service/probes/Backend depend on it)` |
+Ce n'est pas une intention, c'est ce que l'API server répond. Verbatim, sur un cluster :
 
-*(Extrait — les seize flags sont listés dans le README de la composition.)*
+```
+$ kubectl apply -f claim-avec-max-num-seqs.yaml
+The InferenceService "cel-reserved-maxnumseqs" is invalid: spec: Invalid value:
+  --max-num-seqs is composition-managed; use spec.model.maxNumSeqs
+  (it is the KEDA scaling denominator)
 
-Seize **dans cette version**, et le nombre n'a rien de sacré : la denylist grandit avec la plateforme. Chaque nouveau champ curé réserve le flag qu'il pilote — ceux du Run:ai Model Streamer, plus bas dans cet article, la rejoignent. C'est précisément ce qui rend la question suivante décisive : une liste qui bouge est une liste qui ne doit vivre qu'à **un seul endroit**.
+$ kubectl apply -f claim-avec-flag-eclate.yaml
+The InferenceService "cel-bare-value" is invalid: spec: Invalid value:
+  each spec.engineArgs entry must be a single token starting with '--'
+  (use --flag=value, not --flag value)
+
+$ kubectl apply -f claim-avec-port.yaml
+The InferenceService "cel-reserved-port" is invalid: spec: Invalid value:
+  --port is composition-managed; serving-contract flag; the vLLM port is fixed
+  at 8000 (Service/probes/Backend depend on it)
+```
+
+Chaque message **nomme le champ curé à utiliser à la place**. C'est toute la différence entre une API qui dit non et une API qui dit où aller.
+
+Dix-huit **dans cette version**, et le nombre n'a rien de sacré : la denylist grandit avec la plateforme. Chaque nouveau champ curé réserve le flag qu'il pilote — les deux du Run:ai Model Streamer, plus bas dans cet article, **l'ont déjà rejointe** : c'est précisément pour ça qu'ils sont dix-huit et non seize. C'est ce qui rend la question suivante décisive : une liste qui bouge est une liste qui ne doit vivre qu'à **un seul endroit**.
 
 Prenez `--max-num-seqs` : c'est le **dénominateur** du trigger KEDA vu en partie 3. Laissez un utilisateur le redéfinir, et l'autoscaler continue de calculer son taux de saturation contre une taille de batch qui n'existe plus. Rien ne casse, rien n'alerte : le scaling est simplement **faux**.
 
@@ -606,7 +634,7 @@ Il faut donc choisir, aujourd'hui. Un rejet net à l'`apply` vaut mieux qu'une c
 {{% notice tip "Au passage : le dernier maillon du cold-start" %}}
 La partie 3 avait réglé le gros du démarrage à froid avec un **PVC S3 Files**, évitant de retélécharger ~15 Go depuis HuggingFace. Restait un maillon : la lecture de ces poids depuis le volume vers la VRAM.
 
-Le **Run:ai Model Streamer** (`--load-format runai_streamer`) s'attaque à celui-là : selon la documentation du projet, il lit les poids de façon concurrente et les transfère vers le GPU au fil de la lecture, sans attendre qu'ils soient tous chargés en mémoire hôte. Embarqué dans l'image `vllm-openai` depuis la **v0.8.5**, il s'active par `model.streaming` sur le PVC déjà en place. Ses flags rejoignent la denylist `engineArgs` — la démonstration, en direct, que cette liste n'est pas figée à seize.
+Le **Run:ai Model Streamer** (`--load-format runai_streamer`) s'attaque à celui-là : selon la documentation du projet, il lit les poids de façon concurrente et les transfère vers le GPU au fil de la lecture, sans attendre qu'ils soient tous chargés en mémoire hôte. Embarqué dans l'image `vllm-openai` depuis la **v0.8.5**, il s'active par `model.streaming` sur le PVC déjà en place. Ses flags ont rejoint la denylist `engineArgs` — la confirmation, déjà annoncée plus haut, que cette liste grandit avec la plateforme.
 
 Deux capacités restent **descopées** : le chargement `s3://` direct et le résolveur LoRA, qui demandent **vLLM v0.9.0**. Combien de secondes cela fait-il gagner ? Pas encore mesuré — je le dirai quand je l'aurai fait.
 {{% /notice %}}
