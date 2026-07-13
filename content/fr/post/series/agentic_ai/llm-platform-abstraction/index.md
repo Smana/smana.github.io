@@ -520,11 +520,18 @@ Sur `xplane-qwen-coder` — un modèle de base, deux adapters, un canary à 10 %
 | `xplane-qwen-coder-sql-dpo` | `adapter` | `10` |
 | `xplane-qwen-coder-securecode` | `adapter` | — |
 
-<!-- TODO-e2e: confirmer sur la sortie réelle de status.servedModels que canaryWeightPercent est bien absent de l'entrée base (kind: base), et pas simplement égal à 100 - sum(weightPercent) -->
+Et une colonne `SERVED MODELS` porte la même chose jusque dans un `kubectl get isvc`, sans `-o yaml` ni `jq` :
 
-Et une colonne `SERVED MODELS` porte la même chose jusque dans un `kubectl get isvc`, sans `-o yaml` ni `jq`.
+```
+$ kubectl get inferenceservice -n llm
+NAME                    SERVED MODELS                                                              SYNCED   READY
+xplane-llamaguard3-1b   xplane-llamaguard3-1b                                                      True     True
+xplane-qwen-coder       xplane-qwen-coder,xplane-qwen-coder-sql-dpo,xplane-qwen-coder-securecode   True     True
+xplane-qwen-coder-fim   xplane-qwen-coder-fim                                                      True     True
+xplane-qwen3-8b         xplane-qwen3-8b                                                            True     True
+```
 
-<!-- TODO-e2e: sortie réelle de kubectl get isvc -n llm avec la colonne SERVED MODELS -->
+La deuxième ligne est celle qui n'existait pas avant : **un pod, un GPU, trois noms.** La question « qu'est-ce que ce pod sert, au juste ? » a maintenant une réponse à l'endroit où on la pose.
 
 ### C'est de la topologie, pas de la santé
 
@@ -538,6 +545,14 @@ La colonne `SERVED MODELS` a d'abord pointé le JSONPath qui s'imposait naturell
 Les colonnes de `kubectl get` ne sont pas rendues par le client, mais côté serveur, par le **convertisseur de table** de l'API server, qui applique le JSONPath des `additionalPrinterColumns` du CRD — et n'en retient que la **première correspondance**. Une cellule de tableau est un scalaire, pas une liste : le wildcard ne boucle pas, il sélectionne. La colonne aurait donc affiché `xplane-qwen-coder`, et les deux adapters n'auraient existé nulle part.
 
 D'où un second champ, `status.servedModelsSummary` : un scalaire, les noms joints par des virgules, sur lequel la colonne pointe désormais.
+{{% /notice %}}
+
+{{% notice tip "Publier un statut depuis KCL : une clé de configuration décide de tout" %}}
+Une composition KCL publie son statut en émettant un item **desired-composite** — l'objet composite lui-même, avec son `status`, au milieu des ressources qu'elle rend.
+
+Cet item n'est honoré que si la fonction est câblée en **`target: Default`**. Sous **`target: Resources`**, la fonction ne connaît pas ce cas : elle traite l'item comme n'importe quelle ressource à composer. Le statut n'est donc jamais publié — et, pire, il **fuit en ressource composée fantôme**, un objet sans `spec` que Crossplane essaie d'appliquer et n'y arrive jamais. La réconciliation entière se bloque, pour un champ de statut.
+
+Le KCL était juste ; c'était le **câblage** qui ne l'était pas. Une ligne dans la `Composition`, et rien dans le code de la composition ne le laissait deviner.
 {{% /notice %}}
 
 Deux champs pour une seule vérité, après un article passé à traquer les doubles sources — l'ironie mérite d'être adressée. Mais `servedModelsSummary` n'est pas une seconde saisie : c'est une **fonction pure** de `servedModels`, calculée dans le même passage de la composition, et il n'existe aucun chemin par lequel les deux divergent. Le champ structuré reste l'API ; le scalaire n'est qu'une projection pour le CLI.
