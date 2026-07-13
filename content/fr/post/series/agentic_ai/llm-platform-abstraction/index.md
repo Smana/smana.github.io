@@ -93,7 +93,7 @@ La matière première était pourtant déjà là : la composition savait charger
 
 La flotte compte quatre modèles, chacun bon à quelque chose de précis : du code, du raisonnement, de la modération. Pour en tirer quoi que ce soit, le client devait **choisir lui-même** — écrire `xplane-qwen-coder` dans son champ `model`, et donc connaître le catalogue, ses noms et ses spécialités.
 
-Le routeur sémantique de la partie 3 était censé lever exactement ça : classifier le prompt, et router vers le modèle qui va bien. Il tournait, en bonne santé, depuis des semaines. Il n'a **jamais été appelé** — parce que rien, sur le chemin de requête, ne le branchait à la Gateway.
+Le **routeur sémantique** (un service qui classe le prompt et décide seul quel modèle doit le traiter) de la partie 3 était censé lever exactement ça. Il tournait, en bonne santé, depuis des semaines. Il n'a **jamais été appelé** — parce que rien, sur le chemin de requête, ne le branchait à la Gateway.
 
 ### 4. Aucun moyen de sortir des champs curés
 
@@ -330,6 +330,77 @@ Le plafond à **99** garantit donc qu'il reste toujours du trafic sur le modèle
 `gateway.canaries` est un **array** (quatre entrées au maximum), alors que le besoin du jour tenait dans une seule. Un simple objet aurait suffi — et aurait été un piège : passer d'un objet à un array plus tard est un **breaking change** d'API. Nouvelle version du schéma, conversion, migration de toutes les claims existantes… pour un champ qui n'aura rien gagné entre-temps.
 
 Ce n'est pas de la prescience, c'est de l'emprunt : la lecture de la plateforme **Modelplane** — sur laquelle je reviens en fin d'article — a rendu évident que comparer *plusieurs* adapters en même temps est un cas d'usage normal, pas un exotisme. Le coût de l'array au jour 1, c'est quelques lignes de KCL. Le coût de la conversion au jour 100, ça s'appelle une migration.
+{{% /notice %}}
+
+## :brain: Le prompt choisit le modèle
+
+Tout ce qui précède suppose un client qui **sait ce qu'il veut**. Il écrit `xplane-qwen-coder` dans son champ `model`, donc il connaît le catalogue, les noms, et lequel est bon en code. C'est une hypothèse raisonnable pour un service. C'en est une mauvaise pour un humain devant un chat.
+
+La flotte compte quatre modèles spécialisés. L'idée du **Mixture of Models** (`model: MoM`) est de retourner la question : le client n'annonce pas un modèle, il **envoie son prompt**, et la plateforme décide.
+
+```json
+{"model": "MoM", "messages": [{"role": "user", "content": "integral of x squared"}]}
+```
+
+Le [routeur sémantique vLLM](https://github.com/vllm-project/semantic-router) classifie le prompt et le fait atterrir sur le modèle qui va bien :
+
+| Le prompt | Classé | Servi par |
+|---|---|---|
+| *refactor this function and debug the traceback* | `code` | `xplane-qwen-coder` |
+| *write a kubectl yaml manifest* | `code` | `xplane-qwen-coder` |
+| *integral of x squared* | `math` | `xplane-qwen3-8b` |
+| *capital of France* | `general` | `xplane-qwen3-8b` |
+
+Ce routeur tournait déjà en partie 3. En bonne santé, scruté, avec ses métriques — et **jamais appelé**. Les règles de l'`AIGatewayRoute` matchent sur des noms de modèles concrets ; `MoM` n'en est pas un ; la Gateway répondait `404`. Le mécanisme était décrit dans un commentaire de `route.yaml`, et nulle part ailleurs.
+
+### Où l'insérer : avant celui qui décide
+
+Le brancher tient en une question, et elle est plus subtile qu'elle n'en a l'air : **à quel moment du chemin de requête ?**
+
+L'Envoy AI Gateway a son propre **extproc** — et c'est lui qui **dérive l'en-tête `x-ai-eg-model` depuis le `model` du corps** de la requête. Cet en-tête est ce sur quoi *toutes* les règles de routage matchent. Le routeur sémantique doit donc s'exécuter **avant** lui : il réécrit `body.model`, de `MoM` vers un nom concret, et l'extproc de la Gateway dérive ensuite l'en-tête depuis un corps **déjà réécrit**.
+
+La conséquence est la plus belle propriété de ce montage : **aucune règle de routage nouvelle.** Les routes existantes — celles que la composition génère, celles du canary, celles du pin explicite — matchent telles quelles, sans savoir que MoM existe.
+
+Reste à obtenir cet « avant ». L'objet prévu pour ça, l'`EnvoyExtensionPolicy`, ne sait pas l'exprimer : il **ajoute** ses filtres *après* ceux de l'AI Gateway — trop tard, l'en-tête est déjà dérivé. Le montage passe donc par un **`EnvoyPatchPolicy`** : un patch xDS brut qui insère le filtre ext-proc à **l'index 0** de la chaîne de filtres HTTP.
+
+```yaml
+# apps/base/ai/llm/ai-gateway-routes/semantic-router-patch.yaml
+kind: EnvoyPatchPolicy
+spec:
+  type: JSONPatch
+  targetRef: {kind: Gateway, name: ai-gateway}
+  jsonPatches:
+    - type: "type.googleapis.com/envoy.config.listener.v3.Listener"
+      name: envoy-ai-gateway-system/ai-gateway/http
+      operation:
+        op: add
+        path: /default_filter_chain/filters/0/typed_config/http_filters/0   # <- index 0
+        value:
+          name: semantic-router-extproc
+          typedConfig:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.ext_proc.v3.ExternalProcessor
+            grpcService:
+              envoyGrpc:
+                authority: vllm-semantic-router.llm:50051
+```
+
+Un patch xDS brut est un objet qu'on préfère éviter : il est couplé à la forme interne de la configuration Envoy, pas à une API stable. C'est ici le prix de l'ordre — et c'est le montage que le projet amont documente lui-même.
+
+### Deux couches qui se composent
+
+Et voilà le résultat qui justifie la section. Une requête `MoM`, classée `code`, réécrite en `xplane-qwen-coder`… **est tombée dans le canary LoRA** et a été servie par `xplane-qwen-coder-sql-dpo`.
+
+Deux décisions, prises par deux composants qui ne se connaissent pas :
+
+* le **routeur sémantique** décide *quel modèle* — à partir du sens du prompt ;
+* la **route pondérée** décide *quels poids* — à partir d'un tirage à 10 %.
+
+Elles s'empilent au lieu de se disputer le même point de décision, et c'est une propriété de la **position dans la chaîne**, pas une intention : le routeur agit sur le corps, la route agit sur l'en-tête qui en est dérivé. Chacune ignore l'autre, et c'est exactement pour ça qu'elles tiennent ensemble.
+
+MoM résout d'ailleurs à travers un modèle **migré** (routage possédé par la composition) *et* un modèle **non migré** (encore dans `route.yaml`). Les deux mondes coexistent pendant la migration — ce qui est la moindre des choses pour une migration qu'on annonce progressive.
+
+{{% notice note "Ce que ça ne fait pas" %}}
+La classification est un modèle, pas une vérité. Un prompt ambigu tombe où il tombe, et rien ici ne mesure la **qualité** de la classification — je n'ai vérifié que le **câblage** : que le routeur soit appelé, qu'il réécrive, et que la route matche derrière. Savoir si `math` est le bon verdict pour une intégrale, c'est le domaine du routeur ; savoir si le chemin de requête l'appelle, c'est celui de la plateforme. Cet article ne traite que du second.
 {{% /notice %}}
 
 ## :gear: Configuration avancée : ouvrir sans trouer
