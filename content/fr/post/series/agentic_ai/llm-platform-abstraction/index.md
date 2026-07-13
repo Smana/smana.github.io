@@ -277,7 +277,29 @@ Relisez la dernière colonne. **Les deux `backendRef` pointent le même `Backend
 
 C'est là que se joue le « zéro GPU » du titre. Un canary applicatif classique coûte de la capacité : on déploie une v2 à côté de la v1, et pendant toute la durée de l'expérience on paie deux jeux de réplicas. Transposé ici, ce serait un **second pod vLLM**, donc un second GPU, donc un nœud de plus provisionné par Karpenter — pour évaluer un delta de poids qui se compte en dizaines de Mo. Le canary LoRA n'ajoute ni réplica, ni nœud, ni ligne de facture : le split est une décision de *routage*, prise en amont, sur une flotte qui n'a pas bougé.
 
-<!-- TODO-e2e: split réellement observé via vllm:lora_requests_info (SC-002 : entre 2% et 25% sur ≥50 requêtes, tolérance binomiale) -->
+### Le split, mesuré
+
+Soixante requêtes vers `model: xplane-qwen-coder`, canary à 10 % armé. Puis douze requêtes nommant explicitement l'adapter. Ce que la gateway a compté :
+
+| `gen_ai_original_model` (demandé) | `gen_ai_request_model` (servi) | n |
+|---|---|---|
+| `xplane-qwen-coder` | `xplane-qwen-coder` | **56** |
+| `xplane-qwen-coder` | `xplane-qwen-coder-sql-dpo` | **5** |
+| `xplane-qwen-coder-sql-dpo` | `xplane-qwen-coder-sql-dpo` | **12** |
+
+**8,2 % de trafic capté pour un poids configuré à 10 %.** Sur n=61 et p=0,1, on attend 6,1 ± 2,3 : cinq est exactement là où il doit être. Et les douze requêtes explicites sont servies par l'adapter, **toutes les douze, sans une seule fuite vers la base** — le pin ne cède pas au tirage au sort.
+
+La deuxième ligne est celle qui compte : le client a demandé le modèle de base, et c'est le fine-tune qui a répondu. Sans qu'il le sache, et sans qu'un seul GPU de plus soit allumé.
+
+Mais la gateway n'est pas un témoin fiable d'elle-même : elle affirme avoir réétiqueté des requêtes, elle ne prouve pas que vLLM a joué le jeu. C'est le moteur qui tranche, et il le fait depuis ses propres métriques :
+
+```
+$ vllm:lora_requests_info
+running_lora_adapters='(none)'                      max_lora=2
+running_lora_adapters='xplane-qwen-coder-sql-dpo'   max_lora=2
+```
+
+**Deux plans indépendants, une seule décision de routage.** La gateway dit avoir envoyé 5 requêtes sur l'adapter ; vLLM confirme l'avoir chargé et exécuté. Le « zéro GPU » n'est plus une propriété de construction : c'est un pod, un GPU, et le moteur qui le dit.
 
 ### Le canary n'écrase pas le nommage explicite
 
