@@ -695,10 +695,30 @@ La partie 3 avait réglé le gros du démarrage à froid avec un **PVC S3 Files*
 
 Le **Run:ai Model Streamer** (`--load-format runai_streamer`) s'attaque à celui-là : selon la documentation du projet, il lit les poids de façon concurrente et les transfère vers le GPU au fil de la lecture, sans attendre qu'ils soient tous chargés en mémoire hôte. Embarqué dans l'image `vllm-openai` depuis la **v0.8.5**, il s'active par `model.streaming` sur le PVC déjà en place. Ses flags ont rejoint la denylist `engineArgs` — la confirmation, déjà annoncée plus haut, que cette liste grandit avec la plateforme.
 
-Deux capacités restent **descopées** : le chargement `s3://` direct et le résolveur LoRA, qui demandent **vLLM v0.9.0**. Combien de secondes cela fait-il gagner ? Pas encore mesuré — je le dirai quand je l'aurai fait.
+Deux capacités restent **descopées** : le chargement `s3://` direct et le résolveur LoRA, qui demandent **vLLM v0.9.0**. Combien de secondes cela fait-il gagner ? La mesure suit, juste en dessous.
 {{% /notice %}}
 
-<!-- TODO-e2e: cold-start mesuré avec et sans le streamer -->
+### Le streamer tient sa promesse — sur les 30 % qui ne comptent pas
+
+Même modèle, mêmes 8,8 Gio de poids, un seul changement : `--load-format runai_streamer`.
+
+```
+                              streaming OFF    streaming ON      delta
+Chargement des poids             62,53 s    →    55,22 s      −7,3 s (−11,7 %)
+Init du moteur (profiling,
+  kv cache, warmup)             123,77 s    →   124,02 s      inchangé
+  dont capture de graphes CUDA      33 s    →       33 s      inchangé
+```
+
+Le streamer fait **exactement ce qu'il annonce** : −11,7 % sur le chargement des poids, un gain réel, reproductible, sans contrepartie.
+
+Et il ne change presque rien. Parce que le chargement des poids ne pèse qu'environ **30 %** d'un démarrage à froid de ~180 s. Les ~68 % restants, c'est l'**initialisation du moteur** — profiling mémoire, allocation du KV cache, warmup, dont 33 secondes de seule capture de graphes CUDA — et le streamer n'y touche pas. Par conception : ce n'est pas son travail.
+
+Gain sur le cold-start **total** : **~4 %**.
+
+C'est une leçon d'optimisation avant d'être une leçon de LLM. **Accélérer de 11,7 % une phase qui pèse 30 % rapporte 4 %** — et on peut passer une soirée entière à mesurer ce 11,7 % avec bonheur sans jamais regarder les 68 % d'à côté. Le vrai levier de cette plateforme n'est pas le chargement des poids : c'est l'init du moteur, et je ne l'ai pas encore attaqué.
+
+Cela tranche aussi la question que la spec posait elle-même : le gain sur un PVC local est **réel mais modeste**, parce qu'un montage NFS ne laisse pas le streamer faire les *range-GETs* concurrents qui le font briller face à un object store. **Le gain promis vit dans la phase 2 — le chargement `s3://` direct** — et pas ici.
 
 ## :telescope: Modelplane : deux étages, pas deux camps
 
