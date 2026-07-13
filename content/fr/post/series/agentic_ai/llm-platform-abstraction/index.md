@@ -206,7 +206,7 @@ Reste que la route appartient désormais à la claim, et c'est là que ça devie
 
 ## :dna: LoRA en deux minutes
 
-La section précédente a lâché « adapters LoRA » en une ligne. Tout ce qui suit repose dessus, alors autant prendre deux minutes — pour dire ce que c'est, mais surtout **à quoi ça sert**.
+Plus haut, cet article a lâché « adapters LoRA » en une ligne. Tout ce qui suit repose dessus, alors autant prendre deux minutes — pour dire ce que c'est, mais surtout **à quoi ça sert**.
 
 Un adapter **LoRA** (_Low-Rank Adaptation_) n'est pas un modèle. C'est un **delta de poids de faible rang** : plutôt que de réentraîner les matrices du modèle de base, on apprend une paire de petites matrices dont le produit vient s'ajouter à celles-ci. Le « faible rang » est tout le levier — sur la plateforme, il est fixé à **64** — et il se lit directement sur la balance : un adapter se compte en **dizaines de Mo** (un ordre de grandeur, pas une mesure faite ici), contre les ~15 Go de poids du modèle de base.
 
@@ -619,7 +619,7 @@ Livrer un export vers un endpoint qu'on n'a pas testé, c'est livrer une ligne d
 
 ## :compass: Endpoint Picker : au-delà du round-robin
 
-Tout ce qui précède décide **quel modèle** sert une requête. Reste **quel réplica** — tranché par défaut par le `Service` ClusterIP et son **round-robin** (chaque requête au pod suivant). Sur vLLM, c'est **hostile**, pour deux raisons qui attaquent ce que la [partie 3](/fr/post/series/agentic_ai/llm-self-hosted-stack/) avait mis en place :
+Le canary et le routage sémantique décident tous deux **quel modèle** sert une requête. Reste **quel réplica** — tranché par défaut par le `Service` ClusterIP et son **round-robin** (chaque requête au pod suivant). Sur vLLM, c'est **hostile**, pour deux raisons qui attaquent ce que la [partie 3](/fr/post/series/agentic_ai/llm-self-hosted-stack/) avait mis en place :
 
 * **Il détruit la localité du prefix cache.** Le **prefix caching** réutilise le **KV cache** (les activations déjà calculées pour un préfixe donné), local à un pod. Éparpiller des requêtes qui partagent leur préfixe force chaque réplica à recalculer ce que son voisin a déjà en mémoire : du **prefill** (le calcul initial sur tout le prompt) redondant, payé deux fois, en GPU et en TTFT.
 * **Il est aveugle à la charge.** Round-robin ne regarde ni la file d'attente d'un pod ni la pression sur son KV cache. Une requête peut atterrir sur un réplica saturé pendant qu'un autre tourne à vide.
@@ -651,7 +651,7 @@ Derrière ce booléen, la composition rend cinq ressources :
 {{% notice warning "Envoy Gateway ne sait pas ce qu'est une InferencePool" %}}
 Le piège de cette fonctionnalité n'est pas dans la composition, il est **un étage plus bas**.
 
-Envoy Gateway v1.8.2 ne contient **pas un seul fichier** mentionnant « inference ». Le support de l'`InferencePool` n'est pas natif : il est **entièrement délégué** à l'extension server de l'AI Gateway. Et il faut **lui dire de déléguer** :
+Envoy Gateway v1.8.2 ne contient **pas un seul fichier** mentionnant « inference ». Le support de l'`InferencePool` n'est pas natif : il est **entièrement délégué** à l'**extension server** de l'AI Gateway (_extension server_ : le composant d'Envoy Gateway à qui est déléguée toute configuration qu'Envoy ne sait pas traiter nativement). Et il faut **lui dire de déléguer** :
 
 ```yaml
 extensionManager:
@@ -665,7 +665,7 @@ Sans cette clé, tout le plan de contrôle a l'air parfait — l'`InferencePool`
 {{% /notice %}}
 
 {{% notice tip "Le chart EPP ne passe pas PSS restricted, et n'expose aucune clé pour ça" %}}
-Le chart `inferencepool` (v1.5.0) rend son `Deployment` EPP **sans aucun `securityContext`** — ni au niveau du pod, ni du conteneur — et n'expose **aucune valeur** pour en poser un. Sous **PSS restricted**, le pod est refusé à l'admission, Helm attend, abandonne, réinstalle, en boucle.
+Le chart `inferencepool` (v1.5.0) rend son `Deployment` EPP **sans aucun `securityContext`** — ni au niveau du pod, ni du conteneur — et n'expose **aucune valeur** pour en poser un. Sous **PSS restricted** (_Pod Security Standards_, le profil le plus strict de Kubernetes), le pod est refusé à l'admission, Helm attend, abandonne, réinstalle, en boucle.
 
 Deux issues. Un **webhook mutant cluster-wide** (type Kyverno) corrige tous les pods du cluster — et met une dépendance de plus sur le chemin d'admission de *tout* le monde, pour un besoin qui concerne un chart. Ou un **`postRenderer` Flux**, qui patche la release **et rien d'autre** : scopé à la claim, ramassé par le GC avec elle, invisible pour le reste du cluster.
 
@@ -738,7 +738,7 @@ Modelplane opère **au-dessus** du cluster : provisionner des clusters GPU chez 
 
 Leurs propres docs le disent sans détour : Modelplane **compose** les projets de niveau cluster plutôt que de les remplacer. Une stack de la forme de celle décrite ici est très exactement ce qui vivrait **en dessous** de la leur. Le problème qu'ils résolvent — placer un modèle sur le bon GPU, dans le bon cluster, chez le bon fournisseur — **je ne l'ai tout simplement pas** : cette plateforme est une référence mono-cluster, et prétendre qu'elle adresse la flotte serait du bruit.
 
-La contribution de cet article est donc d'un autre ordre : **creuser un seul cluster.** Le **canary LoRA pondéré**, à coût GPU nul par construction, validé à l'admission et couvert par les tests de la composition (`kcl test` : 44/44). Les **signaux d'autoscaling curés**, pris sur les métriques de saturation les plus précoces de vLLM. Et le **durcissement comme plancher**, pas comme remarque de fin : zero-trust Cilium, **PSS restricted** (_Pod Security Standards_, le profil le plus strict de Kubernetes), secrets, et un GitOps de bout en bout où la claim reste la seule chose qu'un utilisateur écrit.
+La contribution de cet article est donc d'un autre ordre : **creuser un seul cluster.** Le **canary LoRA pondéré**, à coût GPU nul par construction, validé à l'admission et couvert par les tests de la composition (`kcl test` : 44/44). Les **signaux d'autoscaling curés**, pris sur les métriques de saturation les plus précoces de vLLM. Et le **durcissement comme plancher**, pas comme remarque de fin : zero-trust Cilium, PSS restricted, secrets, et un GitOps de bout en bout où la claim reste la seule chose qu'un utilisateur écrit.
 
 Ce qui était une réserve à la rédaction ne l'est plus : le rendu est prouvé, **et le split aussi** — sur du trafic vivant, corroboré par le moteur. Reste une seule case non cochée, et je la garde visible : la distribution par préfixe de l'Endpoint Picker, faute de GPU pour la produire.
 
@@ -801,7 +801,7 @@ Tout ce qui est chiffré dans cet article vient d'un **cluster EKS reconstruit d
 * les **garde-fous d'admission** — les sept rejets CEL, message par message ;
 * `status.servedModels` et sa colonne, sur les quatre modèles de la flotte ;
 * le **cold-start** avec et sans le Run:ai streamer, sur le même modèle et les mêmes poids ;
-* `model: MoM`, sur les quatre classes de prompts.
+* `model: MoM`, sur trois classes de prompts, quatre requêtes.
 
 Et ce qui **n'est pas mesuré**, donc pas affirmé : la **distribution par préfixe** de l'Endpoint Picker. Elle demande plusieurs réplicas d'un même modèle sous charge partageant leurs préfixes, et le budget GPU de cette plateforme ne le permet pas encore. L'EPP tourne, il score, le chemin est propre — mais le gain qu'il promet, je ne l'ai pas vu de mes yeux, et je ne le mettrai pas en chiffres tant que ce sera le cas.
 {{% /notice %}}
