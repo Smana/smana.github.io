@@ -267,6 +267,19 @@ All that's left is to route Alertmanager to `http://runlore.runlore.svc:8080/web
 
 The example above is a standard stack, but you can plug in whatever you want: **GitOps** (Flux/Argo CD), **metrics**, **logs**, **network flows**, **cloud**, several **LLMs** and **notifiers**, each one _pluggable_. The **full matrix**, which evolves with each release, lives in the [repo's README](https://github.com/Smana/runlore#-supported-integrations).
 
+### 🔒 What it's allowed to do, and what leaves your cluster
+
+Wiring an LLM agent to your alerts raises two fair questions: **what can it break?** and **what gets sent to a third party?**
+
+* **It changes nothing.** The chart's `ClusterRole` grants **no write permission**, and remediation actions are **off by default**: the model *proposes*, it doesn't *execute*. RunLore's only writes are **PRs** to your knowledge-base repo.
+* **Secrets are masked before they leave.** Keys, tokens, `user:pass@host` URLs, the `data:` block of a `kind: Secret` — even in the middle of a Git diff — are masked **before every call to the model**, then again before the PR and Slack. A mitigation, not a guarantee: an unlabeled high-entropy string will slip through.
+* **The model is treated as untrusted.** Its output is **data**, never an authorization. A prompt injection can bias a diagnosis; it doesn't trigger a write.
+* **And the rest of the groundwork**: least-privilege RBAC (raw logs are never readable cluster-wide), a non-root _Restricted_ pod, a NetworkPolicy, an authenticated webhook, a signed image with an SBOM.
+
+That leaves the number-one fear: *"my data goes to a third party"*. It has a simple answer — **nothing forces you to send it there**. `base_url` takes any OpenAI-compatible endpoint: point it at a **vLLM running in your own cluster** ([the self-hosted stack](/post/series/agentic_ai/llm-self-hosted-stack/)), and **nothing leaves your platform at all**.
+
+The full story — threat model and acknowledged limits — lives in [`docs/security-model.md`](https://github.com/Smana/runlore/blob/main/docs/security-model.md) and [`docs/security-architecture.md`](https://github.com/Smana/runlore/blob/main/docs/security-architecture.md).
+
 {{% notice tip "A few tips to get started 💸" %}}
 An agent wired to Alertmanager can rack up LLM calls fast. You stay in control: start **deliberately low**, say **2 investigations/hour**, watch what happens, then raise the ceiling. The guardrails:
 

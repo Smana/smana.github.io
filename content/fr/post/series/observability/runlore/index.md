@@ -267,6 +267,19 @@ Il ne reste qu'à router les alertes d'Alertmanager vers `http://runlore.runlore
 
 L'exemple ci-dessus est une stack standard, mais tu peux brancher ce que tu veux — **GitOps** (Flux/Argo CD), **métriques**, **logs**, **flux réseau**, **cloud**, plusieurs **LLM** et **notifieurs**, chacun _pluggable_. La **matrice complète**, qui évolue au fil des versions, vit dans le [README du dépôt](https://github.com/Smana/runlore#-supported-integrations).
 
+### 🔒 Ce qu'il a le droit de faire, et ce qui sort de ton cluster
+
+Brancher un agent LLM sur ses alertes pose deux questions légitimes : **qu'est-ce qu'il peut casser ?** et **qu'est-ce qui part chez un tiers ?**
+
+* **Il ne modifie rien.** Le `ClusterRole` du chart n'accorde **aucun droit d'écriture**, et les actions correctives sont **désactivées par défaut** : le modèle *propose*, il n'*exécute* pas. Les seules écritures de RunLore sont des **PRs** dans ton dépôt de connaissances.
+* **Les secrets sont masqués avant de sortir.** Clés, tokens, URLs `user:pass@host`, blocs `data:` d'un `kind: Secret` — même au milieu d'un diff Git — sont masqués **avant chaque appel au modèle**, puis avant la PR et Slack. Une mitigation, pas une garantie : une chaîne à haute entropie sans étiquette passera entre les mailles.
+* **Le modèle est traité comme non fiable.** Sa sortie est de la **donnée**, jamais une autorisation. Une injection de prompt peut biaiser un diagnostic ; elle ne déclenche pas d'écriture.
+* **Et le reste du travail de fond** : RBAC minimal (les logs bruts ne sont jamais lisibles cluster-wide), pod _Restricted_ non-root, NetworkPolicy, webhook authentifié, image signée avec SBOM.
+
+Reste la crainte n°1 : *« mes données partent chez un tiers »*. Elle a une réponse simple — **rien ne t'y oblige**. `base_url` accepte n'importe quel endpoint OpenAI-compatible : pointe-le sur un **vLLM dans ton cluster** ([la stack self-hosted](/fr/post/series/agentic_ai/llm-self-hosted-stack/)), et **plus rien ne sort de ta plateforme**.
+
+Tout le détail — modèle de menace et limites assumées — vit dans [`docs/security-model.md`](https://github.com/Smana/runlore/blob/main/docs/security-model.md) et [`docs/security-architecture.md`](https://github.com/Smana/runlore/blob/main/docs/security-architecture.md).
+
 {{% notice tip "Quelques conseils pour bien démarrer 💸" %}}
 Un agent branché sur Alertmanager peut vite multiplier les appels LLM. Tu gardes la main : commence **volontairement bas** — par exemple **2 investigations/heure** — observe, puis desserre. Les garde-fous :
 
