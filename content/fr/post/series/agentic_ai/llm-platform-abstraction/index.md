@@ -93,7 +93,7 @@ La matière première était pourtant déjà là : la composition savait charger
 
 La flotte compte quatre modèles, chacun bon à quelque chose de précis : du code, du raisonnement, de la modération. Pour en tirer quoi que ce soit, le client devait **choisir lui-même** — écrire `xplane-qwen-coder` dans son champ `model`, et donc connaître le catalogue, ses noms et ses spécialités.
 
-Le **routeur sémantique** (un service qui classe le prompt et décide seul quel modèle doit le traiter) de la partie 3 était censé lever exactement ça. Il tournait, en bonne santé, depuis des semaines. Il n'a **jamais été appelé** — parce que rien, sur le chemin de requête, ne le branchait à la Gateway.
+Le **routeur sémantique** de la partie 3 — un service qui classe le prompt et décide seul quel modèle doit le traiter — était censé lever exactement ça. Il tournait, en bonne santé, depuis des semaines. Il n'a **jamais été appelé** — parce que rien, sur le chemin de requête, ne le branchait à la Gateway.
 
 ### 4. Aucun moyen de sortir des champs curés
 
@@ -334,7 +334,7 @@ Ce n'est pas de la prescience, c'est de l'emprunt : la lecture de la plateforme 
 
 ## :brain: Le prompt choisit le modèle
 
-Tout ce qui précède suppose un client qui **sait ce qu'il veut**. Il écrit `xplane-qwen-coder` dans son champ `model`, donc il connaît le catalogue, les noms, et lequel est bon en code. C'est une hypothèse raisonnable pour un service. C'en est une mauvaise pour un humain devant un chat.
+Jusqu'ici, le client **sait ce qu'il veut**. Il écrit `xplane-qwen-coder` dans son champ `model`, donc il connaît le catalogue, les noms, et lequel est bon en code. C'est une hypothèse raisonnable pour un service. C'en est une mauvaise pour un humain devant un chat.
 
 La flotte compte quatre modèles spécialisés. L'idée du **Mixture of Models** (`model: MoM`) est de retourner la question : le client n'annonce pas un modèle, il **envoie son prompt**, et la plateforme décide.
 
@@ -357,11 +357,11 @@ Ce routeur tournait déjà en partie 3. En bonne santé, scruté, avec ses métr
 
 Le brancher tient en une question, et elle est plus subtile qu'elle n'en a l'air : **à quel moment du chemin de requête ?**
 
-L'Envoy AI Gateway a son propre **extproc** — et c'est lui qui **dérive l'en-tête `x-ai-eg-model` depuis le `model` du corps** de la requête. Cet en-tête est ce sur quoi *toutes* les règles de routage matchent. Le routeur sémantique doit donc s'exécuter **avant** lui : il réécrit `body.model`, de `MoM` vers un nom concret, et l'extproc de la Gateway dérive ensuite l'en-tête depuis un corps **déjà réécrit**.
+L'Envoy AI Gateway a son propre **extproc** (_external processor_ : un service que le proxy appelle en cours de traitement, et qui peut modifier les en-têtes **comme le corps** de la requête) — et c'est lui qui **dérive l'en-tête `x-ai-eg-model` depuis le `model` du corps** de la requête. Cet en-tête est ce sur quoi *toutes* les règles de routage matchent. Le routeur sémantique doit donc s'exécuter **avant** lui : il réécrit `body.model`, de `MoM` vers un nom concret, et l'extproc de la Gateway dérive ensuite l'en-tête depuis un corps **déjà réécrit**.
 
-La conséquence est la plus belle propriété de ce montage : **aucune règle de routage nouvelle.** Les routes existantes — celles que la composition génère, celles du canary, celles du pin explicite — matchent telles quelles, sans savoir que MoM existe.
+La conséquence est la propriété qui fait tout tenir : **aucune règle de routage nouvelle.** Les routes existantes — celles que la composition génère, celles du canary, celles du pin explicite — matchent telles quelles, sans savoir que MoM existe.
 
-Reste à obtenir cet « avant ». L'objet prévu pour ça, l'`EnvoyExtensionPolicy`, ne sait pas l'exprimer : il **ajoute** ses filtres *après* ceux de l'AI Gateway — trop tard, l'en-tête est déjà dérivé. Le montage passe donc par un **`EnvoyPatchPolicy`** : un patch xDS brut qui insère le filtre ext-proc à **l'index 0** de la chaîne de filtres HTTP.
+Reste à obtenir cet « avant ». L'objet prévu pour ça, l'`EnvoyExtensionPolicy`, ne sait pas l'exprimer : il **ajoute** ses filtres *après* ceux de l'AI Gateway — trop tard, l'en-tête est déjà dérivé. Le montage passe donc par un **`EnvoyPatchPolicy`** : un patch xDS brut qui insère, à **l'index 0** de la chaîne de filtres HTTP, le propre extproc du routeur sémantique — lui aussi un filtre `ext_proc`, au même titre que celui de la Gateway.
 
 ```yaml
 # apps/base/ai/llm/ai-gateway-routes/semantic-router-patch.yaml
@@ -388,7 +388,7 @@ Un patch xDS brut est un objet qu'on préfère éviter : il est couplé à la fo
 
 ### Deux couches qui se composent
 
-Et voilà le résultat qui justifie la section. Une requête `MoM`, classée `code`, réécrite en `xplane-qwen-coder`… **est tombée dans le canary LoRA** et a été servie par `xplane-qwen-coder-sql-dpo`.
+Le montage a produit un résultat que rien n'avait explicitement câblé. Une requête `MoM`, classée `code`, réécrite en `xplane-qwen-coder`… **est tombée dans le canary LoRA** et a été servie par `xplane-qwen-coder-sql-dpo`.
 
 Deux décisions, prises par deux composants qui ne se connaissent pas :
 
@@ -522,7 +522,7 @@ Tout ce qui précède produit un split : 90 % du trafic sur les poids de base, 1
 
 La partie 3 a déjà présenté les métriques **`gen_ai.*`** de l'Envoy AI Gateway (v1.0) : le standard [OpenTelemetry Gen AI](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/), qui ne compte pas des requêtes HTTP mais le vocabulaire métier des LLM — tokens consommés, **TTFT** (_time to first token_ : le délai entre la requête et le premier token de la réponse), latence par token de sortie. Il restait à les **brancher**.
 
-Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'**extproc** (_external processor_) : le sidecar auquel Envoy délègue le traitement spécifique aux LLM, seul sur le chemin de requête à voir à la fois le nom **demandé** et le nom **servi**. C'est là que le scrape se branche :
+Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'extproc de la gateway — celui-là même qui dérive `x-ai-eg-model` : le sidecar auquel Envoy délègue le traitement spécifique aux LLM, seul sur le chemin de requête à voir à la fois le nom **demandé** et le nom **servi**. C'est là que le scrape se branche :
 
 * **Cible** : le sidecar extproc, pas le conteneur Envoy — d'où un **`VMPodScrape`** (l'objet VictoriaMetrics qui cible des *pods*) et non un `VMServiceScrape`
 * **Namespace** : `envoy-gateway-system`
