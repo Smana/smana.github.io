@@ -55,7 +55,7 @@ De cette claim, la **composition** Crossplane — le programme qui traduit la cl
 * Voir un **routage sémantique** décider du modèle **à partir du prompt** — et se composer avec le canary au lieu de lui disputer la décision
 * Voir comment une **configuration avancée** encadrée laisse passer les options que le schéma curé n'a pas prévues, sans trouer le contrat de service
 * Rendre la topologie **lisible** : un `kubectl get` doit dire à quels noms le modèle répond réellement
-* En tirer **quatre leçons transposables** à n'importe quelle abstraction de plateforme — LLM ou pas
+* En tirer **cinq leçons transposables** à n'importe quelle abstraction de plateforme — LLM ou pas
 
 {{% notice tip "Le code" %}}
 Tout ce qui suit est dans [**cloud-native-ref**](https://github.com/Smana/cloud-native-ref) (PR #1559). La composition `InferenceService` passe de la **v0.6.0** (celle de la partie 3, du 9 mai 2026) à la **v0.8.0**.
@@ -740,7 +740,7 @@ Leurs propres docs le disent sans détour : Modelplane **compose** les projets d
 
 La contribution de cet article est donc d'un autre ordre : **creuser un seul cluster.** Le **canary LoRA pondéré**, à coût GPU nul par construction, validé à l'admission et couvert par les tests de la composition (`kcl test` : 44/44). Les **signaux d'autoscaling curés**, pris sur les métriques de saturation les plus précoces de vLLM. Et le **durcissement comme plancher**, pas comme remarque de fin : zero-trust Cilium, **PSS restricted** (_Pod Security Standards_, le profil le plus strict de Kubernetes), secrets, et un GitOps de bout en bout où la claim reste la seule chose qu'un utilisateur écrit.
 
-Une réserve honnête, et elle vaut pour les trois : ce qui est prouvé aujourd'hui, c'est le **rendu** — la composition produit bien ces ressources, contre le tag réel `0.8.0-pr1559`. Le split observé sur du trafic vivant, lui, attend encore le passage e2e sur le cluster.
+Ce qui était une réserve à la rédaction ne l'est plus : le rendu est prouvé, **et le split aussi** — sur du trafic vivant, corroboré par le moteur. Reste une seule case non cochée, et je la garde visible : la distribution par préfixe de l'Endpoint Picker, faute de GPU pour la produire.
 
 ### Ce que leur revue a changé, ici
 
@@ -756,33 +756,54 @@ Reste le caveat qui garde l'exercice honnête, et il joue contre moi : **ils son
 
 ## :thought_balloon: Dernières remarques
 
-Cette PR ne rend pas la plateforme plus puissante — un pod vLLM sur un GPU faisait déjà tourner un modèle en partie 3. Elle rend l'abstraction **complète** et **évolutive** : la claim produit désormais *toutes* les ressources du modèle, routage compris, et elle sait le faire bouger par paliers. Le chemin pour y arriver a produit quatre leçons qui n'ont, au fond, rien à voir avec les LLM.
+Cette PR ne rend pas la plateforme plus puissante — un pod vLLM sur un GPU faisait déjà tourner un modèle en partie 3. Elle rend l'abstraction **complète** et **évolutive** : la claim produit désormais *toutes* les ressources du modèle, routage compris, et elle sait le faire bouger par paliers. Le chemin pour y arriver a produit cinq leçons qui n'ont, au fond, rien à voir avec les LLM.
 
 * **Si deux fichiers décrivent la même chose, ils divergeront.** Ce n'est pas un problème de discipline, c'est un problème de temps : la dérive est une fonction du nombre de jours, pas du sérieux de l'équipe. La seule issue est structurelle — la composition doit **posséder les deux**, ou il n'y a plus qu'un fichier. Et posséder une ressource, c'est aussi décider **quand** elle existe : une route qui apparaît trop tôt envoie du trafic dans le vide, une route qui disparaît trop vite fait du flapping. Portail à la création, latch ensuite.
 * **Un rollout progressif ne coûte un GPU de plus que si l'abstraction confond le modèle et le pod.** La politique de trafic appartient au **modèle**, pas au réplica : dès qu'on la déclare au bon niveau, déplacer 10 % du trafic vers un fine-tune devient une décision de routage — pas une deuxième flotte à provisionner et à payer.
+* **Les couches de décision se composent si — et seulement si — elles décident à des endroits différents.** Le routeur sémantique tranche *quel modèle* en réécrivant le corps de la requête ; la route pondérée tranche *quels poids* en lisant l'en-tête qui en est dérivé. Aucune des deux ne connaît l'autre, et c'est précisément pour ça qu'elles tiennent ensemble. Deux composants qui décident au même point du chemin se disputent ; deux composants qui décident à deux points s'empilent. La position dans la chaîne *est* le contrat.
 * **Une API qui ne laisse aucune sortie finit contournée ; une configuration avancée sans garde-fous casse les invariants.** Entre les deux : une **denylist explicite**, appliquée en **un seul** endroit. Deux endroits, et on vient de recréer le premier problème.
 * **Si `kubectl get` ne dit pas ce que la ressource fait vraiment, l'abstraction ment.** Un statut correct rangé là où personne ne le lit n'est pas de la découvrabilité.
 
-Ce que je retiens surtout, c'est le déplacement qui les relie toutes les quatre : **l'unité de déploiement n'est plus « un pod qui sert un modèle », c'est « un modèle, avec sa politique de trafic, sa stratégie de rollout et sa découvrabilité »**. Tant qu'une abstraction ne modélise que le pod, tout le reste — la route, le split, les noms servis — retombe sur un humain, dans un fichier à côté, à la main.
+Ce que je retiens surtout, c'est le déplacement qui les relie toutes : **l'unité de déploiement n'est plus « un pod qui sert un modèle », c'est « un modèle, avec sa politique de trafic, sa stratégie de rollout et sa découvrabilité »**. Tant qu'une abstraction ne modélise que le pod, tout le reste — la route, le split, les noms servis — retombe sur un humain, dans un fichier à côté, à la main. Et quand elle les modélise enfin, une dernière marche apparaît, gratuite : le client n'a plus besoin de savoir ce qu'il demande. `model: MoM`, et la plateforme s'en charge.
 
 Avec une limite que cet article a lui-même établie, et qui reste à lever : aujourd'hui, `gateway.endpointPicker` et `gateway.canaries` **s'excluent à l'admission**. Dans une même claim, on déclare donc la politique de trafic **ou** la stratégie de rollout — pas encore les deux. L'unité de déploiement est la bonne ; le prochain axe d'amélioration est déjà nommé.
+
+{{% notice tip "Le zero-trust n'est utile que le jour où il refuse quelque chose" %}}
+Une trouvaille du passage sur cluster, minuscule et satisfaisante. Au démarrage, vLLM poste des statistiques d'usage vers `stats.vllm.ai`. Personne ne l'avait demandé, et personne ne l'aurait vu.
+
+La `CiliumNetworkPolicy` par défaut-deny de la partie 3 l'a **bloqué**, sans qu'on lui demande rien non plus :
+
+```
+$ hubble observe --namespace llm --verdict DROPPED
+llm/xplane-qwen-coder-... <> 172.67.154.127:443 (world)  Policy denied  DROPPED
+
+$ cilium fqdn cache list | grep 172.67.154.127
+172.67.154.127 -> stats.vllm.ai
+```
+
+Le plancher de sécurité de la partie 3 a fait exactement son travail, sur une sortie réseau que je n'avais pas prévue. C'est la seule preuve qui compte pour une politique par défaut-deny : celle qui arrive quand on ne la regardait pas. (Posture plus propre encore : `VLLM_NO_USAGE_STATS=1`, pour qu'il n'essaie même pas.)
+{{% /notice %}}
 
 ### Et après ?
 
 Le chaînon vraiment manquant, c'est le premier de cette liste : **fine-tuner mon propre adapter**. Les deux LoRA de cet article viennent de HuggingFace, entraînés par d'autres ; le canary sait donc exposer progressivement un fine-tune au trafic réel, mais il n'a encore jamais servi à valider *le mien*. C'est là que la boucle se ferme — et c'est un autre métier, que je n'ai pas encore fait.
 
-* **`s3://` en chargement direct et le résolveur LoRA** — les deux capacités descopées de cette PR, qui demandent vLLM v0.9.0. De quoi supprimer le dernier détour par le PVC.
+* **L'init du moteur** — les 124 secondes que le streamer ne touche pas, dont 33 de capture de graphes CUDA. C'est là qu'est le cold-start, et c'est le prochain chantier. Le chargement `s3://` direct (vLLM v0.9.0) attaque la partie poids ; le reste demande autre chose.
 * **Les traces OTLP vers VictoriaTraces** — case volontairement décochée aujourd'hui, à cocher le jour où la compatibilité du chemin d'ingestion sera vérifiée, pas avant.
 * **Les trois modèles restants**, à basculer sous routage possédé par la composition — et, dans le même mouvement, la suppression définitive de `route.yaml`. C'est ce commit-là, et pas celui de cette PR, qui tuera pour de bon la double comptabilité.
 
 {{% notice note "Où en est la validation, exactement" %}}
-Autant être précis sur ce qui est **prouvé** au moment où j'écris ces lignes :
+Tout ce qui est chiffré dans cet article vient d'un **cluster EKS reconstruit de zéro** (Cilium, Flux, quatre modèles sur quatre GPU L4), pas d'un rendu local :
 
-* `kcl test` : **44/44 PASS**, dont le lockstep XRD ↔ composition vérifié par mutation.
-* `./scripts/validate-kcl-compositions.sh` : **exit 0**.
-* `crossplane render` puis **Polaris** (un linter qui audite des manifestes Kubernetes contre un jeu de bonnes pratiques de sécurité et de fiabilité), contre le **tag réel** de la composition (`0.8.0-pr1559`) : les ressources rendues sont celles décrites ici, et elles passent le durcissement.
+* le **split canary** — 8,2 % mesurés pour 10 % configurés, corroborés par `vllm:lora_requests_info` côté moteur ;
+* l'**attribution `gen_ai`** — deux labels, `original` et `request`, donc un split de mesure gratuit ;
+* le **latch de readiness** — route retenue 90 s pendant que le pod chargeait ses poids, publiée à `Available=True`, et les onze ressources composées ramassées à la suppression ;
+* les **garde-fous d'admission** — les sept rejets CEL, message par message ;
+* `status.servedModels` et sa colonne, sur les quatre modèles de la flotte ;
+* le **cold-start** avec et sans le Run:ai streamer, sur le même modèle et les mêmes poids ;
+* `model: MoM`, sur les quatre classes de prompts.
 
-Et ce qui **attend encore le passage e2e sur le cluster** : le split de trafic réellement observé, l'attribution `gen_ai` du canary, la sortie de la colonne `SERVED MODELS`, et le gain de cold-start du streamer. Tant que ces mesures ne sont pas faites, elles ne sont pas dans cet article — ni en chiffres, ni en captures d'écran.
+Et ce qui **n'est pas mesuré**, donc pas affirmé : la **distribution par préfixe** de l'Endpoint Picker. Elle demande plusieurs réplicas d'un même modèle sous charge partageant leurs préfixes, et le budget GPU de cette plateforme ne le permet pas encore. L'EPP tourne, il score, le chemin est propre — mais le gain qu'il promet, je ne l'ai pas vu de mes yeux, et je ne le mettrai pas en chiffres tant que ce sera le cas.
 {{% /notice %}}
 
 ---
@@ -800,6 +821,7 @@ Et ce qui **attend encore le passage e2e sur le cluster** : le split de trafic r
 - [Envoy AI Gateway](https://aigateway.envoyproxy.io/) — la porte d'entrée compatible OpenAI, et ses [métriques `gen_ai`](https://aigateway.envoyproxy.io/docs/capabilities/observability/metrics/)
 - [Gateway API Inference Extension](https://github.com/kubernetes-sigs/gateway-api-inference-extension) — `InferencePool` et Endpoint Picker
 - [Run:ai Model Streamer](https://github.com/run-ai/runai-model-streamer) — chargement concurrent des poids vers la VRAM
+- [vLLM Semantic Router](https://github.com/vllm-project/semantic-router) — la classification de prompts derrière `model: MoM`
 - [KEDA](https://keda.sh/) — autoscaling sur métriques vLLM
 - [Crossplane](https://www.crossplane.io/) — le moteur de composition
 - [KCL](https://www.kcl-lang.io/) — le langage dans lequel la composition est écrite
