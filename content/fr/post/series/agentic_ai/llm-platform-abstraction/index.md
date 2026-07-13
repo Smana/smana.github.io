@@ -571,25 +571,43 @@ Elles ne sont pas émises par le proxy Envoy lui-même, mais par l'extproc de la
 * **Namespace** : `envoy-gateway-system`
 * **Port** : `1064`, le port d'administration de l'extproc
 
+Le port `1064`, le nom du port du conteneur et la règle d'autorisation réseau ne venaient d'aucune documentation : ils avaient été **lus dans le code source** de l'AI Gateway. Sur le cluster, la cible remonte :
+
+```
+up=1  job=envoy-gateway-system/envoy-ai-gateway-genai
+```
+
+Les trois étaient bons.
+
 Les séries atterrissent dans la VictoriaMetrics qui collecte déjà les métriques vLLM, et se lisent dans le même Grafana. Aucun nouvel outil.
 
-### L'attribution canary vs base : une question ouverte
+### L'attribution canary vs base : la gateway répond
 
-`modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter avant que la requête n'atteigne vLLM : une requête tirée dans les 10 % est servie sous le nom `xplane-qwen-coder-sql-dpo`, pas `xplane-qwen-coder`.
+`modelNameOverride` réécrit le nom du modèle **verbatim** vers celui de l'adapter avant que la requête n'atteigne vLLM. La question qui restait ouverte à la rédaction de la PR : les métriques `gen_ai.*`, qui portent le modèle en label, attribuent-elles ce trafic au nom **de l'adapter servi**, ou au nom **du modèle demandé** ?
 
-Reste une question que la PR #1559 laisse **explicitement ouverte**, et que je préfère nommer plutôt que deviner : les métriques `gen_ai.*`, qui portent le modèle en label, attribuent-elles ce trafic au nom **de l'adapter surchargé** — celui que vLLM a servi — ou au nom **du modèle de base** — celui que le client a demandé ? Seule une requête envoyée dans le canary, puis retrouvée (ou non) sous le nom de l'adapter, le dira.
+La réponse est la meilleure possible : **aux deux.** La gateway émet **deux labels distincts**.
 
-Ce n'est pas un détail cosmétique. Si l'attribution suit le nom surchargé, le split de routage est **aussi**, gratuitement, un split de mesure. Sinon, canary et base se mélangent dans la même série, et l'attribution que le dashboard promet n'existe pas.
+| Label | Ce qu'il porte |
+|---|---|
+| `gen_ai_original_model` | ce que le **client** a demandé |
+| `gen_ai_request_model` | ce qui a été **servi** — donc le `modelNameOverride` du canary |
 
-Le dashboard Grafana **`llm-gateway`** vise le premier scénario : les mêmes séries, découpées canary contre base. Voici ce qu'il donnerait à lire, si l'attribution se confirme :
+Conséquence, et elle est gratuite : **le split de routage est aussi un split de mesure.** Découper une série par `gen_ai_request_model` sépare le canary de la base ; la croiser avec `gen_ai_original_model` distingue en plus la population d'expérience (qui a demandé la base et reçu le fine-tune) des clients qui ont explicitement pinné l'adapter. C'est le tableau à trois lignes de la section canary — et il sort d'une seule requête PromQL.
+
+Le dashboard **`llm-gateway`** n'a donc plus à choisir : les mêmes séries, découpées canary contre base.
 
 * La **latence end-to-end** (`gen_ai.server.request.duration`) et le **TTFT** (`gen_ai.server.time_to_first_token`) : servir via un adapter LoRA coûte-t-il le même chemin que servir sur les poids de base ?
-* La **latence par token de sortie** (`gen_ai.server.time_per_output_token`), qui dirait si le fine-tune génère au même rythme.
+* La **latence par token de sortie** (`gen_ai.server.time_per_output_token`), qui dit si le fine-tune génère au même rythme.
 * La **consommation de tokens** (`gen_ai.client.token.usage`) : un fine-tune plus bavard que sa base, à qualité égale, est un fine-tune plus cher.
 * Le **volume de requêtes** de chaque branche — de quoi vérifier que le split fait ce qu'il annonce.
 
-<!-- TODO-e2e: trancher si gen_ai.* attribue le trafic canary au nom de l'adapter surchargé (modelNameOverride) ou au nom du modèle de base — réponse à documenter dans le README de la composition (SPEC-002, question ouverte PR #1559) -->
-<!-- TODO-e2e: screenshot du dashboard Grafana llm-gateway avec l'attribution canary vs base -->
+{{% notice tip "Le nom de la métrique n'est pas celui qu'on croit" %}}
+Un détail qui coûte cher à qui l'ignore : la série s'appelle `gen_ai_client_token_usage_sum`, **sans suffixe d'unité**. `gen_ai_client_token_usage_tokens_sum` n'existe pas — et c'est pourtant ce que le dashboard visait dans sa première version.
+
+Un panneau qui interroge une série inexistante ne lève **aucune erreur**. Il affiche « No data », ce qu'un panneau affiche aussi quand tout va bien et qu'il ne se passe rien. Le dashboard serait resté vide pour toujours, et personne n'aurait su faire la différence.
+{{% /notice %}}
+
+<!-- SCREENSHOT-EN-ATTENTE: dashboard Grafana llm-gateway, attribution canary vs base (à capturer) -->
 
 Ces courbes disent si le canary est plus lent, ou plus bavard, que la base. Elles ne disent pas s'il est **meilleur** : aucune métrique de gateway ne sait ce qu'est un bon SQL. La qualité reste le domaine de l'éval — [Promptfoo](/fr/post/series/agentic_ai/llm-self-hosted-stack/), vu en partie 3 — et c'est là que la règle de pin reprend tout son sens : une éval doit interroger l'adapter **de façon déterministe**, pas tomber dessus une fois sur dix. Promouvoir un fine-tune, c'est regarder les deux.
 
