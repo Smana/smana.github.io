@@ -164,6 +164,30 @@ Le compromis retenu est asymétrique, parce que les deux erreurs ne coûtent pas
 
 Techniquement, le latch tient sur l'**`ocds`** (_observed composed resources_) : l'état des ressources déjà composées, tel que Crossplane l'observe au début de chaque réconciliation. La composition y cherche sa propre `AIGatewayRoute` ; si elle l'y trouve, c'est que le portail s'est déjà ouvert, et elle la rend de nouveau sans même regarder l'état du `Deployment`.
 
+Sur le cluster, le portail se voit à l'œil nu. Une claim fraîche, `gateway.enabled: true`, et on regarde apparaître les ressources :
+
+```
+[10:23:46] Available=False  route=0  pod=0/1 ContainerCreating
+[10:25:54] Available=False  route=0  pod=0/1 Running       <- Running, mais pas prêt : toujours pas de route
+[10:27:19] Available=False  route=0  pod=0/1 Running
+[10:27:41] Available=True   route=1  pod=1/1 Running       <- la route apparaît
+```
+
+Le pod est resté **`Running` mais `0/1` pendant environ 90 secondes** — il chargeait ses poids sur le GPU — et la route est restée retenue tout ce temps. C'est le point précis qui compte : **le latch s'accroche à la condition `Available` du `Deployment`, pas à la phase du pod.** Un pod qui tourne n'est pas un pod qui sert, et seule la première des deux le sait.
+
+Un détail de conception que le terrain a rendu visible : les deux `Backend` de la section précédente, eux, sont créés **immédiatement**. Ils sont statiquement prêts — un FQDN et un port ne « démarrent » pas. **Seule la route est retenue.** Le portail ne bloque pas la construction du chemin, il bloque sa publication.
+
+```
+$ kubectl get inferenceservice xplane-scratch-latch -o jsonpath='{...resourceRefs}'
+  AIServiceBackend/xplane-scratch-latch          <- créé
+  Backend/xplane-scratch-latch-direct            <- créé
+  Deployment/xplane-scratch-latch
+  ...
+                                                 <- aucune AIGatewayRoute
+```
+
+Et à la suppression, la promesse de possession se vérifie d'un coup : les **onze** ressources composées disparaissent, route et backends compris. Aucune n'a survécu à sa claim.
+
 {{% notice tip "Le détail qui aurait fini en incident" %}}
 La composition **écrit** la route sous une clé de ressource, et la **relit** sous cette même clé au tour suivant. Deux chaînes de caractères, à deux endroits du code : si elles divergent — un renommage d'un côté seulement — la relecture ne trouve jamais rien, le latch ne s'enclenche jamais, et la route est retirée à la première indisponibilité passagère venue. Un bug invisible en test, qui ne se manifeste qu'en production, au pire moment.
 
