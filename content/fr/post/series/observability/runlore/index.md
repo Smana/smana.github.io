@@ -267,6 +267,19 @@ Il ne reste qu'à router les alertes d'Alertmanager vers `http://runlore.runlore
 
 L'exemple ci-dessus est une stack standard, mais tu peux brancher ce que tu veux — **GitOps** (Flux/Argo CD), **métriques**, **logs**, **flux réseau**, **cloud**, plusieurs **LLM** et **notifieurs**, chacun _pluggable_. La **matrice complète**, qui évolue au fil des versions, vit dans le [README du dépôt](https://github.com/Smana/runlore#-supported-integrations).
 
+### 🔒 La sécurité, une contrainte de conception
+
+Brancher un agent LLM sur tes alertes pose deux questions légitimes : **qu'est-ce qu'il peut casser ?** et **qu'est-ce qui part chez un tiers ?** C'est pourquoi j'ai porté une attention particulière à la sécurité. En voici l'essentiel :
+
+* **Il ne modifie rien.** Le `ClusterRole` du chart n'accorde **aucun droit d'écriture**, et les actions correctives sont **désactivées par défaut** : le modèle *propose*, il n'*exécute* pas. Les seules écritures de RunLore sont des **PRs** dans ton dépôt de connaissances.
+* **Les secrets sont masqués avant de sortir.** Clés, tokens, URLs `user:pass@host`, blocs `data:` d'un `kind: Secret` — même au milieu d'un diff Git — sont masqués **avant chaque appel au modèle**, puis avant la PR et Slack.
+* **Le modèle est traité comme non fiable — parce que ce qu'il lit l'est aussi.** Logs, events, annotations d'alertes : son contexte est rempli de texte qu'un attaquant peut influencer. Sa sortie n'est donc jamais une décision, seulement une proposition que le serveur valide : une injection réussie **dégrade une réponse, pas ton cluster**.
+* **Et le reste du travail de fond** : RBAC minimal (les logs bruts ne sont jamais lisibles cluster-wide), pod _Restricted_ non-root, NetworkPolicy, webhook authentifié, image signée avec SBOM.
+
+Reste la crainte n°1 : *« mes données partent chez un tiers »*. Ici, **le choix t'appartient**. Tu utilises probablement déjà un LLM au quotidien, et la sensibilité de tes données dépend de ton contexte et des arbitrages déjà faits dans ton entreprise.
+
+`base_url` accepte n'importe quel endpoint OpenAI-compatible : si tu peux te le permettre, pointe-le vers [une stack self-hosted](/fr/post/series/agentic_ai/llm-self-hosted-stack/) et **plus rien ne sort de ta plateforme**. Tout le monde n'en a pas les moyens. À défaut, il reste les garde-fous côté fournisseur — **zéro rétention**, **pas d'entraînement sur tes données** — pour ce qu'ils valent.
+
 {{% notice tip "Quelques conseils pour bien démarrer 💸" %}}
 Un agent branché sur Alertmanager peut vite multiplier les appels LLM. Tu gardes la main : commence **volontairement bas** — par exemple **2 investigations/heure** — observe, puis desserre. Les garde-fous :
 

@@ -267,6 +267,19 @@ All that's left is to route Alertmanager to `http://runlore.runlore.svc:8080/web
 
 The example above is a standard stack, but you can plug in whatever you want: **GitOps** (Flux/Argo CD), **metrics**, **logs**, **network flows**, **cloud**, several **LLMs** and **notifiers**, each one _pluggable_. The **full matrix**, which evolves with each release, lives in the [repo's README](https://github.com/Smana/runlore#-supported-integrations).
 
+### 🔒 Security wasn't an afterthought
+
+Wiring an LLM agent to your alerts raises two fair questions: **what can it break?** and **what gets sent to a third party?** So security is where I've put the most care. Here's what matters:
+
+* **It can't modify anything.** The chart's `ClusterRole` grants **no write permission**, and remediation actions are **off by default**: the model *proposes*, it doesn't *execute*. RunLore's only writes are **PRs** to your knowledge-base repo.
+* **Secrets are masked before they leave.** Keys, tokens, `user:pass@host` URLs, the `data:` block of a `kind: Secret` — even in the middle of a Git diff — are masked **before every call to the model**, then again before the PR and Slack.
+* **The model is treated as untrusted — because what it reads is untrusted too.** Logs, events, alert annotations: its context is full of text an attacker can influence. So its output is never a decision, only a proposal the server validates: a successful injection **degrades an answer, not your cluster**.
+* **And the rest of the groundwork**: least-privilege RBAC (raw logs are never readable cluster-wide), a non-root _Restricted_ pod, a NetworkPolicy, an authenticated webhook, a signed image with an SBOM.
+
+That leaves the number-one fear: *"my data goes to a third party"*. Here, **the choice is yours**. You're most likely already using an LLM day to day, and how sensitive your data really is depends on your context and on the trade-offs your company has already made.
+
+`base_url` takes any OpenAI-compatible endpoint: if you can afford it, point it at [a self-hosted stack](/post/series/agentic_ai/llm-self-hosted-stack/) and **nothing leaves your platform**. Not everyone can. If that's out of reach, you're left with the provider-side guardrails — **zero retention**, **no training on your data** — for whatever they're worth.
+
 {{% notice tip "A few tips to get started 💸" %}}
 An agent wired to Alertmanager can rack up LLM calls fast. You stay in control: start **deliberately low**, say **2 investigations/hour**, watch what happens, then raise the ceiling. The guardrails:
 
