@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`RunLore`: the SRE buddy that investigates incidents — and learns from every fix"
-date = "2026-07-15"
+date = "2026-07-14"
 summary = "What you learn during an incident usually disappears the moment it's closed. RunLore is an open source SRE agent that investigates, points you at the likely root cause fast, and turns every resolution into knowledge you can reuse."
 featured = false
 codeMaxLines = 30
