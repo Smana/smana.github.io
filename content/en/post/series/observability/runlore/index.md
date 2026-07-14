@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`RunLore`: the SRE buddy that investigates incidents — and learns from every fix"
-date = "2026-07-12"
+date = "2026-07-15"
 summary = "What you learn during an incident usually disappears the moment it's closed. RunLore is an open source SRE agent that investigates, points you at the likely root cause fast, and turns every resolution into knowledge you can reuse."
 featured = false
 codeMaxLines = 30
@@ -147,7 +147,7 @@ The whole demo runs on **GLM 5.2** (Zhipu AI, through Z.ai's OpenAI-compatible A
 
 ### 🔍 The incident
 
-A **`HarborRegistryDown`** alert fires. RunLore investigates and correlates several signals:
+A **`HarborRegistryCrashLooping`** alert fires. RunLore investigates and correlates several signals:
 
 * the **pod status**: `harbor-registry` is failing with `CreateContainerConfigError` — `couldn't find key username in Secret tooling/xplane-harbor-access-key`;
 * the **Kubernetes events** in the `tooling` namespace: a persistent Warning on the Crossplane resource `AccessKey/xplane-harbor` — `LimitExceeded: Cannot exceed quota for AccessKeysPerUser: 2`;
@@ -201,7 +201,7 @@ Some time later, the same incident **happens again**. This time RunLore runs **n
 
 {{< img src="runlore-recall.png" alt="Slack notification of an instant RunLore recall" width="760" >}}
 
-And it's **radically cheaper**: **~58,000 tokens** for the first investigation, **~3,700** for this recall. Same answer, in a matter of seconds.
+And it's **radically cheaper**: **~55,000 tokens** for the first investigation, **~3,700** for this recall. Same answer, in a matter of seconds.
 
 {{% notice info "How does recall find the right entry? 🎯" %}}
 Recall doesn't rely on keywords alone. Even when the alert shares **almost no wording** with the runbook that covers it, a **structural pre-filter** (the affected resource, here `tooling/harbor-registry`) narrows the candidates down first, then an **LLM reranker** judges whether the retrieved entry truly covers *this* resource and *this* symptom. And the cause is never taken for granted: it is **re-verified against the cluster's actual state** before publishing.
