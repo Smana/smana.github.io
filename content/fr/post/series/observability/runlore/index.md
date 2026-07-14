@@ -1,7 +1,7 @@
 +++
 author = "Smaine Kahlouch"
 title = "`RunLore` : ton buddy SRE qui investigue les incidents — et apprend de chaque résolution"
-date = "2026-07-12"
+date = "2026-07-15"
 summary = "Souvent, la connaissance d'un incident se dissout dès qu'il est clos. RunLore, agent SRE open source, investigue et t'aide à identifier rapidement la root cause, puis transforme chaque résolution en savoir réutilisable."
 featured = false
 codeMaxLines = 30
@@ -147,7 +147,7 @@ Toute la démo tourne sur **GLM 5.2** (Zhipu AI, via l'API OpenAI-compatible de 
 
 ### 🔍 L'incident
 
-Une alerte **`HarborRegistryDown`** se déclenche. RunLore investigue et corrèle plusieurs signaux :
+Une alerte **`HarborRegistryCrashLooping`** se déclenche. RunLore investigue et corrèle plusieurs signaux :
 
 * le **statut du pod** : `harbor-registry` échoue en `CreateContainerConfigError` — `couldn't find key username in Secret tooling/xplane-harbor-access-key` ;
 * les **événements Kubernetes** du namespace `tooling` : un Warning persistant sur la ressource Crossplane `AccessKey/xplane-harbor` — `LimitExceeded: Cannot exceed quota for AccessKeysPerUser: 2` ;
@@ -201,7 +201,7 @@ Quelque temps plus tard, le même incident **se reproduit**. Cette fois, RunLore
 
 {{< img src="runlore-recall.png" alt="Notification Slack d'un rappel instantané RunLore" width="760" >}}
 
-Et c'est **radicalement moins cher** : **~58 000 tokens** pour la première investigation, **~3 700** pour ce rappel — même réponse, en quelques secondes.
+Et c'est **radicalement moins cher** : **~55 000 tokens** pour la première investigation, **~3 700** pour ce rappel — même réponse, en quelques secondes.
 
 {{% notice info "Comment le rappel retrouve-t-il la bonne entrée ? 🎯" %}}
 Le rappel ne se fie pas aux seuls mots-clés : même quand l'alerte n'a **presque aucun mot en commun** avec le runbook qui la couvre, un **pré-filtre structurel** (la ressource affectée — ici `tooling/harbor-registry`) réduit d'abord les candidats, puis un **reranker LLM** juge si l'entrée retrouvée couvre vraiment *cette* ressource et *ce* symptôme. Et la cause n'est jamais supposée : elle est **revérifiée contre l'état réel du cluster** avant publication.
