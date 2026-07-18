@@ -42,3 +42,15 @@ An opinionated cloud native reference platform — EKS, GitOps, Crossplane, secu
 An open source SRE buddy that investigates incidents, points at the likely root cause fast, and turns every resolution into reusable knowledge.
 {{< /pf-card >}}
 {{< /pf-cards >}}
+
+## Talks
+
+{{< pf-talks >}}
+{{< pf-talk year="2024" event="Cloud Native Paris meetup" title="eTF1: évolutions techniques et écoresponsabilité" url="https://www.youtube.com/watch?v=w7au2ZIBSXU" >}}
+{{< pf-talk year="2022" event="Cloud Native Paris meetup" title="Crossplane: one step further in our GitOps journey" url="https://www.youtube.com/watch?v=TsmlSMsLXAA" >}}
+{{< pf-talk year="2021" event="Cloud Native Paris meetup" title="Building a smooth CI/CD pipeline with GitOps and Flux v2" url="https://www.youtube.com/watch?v=R0BA2QMPWTE" >}}
+{{< pf-talk year="2019" event="Google Cloud Summit" title="Cross cloud / on-premises: introduction to Anthos" url="https://www.youtube.com/watch?v=YdZn5o7pbXw" >}}
+{{< pf-talk year="2018" event="Open R&Day" title="Our on-premises journey with Kubernetes" url="https://www.youtube.com/watch?v=TMZaUoWFucM" >}}
+{{< pf-talk year="2018" event="CNCF meetup London" title="Dailymotion, from a French monolith to a worldwide platform" url="https://skillsmatter.com/skillscasts/11465-dailymotion-from-a-french-monolith-to-a-worldwide-platform-a-human-story" >}}
+{{< pf-talk year="2016" event="KubeCon Europe" title="From Heroku to Kubernetes" url="https://kubeconeurope2016.sched.com/event/6BYh" >}}
+{{< /pf-talks >}}
