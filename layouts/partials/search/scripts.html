@@ -8,8 +8,25 @@
   <script>
   (function () {
     var loaded = false;
-    var src = {{ $bundle.Permalink | jsonify }};
-    var integrity = {{ $bundle.Data.Integrity | jsonify }};
+    var src = {{ $bundle.Permalink }};
+    var integrity = {{ $bundle.Data.Integrity }};
+    function initSearchIndex() {
+      var lang = document.body.dataset.lang;
+      var slug = lang === defaultSiteLanguage ? '' : lang + '/';
+      var url = new URL(baseURL + slug + 'index.json').href;
+      fetch(url)
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          initializeSearch(data && data.length ? data : []);
+          // The input listener attaches only now (init is lazy), so replay
+          // whatever the user already typed before the bundle finished loading.
+          var input = document.getElementById('find');
+          if (input && input.value) {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        })
+        .catch(function (error) { console.error(error); });
+    }
     function loadSearch() {
       if (loaded) return;
       loaded = true;
@@ -17,9 +34,25 @@
       s.src = src;
       s.integrity = integrity;
       s.crossOrigin = 'anonymous';
+      // search.js self-initializes on the window 'load' event. Because the
+      // bundle is fetched lazily (on focus/input), that event has usually
+      // already fired, so its own handler never runs — kick off init here.
+      s.onload = function () {
+        if (document.readyState === 'complete') {
+          initSearchIndex();
+        }
+        // Otherwise 'load' hasn't fired yet; search.js's own handler will run.
+      };
       document.head.appendChild(s);
     }
     document.addEventListener('DOMContentLoaded', function () {
+      // The dedicated search page renders results from the ?query= URL param
+      // via passiveSearch, so it needs the bundle immediately rather than on
+      // focus. Everywhere else, defer loading until the user intends to search.
+      if (document.getElementById('searchpage')) {
+        loadSearch();
+        return;
+      }
       var input = document.getElementById('find');
       if (input) {
         input.addEventListener('focus', loadSearch, { once: true });
