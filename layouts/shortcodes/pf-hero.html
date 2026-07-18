@@ -1,0 +1,16 @@
+<section class="pf-hero">
+  <img class="pf-hero_photo" src="{{ .Get "image" }}" alt="{{ .Get "name" }}" width="180" height="180">
+  <div class="pf-hero_intro">
+    <h2 class="pf-hero_name">{{ .Get "name" }}</h2>
+    <p class="pf-hero_tagline">{{ .Get "tagline" }}</p>
+    <div class="pf-hero_bio">{{ .Inner | markdownify }}</div>
+    <div class="pf-hero_social">
+      {{- range .Page.Site.Menus.social }}
+      {{- $label := lower .Name }}
+      <a href="{{ .URL }}" title="{{ .Name }}" class="{{ $label }}" target="_blank" rel="noopener">
+        {{- partial "sprite" (dict "icon" $label) -}}
+      </a>
+      {{- end }}
+    </div>
+  </div>
+</section>
