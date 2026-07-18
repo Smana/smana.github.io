@@ -52,3 +52,37 @@ video
     a:hover
       svg
         fill: var(--theme)
+
+.pf-cards
+  display: grid
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+  gap: 1rem
+  margin: 1.5rem 0
+
+.pf-card
+  display: block
+  padding: 1.25rem
+  background: var(--post-bg)
+  border: 1px solid var(--table-border)
+  border-top: 3px solid var(--theme)
+  border-radius: 8px
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease)
+
+  &:hover
+    transform: translateY(-3px)
+    box-shadow: 0 6px 18px var(--shadow)
+
+  &_title
+    margin: 0 0 0.25rem
+    font-size: 1.05rem
+
+  &_subtitle
+    color: var(--theme)
+    font-size: 0.85rem
+    font-weight: 600
+
+  &_body
+    color: var(--text)
+    font-size: 0.9rem
+    p
+      margin: 0.5rem 0 0
