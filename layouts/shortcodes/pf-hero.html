@@ -10,7 +10,9 @@
   {{- end -}}
 {{- end -}}
 <section class="pf-hero">
-  <img class="pf-hero_photo" src="{{ $src }}" alt="{{ .Get "name" }}" width="180" height="180" loading="eager" decoding="async">
+  {{- /* title=" " opts out of the theme's AltImage caption JS (index.js), which
+         otherwise removes the image's next sibling (our intro) and captions the alt. */ -}}
+  <img class="pf-hero_photo" src="{{ $src }}" alt="{{ .Get "name" }}" title=" " width="180" height="180" loading="eager" decoding="async">
   <div class="pf-hero_intro">
     <h2 class="pf-hero_name">{{ .Get "name" }}</h2>
     <p class="pf-hero_tagline">{{ .Get "tagline" }}</p>
