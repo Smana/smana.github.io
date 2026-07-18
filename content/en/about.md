@@ -54,3 +54,24 @@ An open source SRE buddy that investigates incidents, points at the likely root 
 {{< pf-talk year="2018" event="CNCF meetup London" title="Dailymotion, from a French monolith to a worldwide platform" url="https://skillsmatter.com/skillscasts/11465-dailymotion-from-a-french-monolith-to-a-worldwide-platform-a-human-story" >}}
 {{< pf-talk year="2016" event="KubeCon Europe" title="From Heroku to Kubernetes" url="https://kubeconeurope2016.sched.com/event/6BYh" >}}
 {{< /pf-talks >}}
+
+## Career at a glance
+
+Details on [LinkedIn](https://www.linkedin.com/in/sma%C3%AFne-kahlouch-44374110/).
+
+{{< pf-timeline >}}
+{{< pf-item period="2025 – now" role="Staff Platform Engineer" company="Aqemia" >}}
+{{< pf-item period="2022 – 2025" role="SRE/Cloud & DevEx Team Leader" company="eTF1" >}}
+{{< pf-item period="2021 – 2022" role="SRE/Cloud Team Leader" company="KMTX" >}}
+{{< pf-item period="2021" role="Senior Site Reliability Engineer" company="Mirakl" >}}
+{{< pf-item period="2017 – 2021" role="DevOps Engineering Manager" company="Dailymotion" >}}
+{{< pf-item period="2016 – 2017" role="Technical Lead" company="Claranet" >}}
+{{< pf-item period="2013 – 2016" role="Technical Lead, CDN R&D" company="Arkena" >}}
+{{< pf-item period="2006 – 2013" role="System Engineer / NOC Coordinator" company="British Telecom" >}}
+{{< /pf-timeline >}}
+
+## Beyond the terminal
+
+Kickboxing, running, surfing, longboarding and inline skating. When sitting still: science-fiction and fantasy books, or out riding my motorbike.
+
+_The thumbnails for each article were generated with DALL-E and [Nano Banana](https://gemini.google/lu/overview/image-generation) (Google)._

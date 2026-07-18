@@ -111,3 +111,36 @@ video
     display: block
     color: var(--text)
     font-size: 0.85rem
+
+.pf-timeline
+  list-style: none
+  padding: 0
+  margin: 1.5rem 0 1.5rem 0.5rem
+  border-left: 2px solid var(--theme)
+
+.pf-item
+  position: relative
+  padding: 0 0 1.1rem 1.5rem
+
+  &::before
+    content: ''
+    position: absolute
+    left: -0.38rem
+    top: 0.35rem
+    width: 0.65rem
+    height: 0.65rem
+    border-radius: 50%
+    background: var(--theme)
+
+  &_period
+    display: inline-block
+    min-width: 7rem
+    font-weight: 700
+
+  &_role
+    font-weight: 600
+
+  &_company
+    color: var(--text)
+    &::before
+      content: ' · '
