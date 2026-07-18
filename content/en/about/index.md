@@ -6,6 +6,9 @@ author = "Smana"
 sidebar = false
 singleColumn = true
 comments = false
+showdate = false
+showreadtime = false
+showshare = false
 +++
 
 {{< pf-hero image="profile_2024.jpg" name="Smaïne Kahlouch" tagline="Platform Engineer · Cloud Native community builder" >}}
