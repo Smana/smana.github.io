@@ -15,14 +15,17 @@ video
 // ---------------------------------------------------------------------------
 .pf-hero
   display: flex
-  align-items: center
+  align-items: flex-start
   flex-wrap: wrap
   gap: 2rem
   margin: 2rem 0
 
   &_photo
+    flex: none
     width: 180px
     height: 180px
+    margin: 0
+    padding: 0
     border-radius: 50%
     object-fit: cover
     box-shadow: 0 4px 14px var(--shadow)
@@ -32,7 +35,12 @@ video
     min-width: 260px
 
   &_name
-    margin: 0 0 0.25rem
+    margin: 0 0 0.35rem
+    padding: 0
+    font-size: 1.9rem
+    font-weight: 700
+    line-height: 1.15
+    color: var(--header-text)
 
   &_tagline
     margin: 0 0 1rem

@@ -8,8 +8,8 @@ singleColumn = true
 comments = false
 +++
 
-{{< pf-hero image="about.png" name="Smaïne Kahlouch" tagline="Platform Engineer · Acteur de la communauté Cloud Native" >}}
-Je construis des **plateformes cloud native** — et les équipes qui les font tourner. Au cours des 20 dernières années, j'ai dirigé des équipes SRE, DevOps et Platform, accompagné plusieurs entreprises dans leur migration vers le cloud, et j'explore aujourd'hui l'**IA agentique appliquée à l'ingénierie logicielle**.
+{{< pf-hero image="profile_2024.jpg" name="Smaïne Kahlouch" tagline="Platform Engineer · Acteur de la communauté Cloud Native" >}}
+Je suis un **ingénieur système / SRE senior**, avec un intérêt particulier pour les conteneurs Linux, les technologies dites "Cloud Native" et, plus récemment, l'**intelligence artificielle appliquée à l'ingénierie logicielle** — notamment le coding assisté par agents IA. Au fil de ma carrière, j'ai collaboré avec une grande variété d'entreprises, des startups dynamiques aux grandes structures, où j'ai contribué à optimiser la fiabilité et la disponibilité des plateformes tout en améliorant l'expérience des développeurs. Mon parcours inclut l'accompagnement de plusieurs sociétés dans leur migration vers le Cloud, et j'ai également pu **diriger des équipes SRE/DevOps** composées de profils variés — développeurs comme ingénieurs SRE — tous engagés vers des objectifs communs.
 
 Ce blog est l'endroit où je partage tout cela : des articles pratiques sur Kubernetes, GitOps, la sécurité, [l'observabilité](/fr/series/observability/)… et plus récemment l'IA.
 {{< /pf-hero >}}

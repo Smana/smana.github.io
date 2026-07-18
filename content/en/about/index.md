@@ -8,8 +8,8 @@ singleColumn = true
 comments = false
 +++
 
-{{< pf-hero image="about.png" name="Smaïne Kahlouch" tagline="Platform Engineer · Cloud Native community builder" >}}
-I build **cloud native platforms** — and the teams that run them. Over the past 20 years I've led SRE, DevOps and Platform teams, guided several companies through their move to the cloud, and I'm currently exploring **agentic AI applied to software engineering**.
+{{< pf-hero image="profile_2024.jpg" name="Smaïne Kahlouch" tagline="Platform Engineer · Cloud Native community builder" >}}
+I'm a **senior system / SRE engineer** with a particular interest in Linux containers, Cloud Native technologies, and more recently in **artificial intelligence applied to software engineering** — especially AI-assisted coding using agent-based systems. Throughout my career I've worked with a wide range of companies, from dynamic startups to large organizations, helping improve platform reliability and availability while enhancing the developer experience. My journey includes supporting several companies through their transition to the Cloud, and I've also **led SRE/DevOps teams** made up of diverse profiles — developers and SRE engineers alike — all driving towards common objectives.
 
 This blog is where I share it all: hands-on posts about Kubernetes, GitOps, security, [observability](/series/observability/)… and more recently AI.
 {{< /pf-hero >}}
