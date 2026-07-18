@@ -1,0 +1,11 @@
+<li class="pf-talk">
+  <span class="pf-talk_year">{{ .Get "year" }}</span>
+  <div class="pf-talk_what">
+    {{- with .Get "url" }}
+    <a class="pf-talk_title" href="{{ . }}" target="_blank" rel="noopener">{{ $.Get "title" }}</a>
+    {{- else }}
+    <span class="pf-talk_title">{{ .Get "title" }}</span>
+    {{- end }}
+    <span class="pf-talk_event">{{ .Get "event" }}</span>
+  </div>
+</li>

@@ -1,0 +1,29 @@
+{{- $img := .Page.Resources.GetMatch (.Get "image") -}}
+{{- $src := .Get "image" -}}
+{{- with $img -}}
+  {{- $r := .Resize "360x" -}}
+  {{- $webp := try ($r.Process "webp q90") -}}
+  {{- if $webp.Err -}}
+    {{- $src = $r.RelPermalink -}}
+  {{- else -}}
+    {{- $src = $webp.Value.RelPermalink -}}
+  {{- end -}}
+{{- end -}}
+<section class="pf-hero">
+  {{- /* title=" " opts out of the theme's AltImage caption JS (index.js), which
+         otherwise removes the image's next sibling (our intro) and captions the alt. */ -}}
+  <img class="pf-hero_photo" src="{{ $src }}" alt="{{ .Get "name" }}" title=" " width="180" height="180" loading="eager" decoding="async">
+  <div class="pf-hero_intro">
+    <h2 class="pf-hero_name">{{ .Get "name" }}</h2>
+    <p class="pf-hero_tagline">{{ .Get "tagline" }}</p>
+    <div class="pf-hero_bio">{{ .Inner | markdownify }}</div>
+    <div class="pf-hero_social">
+      {{- range .Page.Site.Menus.social }}
+      {{- $label := lower .Name }}
+      <a href="{{ .URL }}" title="{{ .Name }}" aria-label="{{ .Name }}" class="{{ $label }}" target="_blank" rel="noopener">
+        {{- partial "sprite" (dict "icon" $label) -}}
+      </a>
+      {{- end }}
+    </div>
+  </div>
+</section>

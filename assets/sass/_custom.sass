@@ -9,3 +9,146 @@
 video
   max-width: 100%
   height: auto
+
+// ---------------------------------------------------------------------------
+// Portfolio (about page) — all classes prefixed pf-, colors via theme vars
+// ---------------------------------------------------------------------------
+.pf-hero
+  display: flex
+  align-items: flex-start
+  flex-wrap: wrap
+  gap: 2rem
+  margin: 2rem 0
+
+  &_photo
+    flex: none
+    width: 180px
+    height: 180px
+    margin: 0
+    padding: 0
+    border-radius: 50%
+    object-fit: cover
+    box-shadow: 0 4px 14px var(--shadow)
+
+  &_intro
+    flex: 1
+    min-width: 260px
+
+  &_name
+    margin: 0 0 0.35rem
+    padding: 0
+    font-size: 1.9rem
+    font-weight: 700
+    line-height: 1.15
+    color: var(--header-text)
+
+  &_tagline
+    margin: 0 0 1rem
+    color: var(--theme)
+    font-weight: 600
+
+  &_social
+    display: flex
+    gap: 0.75rem
+    margin-top: 0.75rem
+    a
+      svg
+        width: 1.5rem
+        height: 1.5rem
+        fill: var(--text)
+        transition: fill 0.2s var(--ease)
+    a:hover
+      svg
+        fill: var(--theme)
+
+.pf-cards
+  display: grid
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
+  gap: 1rem
+  margin: 1.5rem 0
+
+.pf-card
+  display: block
+  padding: 1.25rem
+  background: var(--post-bg)
+  border: 1px solid var(--table-border)
+  border-top: 3px solid var(--theme)
+  border-radius: 8px
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease)
+
+  &:hover
+    transform: translateY(-3px)
+    box-shadow: 0 6px 18px var(--shadow)
+
+  &_title
+    margin: 0 0 0.25rem
+    font-size: 1.05rem
+
+  &_subtitle
+    color: var(--theme)
+    font-size: 0.85rem
+    font-weight: 600
+
+  &_body
+    color: var(--text)
+    font-size: 0.9rem
+    p
+      margin: 0.5rem 0 0
+
+.pf-talks
+  list-style: none
+  padding: 0
+  margin: 1.5rem 0
+
+.pf-talk
+  display: flex
+  align-items: baseline
+  gap: 1rem
+  padding: 0.6rem 0
+  border-bottom: 1px dashed var(--table-border)
+
+  &_year
+    flex: 0 0 3.2rem
+    color: var(--theme)
+    font-weight: 700
+
+  &_title
+    font-weight: 600
+
+  &_event
+    display: block
+    color: var(--text)
+    font-size: 0.85rem
+
+.pf-timeline
+  list-style: none
+  padding: 0
+  margin: 1.5rem 0 1.5rem 0.5rem
+  border-left: 2px solid var(--theme)
+
+.pf-item
+  position: relative
+  padding: 0 0 1.1rem 1.5rem
+
+  &::before
+    content: ''
+    position: absolute
+    left: -0.38rem
+    top: 0.35rem
+    width: 0.65rem
+    height: 0.65rem
+    border-radius: 50%
+    background: var(--theme)
+
+  &_period
+    display: inline-block
+    min-width: 7rem
+    font-weight: 700
+
+  &_role
+    font-weight: 600
+
+  &_company
+    color: var(--text)
+    &::before
+      content: ' · '

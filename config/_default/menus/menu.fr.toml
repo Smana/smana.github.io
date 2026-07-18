@@ -10,7 +10,7 @@ name = "Liens"
 weight = -108
 [[main]]
 name = "LinkedIn"
-parent = "Liens"
+parent = "Links"
 url = "https://www.linkedin.com/in/sma%C3%AFne-kahlouch-44374110/"
 [[main]]
 name = "Bluesky"

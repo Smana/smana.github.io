@@ -1,0 +1,5 @@
+<a class="pf-card" href="{{ .Get "link" }}"{{ if hasPrefix (.Get "link") "http" }} target="_blank" rel="noopener"{{ end }}>
+  <h3 class="pf-card_title">{{ .Get "title" }}</h3>
+  {{- with .Get "subtitle" }}<span class="pf-card_subtitle">{{ . }}</span>{{ end }}
+  <div class="pf-card_body">{{ .Inner | markdownify }}</div>
+</a>
