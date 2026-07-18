@@ -51,7 +51,7 @@ Un compagnon SRE open source qui investigue les incidents, pointe rapidement la 
 {{< pf-talk year="2021" event="Meetup Cloud Native Paris" title="Building a smooth CI/CD pipeline with GitOps and Flux v2" url="https://www.youtube.com/watch?v=R0BA2QMPWTE" >}}
 {{< pf-talk year="2019" event="Google Cloud Summit" title="Cross cloud / on-premises : introduction to Anthos" url="https://www.youtube.com/watch?v=YdZn5o7pbXw" >}}
 {{< pf-talk year="2018" event="Open R&Day" title="Our on-premises journey with Kubernetes" url="https://www.youtube.com/watch?v=TMZaUoWFucM" >}}
-{{< pf-talk year="2018" event="Meetup CNCF Londres" title="Dailymotion, from a French monolith to a worldwide platform" url="https://skillsmatter.com/skillscasts/11465-dailymotion-from-a-french-monolith-to-a-worldwide-platform-a-human-story" >}}
+{{< pf-talk year="2018" event="Meetup CNCF Londres" title="Dailymotion, from a French monolith to a worldwide platform" url="https://web.archive.org/web/20210312215049/https://skillsmatter.com/skillscasts/11465-dailymotion-from-a-french-monolith-to-a-worldwide-platform-a-human-story" >}}
 {{< pf-talk year="2016" event="KubeCon Europe" title="From Heroku to Kubernetes" url="https://kubeconeurope2016.sched.com/event/6BYh" >}}
 {{< /pf-talks >}}
 
