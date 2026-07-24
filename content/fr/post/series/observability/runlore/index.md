@@ -62,10 +62,14 @@ Son principe est volontairement simple : à partir d'un événement (une alerte,
 Le schéma se lit en trois temps :
 
 * **Déclencheurs** — une alerte, un échec GitOps ou un webhook (ex: PagerDuty) lancent l'investigation.
-* **Sources de données** — l'**historique GitOps** (le fil rouge du _what-changed_), les métriques, les logs, les flux réseau, le cloud… _plus il y en a de branchées, plus la réponse est solide_.
+* **Sources de données** — l'**historique GitOps** (le fil rouge du _what-changed_), les métriques, les logs, les flux réseau, le cloud, et — quand tu les autorises — tes **dépôts de code applicatif**… _plus il y en a de branchées, plus la réponse est solide_.
 * **Canaux de notification** — le verdict part vers Slack, Matrix…
 
 Et tout ça repose sur une **base de connaissances** qui s'enrichit à chaque incident et **évolue avec le temps**.
+
+{{% notice tip "De « l'image a changé » au commit fautif 🔍" %}}
+L'historique GitOps te dit qu'*une* version a changé (`image v1.2.2 → v1.2.3`). Autorise les **dépôts de code** correspondants et RunLore suit ce bump jusque dans le code lui-même — sujets de commits, diffstat par fichier, les plus gros hunks modifiés — transformant une corrélation en **cause**. C'est l'outil `source_diff`, désactivé tant que tu n'as pas listé de dépôt.
+{{% /notice %}}
 
 ### Trois choix de conception
 
@@ -115,7 +119,7 @@ Il vient d'une réflexion d'**Andrej Karpathy** : plutôt que de re-dériver la 
 
 J'utilisais déjà ce pattern **en local** : d'abord dans **Obsidian**, puis via **Tolaria**, l'outillage que j'ai bâti par-dessus pour qu'un agent lise et écrive dans ma base de connaissances. Il m'a donc paru naturel d'en faire la mémoire de RunLore.
 
-La mémoire est donc stockée dans un dépôt Git **qui t'appartient** : indexé en BM25, relu par PR, avec une traçabilité complète. Et rien n'oblige à démarrer d'une page blanche : le catalogue peut être **amorcé** dès le premier jour (contraintes, architecture, conventions d'équipe), que les incidents viennent ensuite enrichir.
+La mémoire est donc stockée dans un dépôt Git **qui t'appartient** : indexé en BM25, relu par PR, avec une traçabilité complète. Et rien n'oblige à démarrer d'une page blanche : le catalogue peut être **amorcé** dès le premier jour (contraintes, architecture, conventions d'équipe), que les incidents viennent ensuite enrichir. Et rien n'oblige à mener les entretiens à la main : **kb-steward**, un skill compagnon [Claude Code](https://runlore.io/docs/reference/kb-steward/), transforme runbooks et savoir tribal en entrées OKF prêtes pour le rappel afin d'amorcer le catalogue — puis t'aide à **trier les PRs KB de RunLore**. Il ne diagnostique jamais d'incident à chaud ; ça reste le travail de RunLore.
 
 ## ✋ L'humain garde la main
 
@@ -224,6 +228,8 @@ Clairement, la **RCA orientée changement n'est pas nouvelle** — des outils co
 
 ## 🛠️ Tu peux le tester simplement
 
+📖 Tout ce qui suit — et bien plus — vit désormais sur le tout nouveau site de documentation : **[runlore.io](https://runlore.io)** (démarrage, architecture, configuration complète, le tout indexé et cherchable).
+
 Envie de l'essayer ? L'installation tient en un **chart Helm** et un `values.yaml`. Il te faut au moins une **source de données**, un **LLM**, un **dépôt GitHub privé** pour la base de connaissances (avec une GitHub App dédiée) et une **destination de notification**. Les credentials vont dans un `Secret` Kubernetes ; le `values.yaml` fait le câblage.
 
 ```yaml
@@ -243,7 +249,7 @@ config:
   metrics:
     url: http://kube-prometheus-stack-prometheus.monitoring.svc:9090   # Prometheus
   logs:
-    url: http://victoria-logs-single-server.observability.svc:9428     # VictoriaLogs
+    url: http://victoria-logs-single-server.observability.svc:9428     # VictoriaLogs (ou Grafana Loki — auto-détecté)
   cloud:
     provider: aws
     region: eu-west-3
@@ -263,9 +269,9 @@ config:
 helm install runlore deploy/helm/runlore -n runlore --create-namespace -f values.yaml
 ```
 
-Il ne reste qu'à router les alertes d'Alertmanager vers `http://runlore.runlore.svc:8080/webhook/alertmanager`, et les investigations démarrent. Je m'en tiens volontairement à l'essentiel : le [guide de démarrage complet](https://github.com/Smana/runlore/blob/main/docs/getting-started.md) couvre la création de la GitHub App, la référence exhaustive du `values.yaml` et les étapes de vérification.
+Il ne reste qu'à router les alertes d'Alertmanager vers `http://runlore.runlore.svc:8080/webhook/alertmanager`, et les investigations démarrent. Je m'en tiens volontairement à l'essentiel : le [guide de démarrage complet](https://runlore.io/docs/getting-started/) couvre la création de la GitHub App, la référence exhaustive du `values.yaml` et les étapes de vérification.
 
-L'exemple ci-dessus est une stack standard, mais tu peux brancher ce que tu veux — **GitOps** (Flux/Argo CD), **métriques**, **logs**, **flux réseau**, **cloud**, plusieurs **LLM** et **notifieurs**, chacun _pluggable_. La **matrice complète**, qui évolue au fil des versions, vit dans le [README du dépôt](https://github.com/Smana/runlore#-supported-integrations).
+L'exemple ci-dessus est une stack standard, mais tu peux brancher ce que tu veux — **GitOps** (Flux/Argo CD), **métriques**, **logs** (VictoriaLogs ou Grafana Loki), **flux réseau**, **cloud**, tes **dépôts de code**, plusieurs **LLM** et **notifieurs**, chacun _pluggable_. La **matrice complète**, qui évolue au fil des versions, vit dans la [référence des sources de données](https://runlore.io/docs/concepts/data-sources/).
 
 ### 🔒 La sécurité, une contrainte de conception
 
@@ -329,7 +335,7 @@ Je reviendrai donc avec un **retour d'expérience sur la durée**. D'ici là, le
 
 ## 🔖 Références
 
-* [RunLore — dépôt GitHub](https://github.com/Smana/runlore) · [guide de démarrage](https://github.com/Smana/runlore/blob/main/docs/getting-started.md)
+* [RunLore — documentation](https://runlore.io) · [dépôt GitHub](https://github.com/Smana/runlore) · [guide de démarrage](https://runlore.io/docs/getting-started/)
 * [Open Knowledge Format (OKF) — Knowledge Catalog](https://github.com/GoogleCloudPlatform/knowledge-catalog)
 * [Open Knowledge Format — annonce Google Cloud](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing)
 * [Le pattern _LLM-wiki_ d'Andrej Karpathy](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
