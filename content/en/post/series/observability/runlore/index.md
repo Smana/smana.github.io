@@ -62,10 +62,14 @@ The idea is deliberately simple. An event comes in: an alert, a **GitOps** failu
 The diagram breaks down into three stages:
 
 * **Triggers** — an alert, a GitOps failure or a webhook (e.g. PagerDuty) kicks off the investigation.
-* **Data sources** — the **GitOps history** (the backbone of _what-changed_), metrics, logs, network flows, the cloud… _the more you plug in, the stronger the answer_.
+* **Data sources** — the **GitOps history** (the backbone of _what-changed_), metrics, logs, network flows, the cloud, and — when you allow-list them — your **application source repos**… _the more you plug in, the stronger the answer_.
 * **Notification channels** — the verdict goes out to Slack, Matrix…
 
 And all of it sits on top of a **knowledge base** that grows with every incident.
+
+{{% notice tip "From \"the image bumped\" to the offending commit 🔍" %}}
+The GitOps history tells you *a* version changed (`image v1.2.2 → v1.2.3`). Allow-list the matching **source repos** and RunLore follows that bump into the code itself — commit subjects, a per-file diffstat, the largest changed hunks — turning a correlation into a **cause**. That's the `source_diff` tool, off until you list a repo.
+{{% /notice %}}
 
 ### Three design choices
 
@@ -115,7 +119,7 @@ The idea comes from **Andrej Karpathy**: rather than re-deriving knowledge from 
 
 I was already using this pattern **locally**: first in **Obsidian**, then through **Tolaria**, the tooling I built on top of it so an agent could read and write in my knowledge base. Making it RunLore's memory felt like the natural move.
 
-So the memory lives in a Git repo **you own**: BM25-indexed, reviewed through PRs, fully traceable. And you don't have to start from a blank page. The catalog can be **seeded** on day one (constraints, architecture, team conventions), and incidents build on it from there.
+So the memory lives in a Git repo **you own**: BM25-indexed, reviewed through PRs, fully traceable. And you don't have to start from a blank page. The catalog can be **seeded** on day one (constraints, architecture, team conventions), and incidents build on it from there. And you don't have to do the interviewing by hand: **kb-steward**, a companion [Claude Code](https://runlore.io/docs/reference/kb-steward/) skill, turns runbooks and tribal knowledge into recall-grade OKF entries to seed the catalog — and later helps you **triage RunLore's KB PRs**. It never diagnoses live incidents; that stays RunLore's job.
 
 ## ✋ The human stays in charge
 
@@ -224,6 +228,8 @@ Change-oriented RCA is clearly **nothing new**: commercial tools have been compu
 
 ## 🛠️ Try it yourself
 
+📖 Everything below — and much more — now lives in the brand-new documentation site: **[runlore.io](https://runlore.io)** (quickstart, architecture, full configuration, all searchable).
+
 Want to try it? Installation is a **Helm chart** and a `values.yaml`. You'll need at least one **data source**, an **LLM**, a **private GitHub repo** for the knowledge base (with a dedicated GitHub App) and a **notification target**. Credentials go into a Kubernetes `Secret`; the `values.yaml` does the wiring.
 
 ```yaml
@@ -243,7 +249,7 @@ config:
   metrics:
     url: http://kube-prometheus-stack-prometheus.monitoring.svc:9090   # Prometheus
   logs:
-    url: http://victoria-logs-single-server.observability.svc:9428     # VictoriaLogs
+    url: http://victoria-logs-single-server.observability.svc:9428     # VictoriaLogs (or Grafana Loki — auto-detected)
   cloud:
     provider: aws
     region: eu-west-3
@@ -263,9 +269,9 @@ config:
 helm install runlore deploy/helm/runlore -n runlore --create-namespace -f values.yaml
 ```
 
-All that's left is to route Alertmanager to `http://runlore.runlore.svc:8080/webhook/alertmanager`, and investigations start. I'm deliberately sticking to the essentials here: the [complete getting started guide](https://github.com/Smana/runlore/blob/main/docs/getting-started.md) covers creating the GitHub App, the full `values.yaml` reference and the verification steps.
+All that's left is to route Alertmanager to `http://runlore.runlore.svc:8080/webhook/alertmanager`, and investigations start. I'm deliberately sticking to the essentials here: the [complete getting started guide](https://runlore.io/docs/getting-started/) covers creating the GitHub App, the full `values.yaml` reference and the verification steps.
 
-The example above is a standard stack, but you can plug in whatever you want: **GitOps** (Flux/Argo CD), **metrics**, **logs**, **network flows**, **cloud**, several **LLMs** and **notifiers**, each one _pluggable_. The **full matrix**, which evolves with each release, lives in the [repo's README](https://github.com/Smana/runlore#-supported-integrations).
+The example above is a standard stack, but you can plug in whatever you want: **GitOps** (Flux/Argo CD), **metrics**, **logs** (VictoriaLogs or Grafana Loki), **network flows**, **cloud**, your **source repos**, several **LLMs** and **notifiers**, each one _pluggable_. The **full matrix**, which evolves with each release, lives in the [data-sources reference](https://runlore.io/docs/concepts/data-sources/).
 
 ### 🔒 Security wasn't an afterthought
 
@@ -329,7 +335,7 @@ So I'll report back after a longer run. Until then, the project is **open** (Apa
 
 ## 🔖 References
 
-* [RunLore — GitHub repo](https://github.com/Smana/runlore) · [getting started guide](https://github.com/Smana/runlore/blob/main/docs/getting-started.md)
+* [RunLore — documentation](https://runlore.io) · [GitHub repo](https://github.com/Smana/runlore) · [getting started guide](https://runlore.io/docs/getting-started/)
 * [Open Knowledge Format (OKF) — Knowledge Catalog](https://github.com/GoogleCloudPlatform/knowledge-catalog)
 * [Open Knowledge Format — Google Cloud announcement](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing)
 * [Andrej Karpathy's _LLM-wiki_ pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
