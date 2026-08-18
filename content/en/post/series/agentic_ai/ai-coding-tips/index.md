@@ -25,6 +25,33 @@ This article will be updated as I discover new things and as tools evolve. Feel 
 
 ---
 
+## :wrench: How I currently use Claude Code
+
+Let's be honest: once you're used to Claude Code, expectations run high. I won't go over the concepts again here (MCP, skills, subagents, hooks, SDD, automode) — they're covered in the [first article of the series](/post/series/agentic_ai/ai-coding-agent/). Instead, here's a **non-exhaustive overview** of what I use daily and the **value** I get out of it:
+
+**The MCPs plugged into my session**
+
+* **Tolaria**: direct access to my personal wiki — notes, ADRs, lessons learned, retrieved without leaving the terminal
+* **Linear**: reading and creating tickets, linking a PR to an issue, without switching tabs
+* **VictoriaMetrics / VictoriaLogs**: querying metrics and logs from the agent, handy for debugging or correlating a behaviour with a deployment
+* **Flux**: checking a cluster's GitOps state (HelmReleases, Kustomizations) before acting
+* **Context7**: pulling up-to-date docs for a library or an SDK, to avoid hallucinations on recent APIs
+
+**Beyond MCPs**
+
+* **Skills**: specialized capabilities loaded on demand (creating PRs, security audits, writing designs)
+* **Subagents and hooks**: automatic triggers (desktop notification, pre-commit validation) and delegation to isolated contexts
+* **SDD** with **superpowers**: I tried several flavours (github-specs, gsd); this is the one I settled on, for how simple it is to use while still guaranteeing a complete workflow that respects good practices — [cloud-native-ref](https://github.com/Smana/cloud-native-ref) moved over to it entirely in August 2026
+* **Automode** on POCs, with a careful review of the first iteration before letting it run
+
+This workflow plays to **Claude's specific strengths**: Opus reasoning on the critical passages, the 1M context window in beta, and very reliable _function-calling_.
+
+{{% notice tip "Mise en abyme: this setup in action" %}}
+The [self-hosted LLM stack](/post/series/agentic_ai/llm-self-hosted-stack/) (part 3 of the series) was **entirely designed and built with Claude Code** — Crossplane/KCL compositions, Helm manifests, ADRs, Grafana dashboards, and the writing of the article itself. It's a concrete example of everything described here: MCPs (Tolaria for design notes, Context7 for the vLLM/KEDA docs, Flux to verify deployments), worktrees to parallelize the platform and the article, an SDD plan to frame the scope, and `code-simplifier` at the end of the cycle. A small irony: using Claude Code to build an alternative to Claude Code.
+{{% /notice %}}
+
+---
+
 ## :scroll: CLAUDE.md: persistent memory
 
 The `CLAUDE.md` file is the **first optimization lever**. These are instructions automatically injected into every conversation. If you don't have one yet, it's the first thing to set up.

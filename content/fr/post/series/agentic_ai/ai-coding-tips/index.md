@@ -20,7 +20,7 @@ Cet article fait suite à [Agentic Coding : concepts et cas concrets](/fr/post/s
 Comme pour tout outil qu'on adopte, c'est avec le temps qu'on affine sa façon de l'utiliser. À force d'itérer sur ma config et mes workflows, j'ai trouvé un rythme efficace avec Claude Code. Je partage ici ce qui fonctionne pour moi.
 
 {{% notice info "Article vivant" %}}
-**Dernière mise à jour : 9 mai 2026**
+**Dernière mise à jour : 18 août 2026**
 
 Cet article est mis à jour régulièrement au fil de mes découvertes et de l'évolution des outils. N'hésitez pas à revenir de temps en temps pour y trouver de nouveaux tips.
 {{% /notice %}}
@@ -43,7 +43,7 @@ Autant le dire : quand on est habitué à Claude Code, les attentes sont élevé
 
 * **Skills** : capacités spécialisées chargées à la demande (création de PRs, audits sécurité, écriture de specs)
 * **Subagents et hooks** : déclencheurs automatiques (notification desktop, validation pré-commit) et délégation à des contextes isolés
-* **SDD** avec **superpowers** : j'ai testé plusieurs déclinaisons (github-specs, gsd) ; c'est aujourd'hui mon préféré pour sa simplicité d'usage, tout en garantissant un workflow complet qui respecte les bonnes pratiques
+* **SDD** avec **superpowers** : j'ai testé plusieurs déclinaisons (github-specs, gsd) ; c'est celui que j'ai retenu, pour sa simplicité d'usage tout en garantissant un workflow complet qui respecte les bonnes pratiques — [cloud-native-ref](https://github.com/Smana/cloud-native-ref) a entièrement basculé dessus en août 2026
 * **Automode** sur les POC, avec une revue minutieuse à la première itération avant de laisser tourner
 
 Ce workflow tire parti des **forces spécifiques de Claude** : raisonnement Opus sur les passages critiques, fenêtre de contexte 1M en bêta, _function-calling_ très fiable.
