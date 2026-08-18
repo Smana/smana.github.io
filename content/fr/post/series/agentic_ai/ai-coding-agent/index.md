@@ -17,6 +17,10 @@ aliases = ["/fr/post/ai-coding-agent/"]
 thumbnail = "thumbnail.png"
 +++
 
+{{% notice info "Mise à jour 2026-08-18" %}}
+Après plusieurs mois à utiliser [Superpowers](https://github.com/obra/superpowers), j'ai basculé [cloud-native-ref](https://github.com/Smana/cloud-native-ref) entièrement dessus : la variante SDD maison décrite plus bas est désormais retirée. Le raisonnement qui la sous-tendait — constitution de plateforme, personas de review, vérification sur cluster réel — reste valable ; c'est le mécanisme qui a changé. J'en parle dans la [partie 2 de la série](/fr/post/series/agentic_ai/ai-coding-tips/).
+{{% /notice %}}
+
 Nous le voyons bien, nous assistons à un réel bouleversement provoqué par l'**utilisation de l'IA**. Ce domaine évolue à une telle vitesse qu'il devient presque impossible de suivre toutes les nouveautés. Quant à mesurer l'impact sur notre quotidien et notre façon de travailler, il est encore trop tôt pour le dire. Une chose est sûre cependant : dans la tech, c'est une **révolution** !
 
 Ici, je vais vous présenter une utilisation pratique dans le métier du **"Platform Engineering"** avec une exploration de l'utilisation d'un "**coding agent**" dans certaines tâches communes de notre métier.
@@ -336,9 +340,11 @@ Pour ceux qui baignent dans Kubernetes, on peut faire un parallèle 😉 : la sp
 {{% /notice %}}
 
 {{% notice tip "Ma variante SDD pour le Platform Engineering" %}}
+> **Mise à jour 2026-08-18** — ce workflow maison a été remplacé par [Superpowers](https://github.com/obra/superpowers). La section est conservée telle quelle : elle décrit ce qui a réellement tourné pendant plusieurs mois.
+
 Pour [cloud-native-ref](https://github.com/Smana/cloud-native-ref), j'ai créé une variante inspirée de GitHub Spec Kit que je fais évoluer progressivement. J'avoue que c'est assez expérimental pour le moment, mais les résultats sont déjà impressionnants.
 
-**🛡️ Platform Constitution** — Les principes non-négociables sont codifiés dans une [constitution](https://github.com/Smana/cloud-native-ref/blob/main/docs/specs/constitution.md) : préfixe `xplane-*` pour le scoping IAM, zero-trust networking obligatoire, secrets via External Secrets uniquement. Claude vérifie chaque spec et implémentation contre ces règles.
+**🛡️ Platform Constitution** — Les principes non-négociables sont codifiés dans une [constitution](https://github.com/Smana/cloud-native-ref/blob/main/docs/platform-constitution.md) : préfixe `xplane-*` pour le scoping IAM, zero-trust networking obligatoire, secrets via External Secrets uniquement. Claude vérifie chaque spec et implémentation contre ces règles.
 
 **👥 4 personas de review** — Chaque spec passe par une checklist qui force à considérer plusieurs angles :
 
@@ -541,6 +547,7 @@ De par ma sensibilité pour l'open source, j'envisage d'explorer les alternative
 - [GitHub Spec Kit](https://github.com/github/spec-kit) — Toolkit SDD de GitHub
 - [OpenSpec](https://github.com/Fission-AI/OpenSpec) — SDD léger pour projets brownfield
 - [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD) — Multi-agent SDD
+- [Superpowers](https://github.com/obra/superpowers) — Le workflow que j'utilise aujourd'hui (plugin Claude Code)
 
 ### Plugins, Skills et MCPs
 - [Code-Simplifier](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/code-simplifier) — Nettoyage de code IA
