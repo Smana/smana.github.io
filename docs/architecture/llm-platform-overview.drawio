@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="30.3.6">
+  <diagram name="Vue d'ensemble — plateforme LLM (InferenceService v0.8)" id="llm-platform-overview">
+    <mxGraphModel dx="1600" dy="1440" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1440" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ============ TITRE ============ -->
+        <mxCell id="title" value="&lt;b&gt;Plateforme LLM auto-hébergée&lt;/b&gt; — une claim &lt;tt&gt;InferenceService&lt;/tt&gt; possède, réconcilie et ramasse toute une tranche verticale d'un seul objet&lt;br&gt;&lt;span style=&#39;font-size:14px;color:#666&#39;&gt;InferenceService v0.8 · trois plans, un seul objet&lt;/span&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1240" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="&lt;b&gt;Arêtes&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;color:#6c8ebf&#39;&gt;──── requête&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color:#82b366&#39;&gt;┄┄┄ contrôle&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;color:#9673a6&#39;&gt;···· observabilité&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;fontSize=12;align=left;spacingLeft=10;verticalAlign=middle;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="18" width="240" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ============ BANDE 1 — PLAN REQUÊTE ========================= -->
+        <!-- ============================================================ -->
+        <mxCell id="band1" value="①  PLAN REQUÊTE — le chemin d'une requête (arêtes pleines)" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=1;startSize=44;fillColor=#EAF2FB;strokeColor=#6c8ebf;strokeWidth=2;fontSize=19;fontStyle=1;fontColor=#2c5c8f;align=center;verticalAlign=middle;container=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="96" width="1520" height="480" as="geometry" />
+        </mxCell>
+
+        <mxCell id="clients" value="🧑‍💻 &lt;b&gt;Clients&lt;/b&gt;&lt;br&gt;OpenWebUI · OpenCode · Continue&lt;br&gt;&lt;span style=&#39;font-size:12px;color:#555&#39;&gt;tous OpenAI-compatible&lt;br&gt;un seul &lt;tt&gt;base_url&lt;/tt&gt; · sélection par &lt;tt&gt;model&lt;/tt&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=14;fontColor=#333333;" vertex="1" parent="band1">
+          <mxGeometry x="24" y="150" width="250" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- Envoy AI Gateway — chaîne de filtres HTTP -->
+        <mxCell id="gw" value="🚪 Envoy AI Gateway — chaîne de filtres HTTP" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=2;startSize=40;fillColor=#F7FAFE;strokeColor=#6c8ebf;strokeWidth=2;fontSize=15;fontStyle=1;fontColor=#2c5c8f;align=center;verticalAlign=middle;container=1;collapsible=0;" vertex="1" parent="band1">
+          <mxGeometry x="300" y="70" width="360" height="340" as="geometry" />
+        </mxCell>
+        <mxCell id="sem" value="&lt;b&gt;① ext_proc — Semantic Router&lt;/b&gt;&lt;br&gt;&lt;tt&gt;model: MoM&lt;/tt&gt; → réécrit &lt;tt&gt;body.model&lt;/tt&gt;&lt;br&gt;&lt;span style=&#39;font-size:12px;color:#b85450&#39;&gt;inséré à l'&lt;b&gt;index 0&lt;/b&gt; (EnvoyPatchPolicy)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontColor=#333333;" vertex="1" parent="gw">
+          <mxGeometry x="20" y="52" width="320" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="auth" value="&lt;b&gt;🔑 auth par clé d'API&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontColor=#333333;" vertex="1" parent="gw">
+          <mxGeometry x="20" y="128" width="320" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="aigw" value="&lt;b&gt;② ext_proc — AI Gateway&lt;/b&gt;&lt;br&gt;dérive l'en-tête &lt;tt&gt;x-ai-eg-model&lt;/tt&gt; depuis le corps" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontColor=#333333;" vertex="1" parent="gw">
+          <mxGeometry x="20" y="182" width="320" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="agr" value="&lt;b&gt;🧭 AIGatewayRoute&lt;/b&gt;&lt;br&gt;match sur &lt;tt&gt;x-ai-eg-model&lt;/tt&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=13;fontColor=#333333;" vertex="1" parent="gw">
+          <mxGeometry x="20" y="256" width="320" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="gw-e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="gw" source="sem" target="auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gw-e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="gw" source="auth" target="aigw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="gw-e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="gw" source="aigw" target="agr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Répartition pondérée (mode A) -->
+        <mxCell id="repart" value="⚖️ Répartition pondérée (mode A)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d79b00;verticalAlign=top;align=center;fontSize=14;fontStyle=1;fontColor=#8a6d00;spacingTop=6;container=1;collapsible=0;pointerEvents=0;" vertex="1" parent="band1">
+          <mxGeometry x="700" y="110" width="330" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="base" value="&lt;b&gt;AIServiceBackend&lt;/b&gt; base — &lt;b&gt;90&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=13;fontColor=#333333;" vertex="1" parent="repart">
+          <mxGeometry x="15" y="42" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="canary" value="&lt;b&gt;AIServiceBackend&lt;/b&gt; canary — &lt;b&gt;10&lt;/b&gt;&lt;br&gt;&lt;tt&gt;modelNameOverride&lt;/tt&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=13;fontColor=#333333;" vertex="1" parent="repart">
+          <mxGeometry x="15" y="118" width="300" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pinnote" value="📌 pin : nommer l'adapter → &lt;b&gt;100 %&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontColor=#333333;" vertex="1" parent="repart">
+          <mxGeometry x="15" y="192" width="300" height="44" as="geometry" />
+        </mxCell>
+
+        <!-- Backend unique -->
+        <mxCell id="backend" value="🎯 &lt;b&gt;Backend&lt;/b&gt; — un seul&lt;br&gt;&lt;span style=&#39;font-size:12px;color:#555&#39;&gt;FQDN du Service · :8000&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;font-size:12px;color:#b85450&#39;&gt;&lt;b&gt;les 2 backendRefs pointent ici&lt;/b&gt;&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;fontSize=14;fontColor=#333333;" vertex="1" parent="band1">
+          <mxGeometry x="1070" y="150" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Pod vLLM -->
+        <mxCell id="pod" value="🐳 Pod vLLM · 1 GPU L4" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=2;startSize=44;fillColor=#FCEFEE;strokeColor=#b85450;strokeWidth=2;fontSize=15;fontStyle=1;fontColor=#b85450;align=center;verticalAlign=middle;container=1;collapsible=0;" vertex="1" parent="band1">
+          <mxGeometry x="1310" y="64" width="200" height="396" as="geometry" />
+        </mxCell>
+        <mxCell id="pbase" value="&lt;b&gt;Modèle de base&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=13;fontColor=#333333;" vertex="1" parent="pod">
+          <mxGeometry x="16" y="54" width="168" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="plora" value="&lt;b&gt;adapters LoRA&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;font-size:11px;color:#555&#39;&gt;même pod, même GPU&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=13;fontColor=#333333;" vertex="1" parent="pod">
+          <mxGeometry x="16" y="122" width="168" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="pinfo" value="&lt;i&gt;base + adapters servis sur&lt;br&gt;&lt;b&gt;un seul GPU L4&lt;/b&gt; · = le Deployment composé&lt;/i&gt;" style="text;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;fontSize=11;fontColor=#666666;" vertex="1" parent="pod">
+          <mxGeometry x="16" y="192" width="168" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="pweights" value="&lt;i&gt;lit ses poids depuis le PVC &lt;tt&gt;/models/&lt;/tt&gt;&lt;/i&gt;" style="text;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;fontSize=11;fontColor=#666666;" vertex="1" parent="pod">
+          <mxGeometry x="16" y="252" width="168" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="pegress" value="🔒 egress = DNS seul&lt;br&gt;(zero-trust)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontColor=#333333;" vertex="1" parent="pod">
+          <mxGeometry x="16" y="304" width="168" height="52" as="geometry" />
+        </mxCell>
+
+        <!-- Arêtes bande 1 (pleines) -->
+        <mxCell id="b1-e1" value="un seul &lt;tt&gt;base_url&lt;/tt&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;fontColor=#555555;labelBackgroundColor=#EAF2FB;" edge="1" parent="band1" source="clients" target="sem">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b1-e2" value="dispatch pondéré" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;fontColor=#555555;labelBackgroundColor=#EAF2FB;" edge="1" parent="band1" source="agr" target="repart">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b1-e3" value="90" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;fontSize=12;fontColor=#555555;labelBackgroundColor=#EAF2FB;" edge="1" parent="band1" source="base" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b1-e4" value="10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#82b366;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.75;entryDx=0;entryDy=0;fontSize=12;fontColor=#555555;labelBackgroundColor=#EAF2FB;" edge="1" parent="band1" source="canary" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b1-e5" value="Service :8000" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=3;strokeColor=#d79b00;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;fontColor=#555555;labelBackgroundColor=#EAF2FB;" edge="1" parent="band1" source="backend" target="pod">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ============ BANDE 2 — PLAN CONTRÔLE ======================== -->
+        <!-- ============================================================ -->
+        <mxCell id="band2" value="②  PLAN CONTRÔLE — une claim possède, réconcilie et ramasse (arêtes en tirets)" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=1;startSize=44;fillColor=#F0F8EF;strokeColor=#82b366;strokeWidth=2;fontSize=19;fontStyle=1;fontColor=#2E7D32;align=center;verticalAlign=middle;container=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="590" width="1520" height="540" as="geometry" />
+        </mxCell>
+
+        <mxCell id="claim" value="📄 &lt;b&gt;InferenceService&lt;/b&gt; — la claim&lt;br&gt;&lt;tt&gt;gateway.enabled: true&lt;/tt&gt; · &lt;tt&gt;canaries[]&lt;/tt&gt;&lt;br&gt;&lt;span style=&#39;font-size:12px;color:#666&#39;&gt;seul objet écrit par l'utilisateur&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;fontSize=14;fontColor=#333333;" vertex="1" parent="band2">
+          <mxGeometry x="24" y="92" width="290" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="comp" value="⚙️ &lt;b&gt;Composition Crossplane&lt;/b&gt;&lt;br&gt;écrite en &lt;b&gt;KCL&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;font-size:12px;color:#666&#39;&gt;traduit la claim en ressources&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;strokeWidth=2;fontSize=14;fontColor=#333333;" vertex="1" parent="band2">
+          <mxGeometry x="24" y="248" width="290" height="96" as="geometry" />
+        </mxCell>
+
+        <!-- Cadre de possession (le coeur de la thèse) -->
+        <mxCell id="frame" value="🔒 une claim = un objet possédé, réconcilié et ramassé d'un bloc&lt;br&gt;&lt;span style=&#39;font-size:12px;font-style:italic;color:#555&#39;&gt;ownerReference → GC Kubernetes&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5FBF5;strokeColor=#82b366;strokeWidth=3;verticalAlign=top;align=center;fontSize=15;fontStyle=1;fontColor=#2E7D32;spacingTop=8;container=1;collapsible=0;pointerEvents=0;" vertex="1" parent="band2">
+          <mxGeometry x="340" y="72" width="640" height="392" as="geometry" />
+        </mxCell>
+        <mxCell id="dep" value="Deployment vLLM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="20" y="66" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="svc" value="Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="20" y="128" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="keda" value="ScaledObject (KEDA)&lt;br&gt;&lt;span style=&#39;font-size:11px;color:#555&#39;&gt;lit VictoriaMetrics&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="20" y="190" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cnp" value="CiliumNetworkPolicy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="20" y="252" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="job" value="Job de préchargement" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="20" y="314" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="vms" value="VMServiceScrape" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="330" y="66" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="vmr" value="VMRule" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="330" y="128" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="be" value="Backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="330" y="190" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="asb" value="AIServiceBackend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="330" y="252" width="290" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="agr2" value="AIGatewayRoute" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;fontColor=#333333;" vertex="1" parent="frame">
+          <mxGeometry x="330" y="314" width="290" height="50" as="geometry" />
+        </mxCell>
+        <!-- KEDA ajuste les réplicas (interne au cadre) -->
+        <mxCell id="f-keda-dep" value="ajuste les réplicas" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeWidth=2;strokeColor=#82b366;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=11;fontColor=#2E7D32;labelBackgroundColor=#F5FBF5;" edge="1" parent="frame" source="keda" target="dep">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="480" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Karpenter + stockage -->
+        <mxCell id="karpenter" value="🖥️ &lt;b&gt;Karpenter&lt;/b&gt;&lt;br&gt;provisionne le nœud &lt;b&gt;GPU L4&lt;/b&gt; (spot)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=14;fontColor=#333333;" vertex="1" parent="band2">
+          <mxGeometry x="1090" y="96" width="300" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="pvc" value="💾 &lt;b&gt;PVC&lt;/b&gt; &lt;tt&gt;/models/&lt;/tt&gt;&lt;br&gt;&lt;span style=&#39;font-size:12px;color:#555&#39;&gt;adossé à S3-Files · poids du modèle&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=14;fontColor=#333333;" vertex="1" parent="band2">
+          <mxGeometry x="1090" y="210" width="300" height="90" as="geometry" />
+        </mxCell>
+
+        <!-- Bilan possession -->
+        <mxCell id="caption" value="🗑️ &lt;b&gt;Supprimer la claim&lt;/b&gt; = le GC Kubernetes emporte les &lt;b&gt;11 ressources composées&lt;/b&gt; d'un bloc.&lt;br&gt;Aucune ne survit à son propriétaire — &lt;b&gt;plus de seconde source de vérité&lt;/b&gt;." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=14;fontColor=#333333;align=center;verticalAlign=middle;" vertex="1" parent="band2">
+          <mxGeometry x="24" y="372" width="290" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Arêtes bande 2 (tirets) -->
+        <mxCell id="b2-e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeWidth=2;strokeColor=#82b366;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="band2" source="claim" target="comp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b2-e2" value="génère (KCL)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeWidth=2;strokeColor=#82b366;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;fontColor=#2E7D32;labelBackgroundColor=#F0F8EF;" edge="1" parent="band2" source="comp" target="frame">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b2-e3" value="précharge les poids" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeWidth=2;strokeColor=#82b366;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=12;fontColor=#2E7D32;labelBackgroundColor=#F0F8EF;" edge="1" parent="band2" source="job" target="pvc">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="505" y="502" />
+              <mxPoint x="1240" y="502" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ============ BANDE 3 — PLAN OBSERVABILITÉ =================== -->
+        <!-- ============================================================ -->
+        <mxCell id="band3" value="③  PLAN OBSERVABILITÉ — mêmes métriques, même stack (arêtes en pointillés)" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=1;startSize=44;fillColor=#F3EFF9;strokeColor=#9673a6;strokeWidth=2;fontSize=19;fontStyle=1;fontColor=#6a4a86;align=center;verticalAlign=middle;container=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1150" width="1520" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="sources" value="📊 &lt;b&gt;Sources de métriques&lt;/b&gt;&lt;br&gt;• &lt;tt&gt;/metrics&lt;/tt&gt; de vLLM&lt;br&gt;• métriques &lt;tt&gt;gen_ai&lt;/tt&gt; (émises par l'ext_proc AI Gateway)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9673a6;strokeWidth=2;fontSize=13;fontColor=#333333;" vertex="1" parent="band3">
+          <mxGeometry x="24" y="86" width="360" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="vm" value="📈 &lt;b&gt;VictoriaMetrics&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=15;fontColor=#333333;" vertex="1" parent="band3">
+          <mxGeometry x="440" y="96" width="300" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="grafana" value="📉 &lt;b&gt;Grafana&lt;/b&gt;&lt;br&gt;dashboard &lt;tt&gt;llm-gateway&lt;/tt&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=14;fontColor=#333333;" vertex="1" parent="band3">
+          <mxGeometry x="880" y="80" width="300" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="vmrule3" value="🚨 &lt;b&gt;VMRule&lt;/b&gt; — alertes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=14;fontColor=#333333;" vertex="1" parent="band3">
+          <mxGeometry x="880" y="182" width="300" height="56" as="geometry" />
+        </mxCell>
+        <!-- Arêtes bande 3 (pointillés) -->
+        <mxCell id="b3-e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;dashPattern=1 4;strokeWidth=2;strokeColor=#9673a6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="band3" source="sources" target="vm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b3-e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;dashPattern=1 4;strokeWidth=2;strokeColor=#9673a6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="band3" source="vm" target="grafana">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="b3-e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;dashPattern=1 4;strokeWidth=2;strokeColor=#9673a6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="band3" source="vm" target="vmrule3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============================================================ -->
+        <!-- ============ ARÊTES INTER-PLANS ============================ -->
+        <!-- ============================================================ -->
+        <!-- Provenance : le cadre compose la route, les backends et le pod du plan requête -->
+        <mxCell id="x-prov" value="⇧ composé &amp; possédé par la claim" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeWidth=2;strokeColor=#82b366;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.05;entryY=1;entryDx=0;entryDy=0;fontSize=12;fontColor=#2E7D32;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="frame" target="repart">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="612" />
+              <mxPoint x="700" y="558" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <!-- Karpenter provisionne le noeud du pod -->
+        <mxCell id="x-karp" value="provisionne le nœud GPU L4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeWidth=2;strokeColor=#82b366;exitX=0.8;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=12;fontColor=#2E7D32;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="karpenter" target="pod">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1400" y="600" />
+              <mxPoint x="1410" y="556" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <!-- KEDA lit VictoriaMetrics -->
+        <mxCell id="x-keda" value="KEDA lit les métriques" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;dashPattern=1 4;strokeWidth=2;strokeColor=#9673a6;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;fontColor=#6a4a86;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="vm" target="keda">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="372" y="1302" />
+              <mxPoint x="372" y="877" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <!-- Le pod expose /metrics vers les sources -->
+        <mxCell id="x-metrics" value="/metrics · gen_ai" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;dashPattern=1 4;strokeWidth=2;strokeColor=#9673a6;exitX=0.7;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=12;fontColor=#6a4a86;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="pod" target="sources">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1490" y="1090" />
+              <mxPoint x="430" y="1090" />
+              <mxPoint x="430" y="1301" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

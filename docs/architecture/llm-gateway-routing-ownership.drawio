@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="30.3.6">
+  <diagram name="Propriete du routage — avant / apres" id="routing-ownership">
+    <mxGraphModel dx="1200" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1160" pageHeight="1800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ============ PANEL AVANT (pleine largeur) ============ -->
+        <mxCell id="avant" value="AVANT — deux sources de vérité" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=2;startSize=60;fillColor=#FDF5F4;strokeColor=#b85450;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#b85450;align=center;verticalAlign=middle;container=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="1120" height="780" as="geometry" />
+        </mxCell>
+
+        <!-- Voie 1 (gauche→droite) : la claim InferenceService génère le pod -->
+        <mxCell id="a-claim" value="📄 &lt;b&gt;InferenceService&lt;/b&gt; (la claim)&lt;br&gt;&lt;span style=&#39;font-family:monospace;font-size:13px;color:#555&#39;&gt;apps/base/ai/llm/qwen-coder.yaml&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=16;fontColor=#333333;" vertex="1" parent="avant">
+          <mxGeometry x="40" y="90" width="280" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a-comp" value="générées par la composition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;verticalAlign=top;align=center;fontSize=14;fontStyle=2;fontColor=#666666;spacingTop=4;container=1;collapsible=0;pointerEvents=0;" vertex="1" parent="avant">
+          <mxGeometry x="380" y="70" width="320" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="a-c1" value="Deployment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="a-comp">
+          <mxGeometry x="15" y="45" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="a-c2" value="Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="a-comp">
+          <mxGeometry x="15" y="91" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="a-c3" value="ScaledObject (KEDA)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="a-comp">
+          <mxGeometry x="15" y="137" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="a-c4" value="CiliumNetworkPolicy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="a-comp">
+          <mxGeometry x="15" y="183" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="a-c5" value="VMServiceScrape" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="a-comp">
+          <mxGeometry x="15" y="229" width="290" height="38" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a-drift1" value="⚠️ &lt;b&gt;Modèle sans route → 404&lt;/b&gt;&lt;br&gt;le pod tourne, le GPU est facturé,&lt;br&gt;et la Gateway ne connaît pas le modèle" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=15;fontColor=#333333;" vertex="1" parent="avant">
+          <mxGeometry x="760" y="140" width="320" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a-e1" value="composition Crossplane" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=13;fontColor=#555555;labelBackgroundColor=#FDF5F4;" edge="1" parent="avant" source="a-claim" target="a-comp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeWidth=2;strokeColor=#b85450;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="avant" source="a-comp" target="a-drift1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Lien rompu entre les deux sources -->
+        <mxCell id="a-link" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;dashPattern=6 6;strokeWidth=2;strokeColor=#b85450;endArrow=none;startArrow=none;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="avant" source="a-claim" target="a-route">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-nolink" value="&lt;span style=&#39;font-size:26px;color:#b85450&#39;&gt;&lt;b&gt;✕&lt;/b&gt;&lt;/span&gt;" style="text;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;fillColor=#FDF5F4;strokeColor=none;fontSize=13;fontColor=#b85450;" vertex="1" parent="avant">
+          <mxGeometry x="155" y="290" width="50" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="a-nolink-txt" value="&lt;i&gt;aucun lien&lt;br&gt;peut diverger&lt;/i&gt;" style="text;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;fillColor=none;strokeColor=none;fontSize=13;fontColor=#b85450;" vertex="1" parent="avant">
+          <mxGeometry x="90" y="342" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Voie 2 (gauche→droite) : la route écrite à la main -->
+        <mxCell id="a-route" value="✍️ &lt;b&gt;route.yaml&lt;/b&gt; — écrit à la main&lt;br&gt;&lt;span style=&#39;font-family:monospace;font-size:13px;color:#555&#39;&gt;ai-gateway-routes/route.yaml&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;dashed=1;dashPattern=8 4;fontSize=16;fontColor=#333333;" vertex="1" parent="avant">
+          <mxGeometry x="40" y="460" width="280" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a-rbox" value="objets déclarés dans le fichier" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d79b00;verticalAlign=top;align=center;fontSize=14;fontStyle=2;fontColor=#666666;spacingTop=4;container=1;collapsible=0;pointerEvents=0;" vertex="1" parent="avant">
+          <mxGeometry x="380" y="440" width="320" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="a-r1" value="Backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=15;" vertex="1" parent="a-rbox">
+          <mxGeometry x="15" y="45" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="a-r2" value="AIServiceBackend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=15;" vertex="1" parent="a-rbox">
+          <mxGeometry x="15" y="91" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="a-r3" value="AIGatewayRoute" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=15;" vertex="1" parent="a-rbox">
+          <mxGeometry x="15" y="137" width="290" height="38" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a-drift2" value="⚠️ &lt;b&gt;Route orpheline → backend fantôme&lt;/b&gt;&lt;br&gt;la claim est supprimée,&lt;br&gt;la route reste et pointe un Service disparu" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=15;fontColor=#333333;" vertex="1" parent="avant">
+          <mxGeometry x="760" y="480" width="320" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a-e2" value="appliqué tel quel" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d79b00;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=13;fontColor=#555555;labelBackgroundColor=#FDF5F4;" edge="1" parent="avant" source="a-route" target="a-rbox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="a-e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeWidth=2;strokeColor=#b85450;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="avant" source="a-rbox" target="a-drift2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="a-foot" value="❌ &lt;b&gt;Deux fichiers à garder synchronisés&lt;/b&gt; — et aucune des deux dérives ne fait de bruit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;fontSize=16;fontColor=#333333;" vertex="1" parent="avant">
+          <mxGeometry x="40" y="680" width="1040" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ============ SEPARATEUR (vertical) ============ -->
+        <mxCell id="sep" value="⬇" style="text;html=1;align=center;verticalAlign=middle;fontSize=32;fontColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="555" y="830" width="50" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ============ PANEL APRES (pleine largeur) ============ -->
+        <mxCell id="apres" value="APRÈS — une seule source de vérité" style="swimlane;whiteSpace=wrap;html=1;rounded=1;arcSize=2;startSize=60;fillColor=#F5FBF5;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#2E7D32;align=center;verticalAlign=middle;container=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="20" y="900" width="1120" height="860" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-claim" value="📄 &lt;b&gt;InferenceService&lt;/b&gt; (la claim)&lt;br&gt;&lt;span style=&#39;font-family:monospace;font-size:15px;color:#2E7D32&#39;&gt;&lt;b&gt;gateway.enabled: true&lt;/b&gt;&lt;/span&gt;&lt;br&gt;&lt;span style=&#39;font-size:13px;color:#666&#39;&gt;seul fichier écrit par l&#39;utilisateur&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;fontSize=16;fontColor=#333333;" vertex="1" parent="apres">
+          <mxGeometry x="40" y="295" width="280" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-elabel" value="&lt;i&gt;une seule composition&lt;br&gt;rend tout — routage compris&lt;/i&gt;" style="text;html=1;align=center;verticalAlign=middle;fontSize=13;fontColor=#2E7D32;" vertex="1" parent="apres">
+          <mxGeometry x="40" y="445" width="280" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-work" value="le pod et son cycle de vie" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#6c8ebf;verticalAlign=top;align=center;fontSize=14;fontStyle=2;fontColor=#666666;spacingTop=4;container=1;collapsible=0;pointerEvents=0;" vertex="1" parent="apres">
+          <mxGeometry x="380" y="70" width="320" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="p-dep" value="Deployment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="p-work">
+          <mxGeometry x="15" y="45" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p-svc" value="Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="p-work">
+          <mxGeometry x="15" y="91" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p-keda" value="ScaledObject (KEDA)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="p-work">
+          <mxGeometry x="15" y="137" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p-cnp" value="CiliumNetworkPolicy" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="p-work">
+          <mxGeometry x="15" y="183" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p-vms" value="VMServiceScrape" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;" vertex="1" parent="p-work">
+          <mxGeometry x="15" y="229" width="290" height="38" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-rbox" value="le routage — désormais possédé" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#d79b00;verticalAlign=top;align=center;fontSize=14;fontStyle=2;fontColor=#666666;spacingTop=4;container=1;collapsible=0;pointerEvents=0;" vertex="1" parent="apres">
+          <mxGeometry x="380" y="440" width="320" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="p-be" value="Backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=15;" vertex="1" parent="p-rbox">
+          <mxGeometry x="15" y="45" width="290" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="p-asb" value="AIServiceBackend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=15;" vertex="1" parent="p-rbox">
+          <mxGeometry x="15" y="91" width="290" height="38" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6c8ebf;exitX=1;exitY=0.3;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="apres" source="p-claim" target="p-work">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d79b00;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="apres" source="p-claim" target="p-rbox">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-gate" value="🚦 &lt;b&gt;Deployment Available=True&lt;/b&gt;&lt;br&gt;&lt;i&gt;portail à la création, puis &lt;b&gt;latch&lt;/b&gt; :&lt;br&gt;la route n&#39;est plus jamais retirée&lt;/i&gt;" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=14;fontColor=#333333;" vertex="1" parent="apres">
+          <mxGeometry x="760" y="430" width="320" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-agr" value="🚪 &lt;b&gt;AIGatewayRoute&lt;/b&gt;&lt;br&gt;&lt;span style=&#39;font-size:13px;color:#555&#39;&gt;publiée seulement quand le pod peut répondre&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;fontSize=16;fontColor=#333333;" vertex="1" parent="apres">
+          <mxGeometry x="760" y="620" width="320" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p-e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d79b00;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="apres" source="p-rbox" target="p-gate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d79b00;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="apres" source="p-gate" target="p-agr">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-e5" value="readiness" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeWidth=2;strokeColor=#d6b656;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=12;fontColor=#8a6d00;labelBackgroundColor=#F5FBF5;" edge="1" parent="apres" source="p-dep" target="p-gate">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="540" y="380" />
+              <mxPoint x="920" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="p-foot" value="✅ &lt;b&gt;Une seule source de vérité&lt;/b&gt; — la route naît, vit et meurt avec la claim (&lt;span style=&#39;font-family:monospace&#39;&gt;ownerReference&lt;/span&gt; → GC Kubernetes)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=16;fontColor=#333333;" vertex="1" parent="apres">
+          <mxGeometry x="40" y="760" width="1040" height="70" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
