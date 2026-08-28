@@ -192,7 +192,33 @@ That is the strategy for one workload class on two clusters; the next question i
 
 ## 📈 When two clusters become a fleet
 
+The answer starts with what we did *not* deploy. At two static clusters, per-cluster Flux entrypoints are the right model: the tree stays legible, a pull request's blast radius is readable from its paths, and an upgrade is two small PRs. A fleet manager layered on top of `aws-0` and `gcp-0` would add a control plane, a failure mode, and a concept count — and save nothing. If two clusters are your steady state, treat this section as a threshold you may never need to cross.
+
+The threshold is clusters ceasing to be a pair of named, long-lived environments and becoming a *fleet*: a cluster per team, ephemeral clusters for previews or training runs, clusters created on demand by a workflow. The per-cluster overlay pattern survives that shift mechanically but fails economically — every new cluster is a copy-and-adjust of an entrypoint, and reviewing the fortieth copy teaches nothing the first thirty-nine didn't.
+
+What replaces copying is label-matched distribution. **Sveltos** is a controller running on a management cluster whose **ClusterProfiles** deploy add-ons and configuration to every registered cluster matching a label selector: declare once that clusters labeled `tier=inference` get the GPU stack, and membership in the label decides the rest. Its event framework turns that convenience into a capability — **cluster vending**: a Crossplane claim creates a cluster on either cloud, Sveltos detects and registers it, and profiles hydrate the full platform onto it with no human in the loop. The end-to-end flow is documented as the [GitOps bridge pattern](https://projectsveltos.io/main/events/examples/sveltos_crossplane_gitops_bridge_pattern/).
+
+The ownership line matters more than the tool: Flux syncs Git; Sveltos distributes across the fleet. The two compose — since v0.23 Sveltos integrates with Flux directly, so manifests stay in Git and Sveltos consumes what Flux has already synced. Adopting it extends the platform's existing Flux investment instead of replacing it.
+
+It is not the only candidate. **Karmada** (CNCF incubating) is the most mature project in the category, doing full multi-cluster *workload scheduling* — placing and rescheduling applications across clusters — considerably more machinery than a platform that schedules per cluster needs. **Open Cluster Management** (**OCM**, CNCF sandbox) comes at the problem from the governance side and is the foundation Red Hat ACM builds on. Both are credible; Sveltos fits this platform because the actual need is add-on distribution plus eventing that composes with a Flux tree already in place.
+
+Whatever the cluster count, though, one question stays the same: what actually survives when a whole cloud goes away?
+
 ## 🛡️ The resilience posture
+
+Driver #4 promised an assessment of what surviving the loss of a cloud actually requires, and it starts with a correction: **GitOps is not a backup**. Flux rebuilds anything declarative — Deployments, XRDs, HTTPRoutes — because Git holds their source of truth. It cannot rebuild what Git never contained: the bytes in a PostgreSQL volume, the contents of a cache, anything a workload wrote at runtime. A resilience posture therefore begins by drawing the **state boundary**: deciding, for every stateful component, which path brings it back.
+
+On this platform the boundary has three zones. PostgreSQL is the state that matters. It is protected by **CloudNativePG** (**CNPG**), the Postgres operator, continuously archiving **WAL** (Write-Ahead Log — the append-only record of every database change, the primitive Postgres recovery is built on) to object storage. That archive does more than restore in place: CNPG [replica clusters](https://cloudnative-pg.io/docs/1.27/replica_cluster/) can bootstrap a standby in the *other* cloud from that same archive (S3 → GCS), with declarative switchover when the standby must take over. **RPO** (Recovery Point Objective — the data loss you accept, measured in time) is bounded by the WAL-archiving cadence. The object stores themselves are the second zone: cross-cloud-accessible by nature, they are where anything that must survive gets written. The third zone is accepted loss: Valkey caches rebuild from their sources, so losing them costs a warm-up. One consequence is worth stating because reviewers ask: there is no **Velero** (the de-facto Kubernetes backup tool) here, by design — nothing in a cluster is worth backing up that isn't already in Git or in an object store.
+
+{{< img src="state-boundary.png" alt="What survives the loss of a cloud: PostgreSQL via WAL shipping to object storage, object stores as the cross-cloud state layer, stateless workloads rebuilt by GitOps, caches accepted as lost" width="800" >}}
+
+Everything stateless takes the easy path: Flux rebuilds it on the surviving cluster, from the same tree, in minutes. That is the doctrine section paying out — the manifests never carried a cloud signal, so redeploying on the other cloud is ordinary reconciliation.
+
+Traffic is the third leg: failover means repointing hostnames through the shared Route53 zone from the seams section. This is also where the honest residual risk lives. That single zone is a concentration point, and Route53's control plane runs in us-east-1 — the region whose outage opened this article, an outage in which global control-plane dependencies were precisely what leaked beyond the region. In such an event existing records keep resolving, but *changing* them can become impossible — uncomfortable when changing records is your failover mechanism. ADR-0019 records the trade-off: one zone buys the simplicity that keeps the seams small, and this is the risk accepted in exchange.
+
+Which leaves the part tooling cannot supply: failover here is a **tested runbook**, not a button. Promote the CNPG standby, repoint DNS, scale up the survivor — each step is declarative, but the sequence is operational, and the bar is periodic drills: run it on a schedule, measure the recovery time, fix what surprised you. This is what regulators reading driver #1 mean by *tested* transition plans — an exit document nobody has rehearsed doesn't pass, and neither does a failover runbook. Until it has been drilled, a runbook is a hypothesis.
+
+What the posture deliberately omits is live cross-cluster interconnection — Cilium Cluster Mesh-style networking where services span clouds at runtime — a standing cost most platforms don't need and this one hasn't paid: it sits on the backlog, and its absence is part of the bill the next section tallies.
 
 ## 💭 Final thoughts: what it really cost
 
