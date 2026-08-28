@@ -18,7 +18,7 @@ thumbnail = "thumbnail.png"
 +++
 
 {{% notice info "Update 2026-08-18" %}}
-After several months of using [Superpowers](https://github.com/obra/superpowers), I moved [cloud-native-ref](https://github.com/Smana/cloud-native-ref) over to it entirely: the in-house SDD variant described below is now retired. The reasoning behind it — platform constitution, review personas, verification against a real cluster — still holds; what changed is the mechanism. I cover this in [part 2 of the series](/post/series/agentic_ai/ai-coding-tips/).
+After several months of using [Superpowers](https://github.com/obra/superpowers), I moved [cloud-native-ref](https://cnref.ogenki.io) over to it entirely: the in-house SDD variant described below is now retired. The reasoning behind it — platform constitution, review personas, verification against a real cluster — still holds; what changed is the mechanism. I cover this in [part 2 of the series](/post/series/agentic_ai/ai-coding-tips/).
 {{% /notice %}}
 
 We can all see it — AI is shaking things up in a major way. The field is evolving so fast that keeping up with every new development is nearly impossible. As for measuring the impact on our daily lives and how we work, it's still too early to tell. One thing is certain though: in tech, it's a **revolution**!
@@ -40,7 +40,7 @@ Most importantly, I'll try to demonstrate through concrete examples that this ne
   <tr>
     <td><img src="repo_gift.png" style="width:80%;"></td>
     <td style="vertical-align:middle; padding-left:10px;" width="70%">
-The examples below come from my work on the <strong><a href="https://github.com/Smana/cloud-native-ref">Cloud Native Ref</a></strong> repository. It's a full-fledged platform combining EKS, Cilium, VictoriaMetrics, Crossplane, Flux and many other tools.
+The examples below come from my work on the <strong><a href="https://cnref.ogenki.io">Cloud Native Ref</a></strong> project (<a href="https://github.com/Smana/cloud-native-ref">source on GitHub</a>). It's a full-fledged platform running on both AWS EKS and GCP GKE, combining Cilium, VictoriaMetrics, Crossplane, Flux and many other tools.
     </td>
   </tr>
 </table>
@@ -343,7 +343,7 @@ For those steeped in Kubernetes, here's an analogy 😉: the spec defines the **
 {{% notice tip "My SDD variant for Platform Engineering" %}}
 > **Update 2026-08-18** — this in-house workflow has been replaced by [Superpowers](https://github.com/obra/superpowers). The section is kept as written: it describes what actually ran for several months.
 
-For [cloud-native-ref](https://github.com/Smana/cloud-native-ref), I created a variant inspired by GitHub Spec Kit that I'm evolving over time. I'll admit it's still quite experimental, but the results are already impressive.
+For [cloud-native-ref](https://cnref.ogenki.io), I created a variant inspired by GitHub Spec Kit that I'm evolving over time. I'll admit it's still quite experimental, but the results are already impressive.
 
 **🛡️ Platform Constitution** — Non-negotiable principles are codified in a [constitution](https://github.com/Smana/cloud-native-ref/blob/main/docs/platform-constitution.md): `xplane-*` prefix for IAM scoping, mandatory zero-trust networking, secrets via External Secrets only. Claude checks every spec and implementation against these rules.
 
@@ -562,5 +562,5 @@ Given my affinity for open source, I'm looking at exploring open alternatives: *
 - [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents) — Anthropic Research
 
 ### Resources
-- [Cloud Native Ref](https://github.com/Smana/cloud-native-ref) — My reference repo
+- [Cloud Native Ref](https://cnref.ogenki.io) — My reference platform · [GitHub repo](https://github.com/Smana/cloud-native-ref)
 - [SWE-bench Leaderboards](https://www.swebench.com/) — Reference benchmark

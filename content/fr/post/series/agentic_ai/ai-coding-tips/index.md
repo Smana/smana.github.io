@@ -43,7 +43,7 @@ Autant le dire : quand on est habitué à Claude Code, les attentes sont élevé
 
 * **Skills** : capacités spécialisées chargées à la demande (création de PRs, audits sécurité, écriture de specs)
 * **Subagents et hooks** : déclencheurs automatiques (notification desktop, validation pré-commit) et délégation à des contextes isolés
-* **SDD** avec **superpowers** : j'ai testé plusieurs déclinaisons (github-specs, gsd) ; c'est celui que j'ai retenu, pour sa simplicité d'usage tout en garantissant un workflow complet qui respecte les bonnes pratiques — [cloud-native-ref](https://github.com/Smana/cloud-native-ref) a entièrement basculé dessus en août 2026
+* **SDD** avec **superpowers** : j'ai testé plusieurs déclinaisons (github-specs, gsd) ; c'est celui que j'ai retenu, pour sa simplicité d'usage tout en garantissant un workflow complet qui respecte les bonnes pratiques — [cloud-native-ref](https://cnref.ogenki.io) a entièrement basculé dessus en août 2026
 * **Automode** sur les POC, avec une revue minutieuse à la première itération avant de laisser tourner
 
 Ce workflow tire parti des **forces spécifiques de Claude** : raisonnement Opus sur les passages critiques, fenêtre de contexte 1M en bêta, _function-calling_ très fiable.
@@ -73,7 +73,7 @@ Les fichiers sont **cumulatifs** : Claude les charge tous du plus global au plus
 
 ### Ce que je mets dans le mien
 
-Voici ce que contient le `CLAUDE.md` de [cloud-native-ref](https://github.com/Smana/cloud-native-ref), concrètement :
+Voici ce que contient le `CLAUDE.md` de [cloud-native-ref](https://github.com/Smana/cloud-native-ref/blob/main/CLAUDE.md), concrètement :
 
 - **Commandes de build/test/lint** — les premières lignes, pour que Claude sache comment valider son travail
 - **Conventions du projet** — préfixe `xplane-*` pour l'IAM, structure des compositions Crossplane, patterns KCL
@@ -82,7 +82,7 @@ Voici ce que contient le `CLAUDE.md` de [cloud-native-ref](https://github.com/Sm
 
 Ce que je n'y mets **pas** : la documentation exhaustive (c'est le rôle des [Skills](/fr/post/series/agentic_ai/ai-coding-agent/#skills--obtenir-de-nouveaux-pouvoirs)), les exemples de code longs (je référence les fichiers existants), et les instructions évidentes que Claude connaît déjà.
 
-Voici un extrait condensé du `CLAUDE.md` de [cloud-native-ref](https://github.com/Smana/cloud-native-ref) pour illustrer :
+Voici un extrait condensé du `CLAUDE.md` de [cloud-native-ref](https://github.com/Smana/cloud-native-ref/blob/main/CLAUDE.md) pour illustrer :
 
 ```markdown
 ## Common Commands

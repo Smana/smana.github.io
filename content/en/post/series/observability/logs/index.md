@@ -345,7 +345,7 @@ And start using the Web UI which is exposed using [Cilium and Gateway API resour
 </center>
 
 {{% notice tip "⚙️ Deployment: where to find the full configuration" %}}
-All the configuration used for writing this article can be found in the <strong><a href="https://github.com/Smana/cloud-native-ref">Cloud Native Ref</a></strong> repository.</br>
+All the configuration used for writing this article can be found in the <strong><a href="https://cnref.ogenki.io">Cloud Native Ref</a></strong> project (<a href="https://github.com/Smana/cloud-native-ref">source on GitHub</a>).</br>
 
 The ambition of this project is to be able to <strong>quickly start a complete platform</strong> that applies best practices in terms of automation, monitoring, security, etc. </br>
 

@@ -56,12 +56,14 @@ Ces étapes sont réalisées dans un ordre bien précis:
 3. Déploiement de diverses configurations faisant usage des providers installés préalablement. Notamment les **`Compositions`** et les **`Composition Functions`**.
 4. Déclarations de _Claims_ pour consommer les Compositions.
 
-Ces étapes sont traduites en dépendances [Flux](https://fluxcd.io/), et peuvent être consultées [ici](https://github.com/Smana/demo-cloud-native-ref/tree/main/infrastructure/base/crossplane).
+Ces étapes sont traduites en dépendances [Flux](https://fluxcd.io/), et peuvent être consultées [ici](https://github.com/Smana/cloud-native-ref/tree/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane).
 
 {{% notice tip "Les sources" %}}
-Toutes les actions réalisées dans cet article proviennent de ce [**dépôt git**](https://github.com/Smana/demo-cloud-native-ref)
+Toutes les actions réalisées dans cet article proviennent de ce [**dépôt git**](https://github.com/Smana/cloud-native-ref)
 
 On peut y trouver de nombreuses sources qui me permettent de construire mes articles de blog. N'hésitez pas à me faire des retours, ouvrir des issues si nécessaire ... 🙏
+
+Les liens vers les fichiers ci-dessous pointent vers le commit de l'époque, afin de montrer exactement le code cité ici. Les compositions ont depuis été réécrites en KCL et déplacées dans le dépôt [crossplane-configuration](https://github.com/Smana/crossplane-configuration).
 {{% /notice %}}
 
 ## 📦 Les compositions
@@ -83,7 +85,7 @@ En me basant sur la composition [configuration-rds](https://github.com/upbound/c
 ❓ Comment cette _Composition_ serait-elle alors utilisée si, par exemple, un développeur souhaite disposer d'une base de données?
 Il suffit de déclarer une _**Claim**_ qui représente le niveau d'abstraction exposé aux utilisateurs.
 
-[tooling/base/harbor/sqlinstance.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/tooling/base/harbor/sqlinstance.yaml)
+[tooling/base/harbor/sqlinstance.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/tooling/base/harbor/sqlinstance.yaml)
 
 ```yaml
 apiVersion: cloud.ogenki.io/v1alpha1
@@ -115,7 +117,7 @@ ici nous constatons que cela se limite à une **simple** ressource avec peu de p
 * Une instance **PostgreSQL** en version 15 sera créée
 * La **type d'instance** de celle-ci est laissé à l'appréciation de l'équipe plateforme (les mainteneurs de la composition). Dans la `Claim` ci-dessus nous souhaitons une "petite" instance, qui est traduit par la composition en `db.t3.small`.
 
-[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml#L150C18-L150C18)
+[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml#L150C18-L150C18)
 
 ```yaml
 transforms:
@@ -126,7 +128,7 @@ transforms:
       small: db.t3.small
 ```
 
-* Le mot de passe de l'utilisateur `master` est extrait d'un secret `harbor-pg-masterpassword`, généré via un [External Secret](https://github.com/Smana/demo-cloud-native-ref/blob/main/tooling/base/harbor/externalsecret-sqlinstance-password.yaml).
+* Le mot de passe de l'utilisateur `master` est extrait d'un secret `harbor-pg-masterpassword`, généré via un [External Secret](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/tooling/base/harbor/externalsecret-sqlinstance-password.yaml).
 * Une fois l'instance créée, les détails pour la connexion sont stockés dans un  **secret** `xplane-harbor-rds`
 
 C'est là que nous pouvons pleinement apprécier la **puissance des Compositions** Crossplane! En effet, de **nombreuses ressources** sont générées de manière transparente, comme illustré par le schéma suivant :
@@ -163,7 +165,7 @@ Les [**EnvironmentConfigs**](https://docs.crossplane.io/latest/concepts/environm
 
 Étant donné que le cluster EKS est créé avec [Opentofu](https://opentofu.org/), nous stockons ses propriétés par le biais de variables Flux. (plus d'infos sur les variables de substitution [ici](https://blog.ogenki.io/fr/post/terraform-controller/#substition-de-variables))
 
-[infrastructure/base/crossplane/configuration/environmentconfig.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/environmentconfig.yaml)
+[infrastructure/base/crossplane/configuration/environmentconfig.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane/configuration/environmentconfig.yaml)
 
 ```yaml
 apiVersion: apiextensions.crossplane.io/v1alpha1
@@ -184,7 +186,7 @@ data:
 
 Ces variables peuvent ensuite être utilisées dans les _Compositions_ via la directive **`FromEnvironmentFieldPath`**. Par exemple pour permettre aux pods d'accéder à notre instance RDS, nous autorisons le CIDR du VPC:
 
-[infrastructure/base/crossplane/configuration/irsa-composition.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/irsa-composition.yaml)
+[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml#L85-L105)
 
 ```yaml
 - name: SecurityGroupIngressRule
@@ -214,7 +216,7 @@ Ces fonctions sont exécutées de manière **séquentielle** (mode `Pipeline`), 
 
 Mais **revenons à notre composition RDS 🔍 !** Celle-ci utilise, en effet, cette nouvelle façon de définir des `Compositions` et est composée de 3 étapes:
 
-[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml)
+[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml)
 
 ```yaml
 apiVersion: apiextensions.crossplane.io/v1
