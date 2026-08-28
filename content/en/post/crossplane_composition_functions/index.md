@@ -60,12 +60,14 @@ These steps are performed in a specific order:
 3. Deployment of various configurations using the previously installed providers, especially the **`Compositions`** and **`Composition Functions`**.
 4. Declarations of _Claims_ to consume the Compositions.
 
-These steps are described through [Flux](https://fluxcd.io/)'s dependencies and can be viewed [here](https://github.com/Smana/demo-cloud-native-ref/tree/main/infrastructure/base/crossplane).
+These steps are described through [Flux](https://fluxcd.io/)'s dependencies and can be viewed [here](https://github.com/Smana/cloud-native-ref/tree/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane).
 
 {{% notice tip "Sources" %}}
-All the actions carried out in this article come from this [**git repository**](https://github.com/Smana/demo-cloud-native-ref).
+All the actions carried out in this article come from this [**git repository**](https://github.com/Smana/cloud-native-ref).
 
 There you can find numerous sources that help me construct my blog posts. 🎄 🎁 Feedback is a gift 🙏
+
+The file links below are pinned to the commit from the time of writing, so they show the exact code quoted here. The compositions have since been rewritten in KCL and moved to the [crossplane-configuration](https://github.com/Smana/crossplane-configuration) repository.
 {{% /notice %}}
 
 ## 📦 The Compositions
@@ -87,7 +89,7 @@ Based on the [configuration-rds](https://github.com/upbound/configuration-rds) c
 ❓ How would this _Composition_ then be used if, for example, a developer wishes to have a database?
 They is simply done by declaring a _**Claim**_ which represents the level of abstraction exposed to the users. Let's get a closer look 🔍
 
-[tooling/base/harbor/sqlinstance.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/tooling/base/harbor/sqlinstance.yaml)
+[tooling/base/harbor/sqlinstance.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/tooling/base/harbor/sqlinstance.yaml)
 
 ```yaml
 apiVersion: cloud.ogenki.io/v1alpha1
@@ -118,7 +120,7 @@ Here we observe that it boils down to a **simple** resource with few parameters 
 
 * A **PostgreSQL** instance version 15 will be created.
 * The **instance type** is at the discretion of the platform team (the maintainers of the composition). In the above `Claim`, we ask for a small instance, which is interpreted by the composition as `db.t3.small`.
-[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml#L150C18-L150C18)
+[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml#L150C18-L150C18)
 ```yaml
 transforms:
   - type: map
@@ -128,7 +130,7 @@ transforms:
       small: db.t3.small
 ```
 
-* The `master` user's password is retrieved from a `harbor-pg-masterpassword` secret, retrieved from an [External Secret](https://github.com/Smana/demo-cloud-native-ref/blob/main/tooling/base/harbor/externalsecret-sqlinstance-password.yaml).
+* The `master` user's password is retrieved from a `harbor-pg-masterpassword` secret, retrieved from an [External Secret](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/tooling/base/harbor/externalsecret-sqlinstance-password.yaml).
 * Once the instance is created, the connection details are stored in a **secret** `xplane-harbor-rds`.
 
 This is where we can fully appreciate the **power of Crossplane Compositions**! Indeed, **many resources** are provisionned under the hood, as illustrated by the following diagram:
@@ -166,7 +168,7 @@ The [**EnvironmentConfigs**](https://docs.crossplane.io/latest/concepts/environm
 
 Since the EKS cluster is created with [Opentofu](https://opentofu.org/), we store its properties using Flux variables. (more info on Flux's variables substitution [here](https://blog.ogenki.io/post/terraform-controller/#substition-de-variables))
 
-[infrastructure/base/crossplane/configuration/environmentconfig.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/environmentconfig.yaml)
+[infrastructure/base/crossplane/configuration/environmentconfig.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane/configuration/environmentconfig.yaml)
 
 ```yaml
 apiVersion: apiextensions.crossplane.io/v1alpha1
@@ -187,7 +189,7 @@ data:
 
 These variables can then be used in _Compositions_ via the **`FromEnvironmentFieldPath`** directive. For instance, to allow pods to access our RDS instance, we allow the VPC's CIDR as follows:
 
-[infrastructure/base/crossplane/configuration/irsa-composition.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/irsa-composition.yaml)
+[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml#L85-L105)
 
 ```yaml
 - name: SecurityGroupIngressRule
@@ -218,7 +220,7 @@ These functions are executed in a **sequential** manner (in `Pipeline` mode), wi
 
 But **let's get back to our RDS composition 🔍!** It indeed uses this new way of defining `Compositions` and consists of three steps:
 
-[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/demo-cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml)
+[infrastructure/base/crossplane/configuration/sql-instance-composition.yaml](https://github.com/Smana/cloud-native-ref/blob/3d095dfb726b941d15d8ef6768211a6880170cee/infrastructure/base/crossplane/configuration/sql-instance-composition.yaml)
 
 ```yaml
 apiVersion: apiextensions.crossplane.io/v1
