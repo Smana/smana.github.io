@@ -224,4 +224,38 @@ What the posture deliberately omits is live cross-cluster interconnection — Ci
 
 ## 💭 Final thoughts: what it really cost
 
+The bill, then.
+
+The second cloud was a second foundation layer: another OpenTofu stack — network, GKE, secrets, identity — a second Crossplane provider family with its own per-cloud Compositions, and a decision record of its own just for running Cilium self-managed on GKE. None of it was hard the way a research problem is hard; it was volume — weeks of evenings, not a weekend. And the stream of small asymmetries wore me down more than any of the big pieces did: quota requests that have no equivalent on the other side, ComputeClass semantics that only mostly map onto Karpenter's, a GPU pool that is spot-only on one cloud and mixed on the other. The federation seams — DNS and identity — were the inverse: small in line count, large in thinking time.
+
+The abstractions held better than I expected, and they leaked exactly where the doctrine said they would: `SQLInstance` backups live in a cloud-shaped block because backup storage is never neutral, and the GKE row of the GPU table is still _pending_ because the quota request is.
+
+Part of the bill is what I chose to leave unbuilt. There is no Cilium Cluster Mesh, so nothing spans the two clouds at runtime — the resilience section flagged that omission, and it stays on the books as a carried-forward obligation. There is no symmetric active-active, and no fleet manager over two named clusters. These omissions *are* the strategy — capability built selectively, as the drivers section argued — and each of them can still be added later, without paying its standing cost in the meantime.
+
+Several of those deferred decisions deserve a measured article of their own, and the backlog currently looks like this:
+
+* **GPU benchmarks** — spot, Dynamic Workload Scheduler and Capacity Blocks measured, with the $/Mtok method applied in full
+* **Cluster vending with Crossplane + Sveltos** — the GitOps bridge built end to end
+* **Losing a cloud on purpose** — a CNPG replica cluster, a controlled AWS kill, measured RTO/RPO
+* **Cilium Cluster Mesh across EKS and GKE** — worth it? With the latency numbers and the egress bills
+
+If one of these would be useful to you, say so in the comments or in the repo's GitHub issues — the votes decide the order.
+
+The next us-east-1 morning will restart the conversation this article opened; this time, the answer runs in a repo.
+
 ## 🔖 References
+
+### Platform
+- [`cloud-native-ref`](https://cnref.ogenki.io) — The complete platform documentation · [source on GitHub](https://github.com/Smana/cloud-native-ref)
+- [`crossplane-configuration`](https://github.com/Smana/crossplane-configuration) — The Crossplane compositions
+- [Architecture decisions](https://cnref.ogenki.io/docs/decisions/) — ADR-0007, 0017–0024 underpin this article
+- [Add a cloud provider](https://cnref.ogenki.io/docs/guides/add-a-cloud-provider/) — the how-to this article deliberately doesn't duplicate
+
+### Context
+- [ThousandEyes — AWS outage analysis, Oct 20 2025](https://www.thousandeyes.com/blog/aws-outage-analysis-october-20-2025)
+- [EU Data Act: cloud switching and the 2027 fee ban](https://www.cloudmagazin.com/en/2026/07/06/eu-data-act-when-cloud-switching-fees-are-abolished-what-cios-need-to-examine/)
+- [DORA: exit strategy and concentration risk](https://schneiderdowns.com/our-thoughts-on/doras-approach-to-exit-strategy-and-termination/)
+- [FinOps for GPU inference (2026)](https://www.cloudmagazin.com/en/2026/04/03/ai-inference-costs-cloud-finops-gpu-workloads-2026/)
+- [Sveltos](https://projectsveltos.io/main/) · [Crossplane + Sveltos GitOps bridge](https://projectsveltos.io/main/events/examples/sveltos_crossplane_gitops_bridge_pattern/)
+- [CloudNativePG replica clusters](https://cloudnative-pg.io/docs/1.27/replica_cluster/)
+- [Cilium Cluster Mesh](https://docs.cilium.io/en/stable/network/clustermesh/)
