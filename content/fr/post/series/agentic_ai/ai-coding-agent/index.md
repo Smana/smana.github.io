@@ -18,7 +18,7 @@ thumbnail = "thumbnail.png"
 +++
 
 {{% notice info "Mise à jour 2026-08-18" %}}
-Après plusieurs mois à utiliser [Superpowers](https://github.com/obra/superpowers), j'ai basculé [cloud-native-ref](https://github.com/Smana/cloud-native-ref) entièrement dessus : la variante SDD maison décrite plus bas est désormais retirée. Le raisonnement qui la sous-tendait — constitution de plateforme, personas de review, vérification sur cluster réel — reste valable ; c'est le mécanisme qui a changé. J'en parle dans la [partie 2 de la série](/fr/post/series/agentic_ai/ai-coding-tips/).
+Après plusieurs mois à utiliser [Superpowers](https://github.com/obra/superpowers), j'ai basculé [cloud-native-ref](https://cnref.ogenki.io) entièrement dessus : la variante SDD maison décrite plus bas est désormais retirée. Le raisonnement qui la sous-tendait — constitution de plateforme, personas de review, vérification sur cluster réel — reste valable ; c'est le mécanisme qui a changé. J'en parle dans la [partie 2 de la série](/fr/post/series/agentic_ai/ai-coding-tips/).
 {{% /notice %}}
 
 Nous le voyons bien, nous assistons à un réel bouleversement provoqué par l'**utilisation de l'IA**. Ce domaine évolue à une telle vitesse qu'il devient presque impossible de suivre toutes les nouveautés. Quant à mesurer l'impact sur notre quotidien et notre façon de travailler, il est encore trop tôt pour le dire. Une chose est sûre cependant : dans la tech, c'est une **révolution** !
@@ -40,7 +40,7 @@ Mais surtout, je vais tenter de vous démontrer par des cas concrets que cette n
   <tr>
     <td><img src="repo_gift.png" style="width:80%;"></td>
     <td style="vertical-align:middle; padding-left:10px;" width="70%">
-Les exemples qui suivent sont issus de mon travail sur le repository <strong><a href="https://github.com/Smana/cloud-native-ref">Cloud Native Ref</a></strong>. Il s'agit d'une plateforme complète combinant EKS, Cilium, VictoriaMetrics, Crossplane, Flux et bien d'autres outils.
+Les exemples qui suivent sont issus de mon travail sur le projet <strong><a href="https://cnref.ogenki.io">Cloud Native Ref</a></strong> (<a href="https://github.com/Smana/cloud-native-ref">sources sur GitHub</a>). Il s'agit d'une plateforme complète fonctionnant à la fois sur AWS EKS et GCP GKE, combinant Cilium, VictoriaMetrics, Crossplane, Flux et bien d'autres outils.
     </td>
   </tr>
 </table>
@@ -342,7 +342,7 @@ Pour ceux qui baignent dans Kubernetes, on peut faire un parallèle 😉 : la sp
 {{% notice tip "Ma variante SDD pour le Platform Engineering" %}}
 > **Mise à jour 2026-08-18** — ce workflow maison a été remplacé par [Superpowers](https://github.com/obra/superpowers). La section est conservée telle quelle : elle décrit ce qui a réellement tourné pendant plusieurs mois.
 
-Pour [cloud-native-ref](https://github.com/Smana/cloud-native-ref), j'ai créé une variante inspirée de GitHub Spec Kit que je fais évoluer progressivement. J'avoue que c'est assez expérimental pour le moment, mais les résultats sont déjà impressionnants.
+Pour [cloud-native-ref](https://cnref.ogenki.io), j'ai créé une variante inspirée de GitHub Spec Kit que je fais évoluer progressivement. J'avoue que c'est assez expérimental pour le moment, mais les résultats sont déjà impressionnants.
 
 **🛡️ Platform Constitution** — Les principes non-négociables sont codifiés dans une [constitution](https://github.com/Smana/cloud-native-ref/blob/main/docs/platform-constitution.md) : préfixe `xplane-*` pour le scoping IAM, zero-trust networking obligatoire, secrets via External Secrets uniquement. Claude vérifie chaque spec et implémentation contre ces règles.
 
@@ -561,5 +561,5 @@ De par ma sensibilité pour l'open source, j'envisage d'explorer les alternative
 - [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents) — Anthropic Research
 
 ### Ressources
-- [Cloud Native Ref](https://github.com/Smana/cloud-native-ref) — Mon repo de référence
+- [Cloud Native Ref](https://cnref.ogenki.io) — Ma plateforme de référence · [dépôt GitHub](https://github.com/Smana/cloud-native-ref)
 - [SWE-bench Leaderboards](https://www.swebench.com/) — Benchmark de référence

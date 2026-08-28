@@ -344,7 +344,7 @@ Et commencer à utiliser l'interface Web qui est exposée en utilisant [Cilium e
 </center>
 
 {{% notice tip "⚙️ Déploiement: où trouver toute la configuration" %}}
-Toute la configuration utilisée pour l'écriture de cet article se trouve dans le repository <strong><a href="https://github.com/Smana/cloud-native-ref">Cloud Native Ref</a></strong>.</br>
+Toute la configuration utilisée pour l'écriture de cet article se trouve dans le projet <strong><a href="https://cnref.ogenki.io">Cloud Native Ref</a></strong> (<a href="https://github.com/Smana/cloud-native-ref">sources sur GitHub</a>).</br>
 
 L'ambition de ce projet est de pouvoir <strong>démarrer rapidement une plateforme complète</strong> qui applique les bonnes pratiques en terme d'automatisation, de supervision, de sécurité etc. </br>
 

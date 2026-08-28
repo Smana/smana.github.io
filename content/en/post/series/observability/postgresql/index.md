@@ -42,7 +42,7 @@ The metrics exposed include:
         </td>
         <td style="vertical-align:middle; padding-left:10px;" width="70%">
 
-The examples in this article come from configurations available in the <strong><a href="https://github.com/Smana/cloud-native-ref">Cloud Native Ref</a></strong> repository.</br>
+The examples in this article come from configurations available in the <strong><a href="https://cnref.ogenki.io">Cloud Native Ref</a></strong> project (<a href="https://github.com/Smana/cloud-native-ref">source on GitHub</a>).</br>
 It leverages several operators, including [CloudNativePG](https://cloudnative-pg.io/) for PostgreSQL management, [VictoriaMetrics](https://victoriametrics.com/) for metrics collection, and [VictoriaLogs](https://github.com/VictoriaMetrics/VictoriaLogs) for log collection.
 
 
@@ -187,7 +187,7 @@ Thanks to CloudNativePG's "[Managed Extensions](https://cloudnative-pg.io/docume
 
 One of the key principles of platform engineering is providing the right level of abstraction to application developers. They shouldn't need to understand PostgreSQL internals or memorize 15+ PostgreSQL-specific configuration parameters.
 
-This is where **Crossplane compositions** shine. In the Cloud Native Ref project, we use Crossplane with KCL (Kubernetes Configuration Language) to create a higher-level abstraction called `SQLInstance`.
+This is where **Crossplane compositions** shine. In the Cloud Native Ref project, we use Crossplane with KCL (Kubernetes Configuration Language) to create a higher-level abstraction called `SQLInstance`. These compositions are packaged and versioned in a dedicated repository: [crossplane-configuration](https://github.com/Smana/crossplane-configuration).
 
 **Without Composition** (Raw CNPG Cluster):
 ```yaml
@@ -243,7 +243,7 @@ spec:
       logStatement: none      # Optional: none (default) / ddl / mod / all
 ```
 
-The Crossplane composition [**SQLInstance**](https://github.com/Smana/cloud-native-ref/tree/main/infrastructure/base/crossplane/configuration/kcl/cloudnativepg) handles all the complexity.
+The Crossplane composition [**SQLInstance**](https://github.com/Smana/crossplane-configuration/tree/main/apis/sqlinstance) handles all the complexity.
 
 This composition approach provides several benefits:
 
@@ -297,7 +297,7 @@ Here's what Vector does concretely - **transforming a PostgreSQL auto_explain lo
 
 #### 3-Step Pipeline
 
-The Vector pipeline consists of **3 transforms** and **2 sinks** ([complete configuration](https://github.com/Smana/cloud-native-ref/blob/main/observability/base/victoria-logs/helmrelease-vlsingle.yaml#L62-L338)):
+The Vector pipeline consists of **3 transforms** and **2 sinks** ([complete configuration](https://github.com/Smana/cloud-native-ref/blob/main/observability/base/victoria-logs/helmrelease-vlsingle.yaml)):
 
 **1. Parse CloudNativePG JSON logs**
 ```vrl
@@ -379,7 +379,7 @@ This immediately suggests the need for an index on the `email` column.
 
 Understanding complex execution plans from logs can be challenging. This is where **[pev2](https://github.com/dalibo/pev2)** (PostgreSQL Explain Visualizer 2) becomes very useful. It's a web tool that transforms JSON execution plans into interactive, visual diagrams.
 
-To ensure sensitive query data never leaves the network, pev2 is self-hosted in the cluster via the [App](https://github.com/Smana/cloud-native-ref/tree/main/infrastructure/base/crossplane/configuration/kcl/app) composition. This once again demonstrates the **platform abstraction level**: deploying a static web tool uses the same declarative API as a complete application with a database.
+To ensure sensitive query data never leaves the network, pev2 is self-hosted in the cluster via the [App](https://github.com/Smana/crossplane-configuration/tree/main/apis/app) composition. This once again demonstrates the **platform abstraction level**: deploying a static web tool uses the same declarative API as a complete application with a database.
 
 ```yaml
 apiVersion: cloud.ogenki.io/v1alpha1
@@ -470,7 +470,7 @@ This is, once again, a demonstration of the **power of available open source too
 
 Furthermore the `App` and `SQLInstance` Crossplane compositions allow to enable _Performance Insights_ only by setting `performanceInsights.enabled: true` with a few tuning parameters (`sampleRate`, `minDuration`). Developers don't need to understand PostgreSQL internals or Vector—the platform masks the complexity. This same declarative API deploys both a complete database and a static web tool like pev2, demonstrating the consistency of the abstraction level.
 
-The [cloud-native-ref](https://github.com/Smana/cloud-native-ref) project brings all these pieces together and shows how Gateway API, Tailscale, Crossplane/KCL, and the VictoriaMetrics ecosystem assemble to create a complete observability platform.
+The [cloud-native-ref](https://cnref.ogenki.io) project brings all these pieces together and shows how Gateway API, Tailscale, Crossplane/KCL, and the VictoriaMetrics ecosystem assemble to create a complete observability platform — running on both AWS EKS and GCP GKE.
 
 {{% notice note "Performance Consideration" %}}
 Enabling Performance Insights involves an estimated overhead of **3-4% CPU** and **~200-250MB memory** with default values:
@@ -511,5 +511,5 @@ The `sampleRate`, `log_timing`, and `logStatement` parameters allow fine-tuning 
 
 **Configuration and Implementation**
 - [Vector VRL Configuration](https://github.com/Smana/cloud-native-ref/blob/main/observability/base/victoria-logs/README.md) - PostgreSQL log parsing pipeline
-- [CloudNativePG Composition](https://github.com/Smana/cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/kcl/cloudnativepg/README.md) - SQLInstance abstraction with KCL
-- [PostgreSQL Monitoring Architecture](https://github.com/Smana/cloud-native-ref/blob/main/docs/postgresql-monitoring-architecture.md) - Complete architecture documentation
+- [SQLInstance Composition](https://github.com/Smana/crossplane-configuration/blob/main/apis/sqlinstance/kcl/README.md) - CloudNativePG abstraction with KCL, from the [crossplane-configuration](https://github.com/Smana/crossplane-configuration) repository
+- [PostgreSQL Monitoring Architecture](https://cnref.ogenki.io/docs/platform/observability/postgresql/) - Complete architecture documentation

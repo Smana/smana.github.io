@@ -41,7 +41,7 @@ Let's be honest: once you're used to Claude Code, expectations run high. I won't
 
 * **Skills**: specialized capabilities loaded on demand (creating PRs, security audits, writing designs)
 * **Subagents and hooks**: automatic triggers (desktop notification, pre-commit validation) and delegation to isolated contexts
-* **SDD** with **superpowers**: I tried several flavours (github-specs, gsd); this is the one I settled on, for how simple it is to use while still guaranteeing a complete workflow that respects good practices — [cloud-native-ref](https://github.com/Smana/cloud-native-ref) moved over to it entirely in August 2026
+* **SDD** with **superpowers**: I tried several flavours (github-specs, gsd); this is the one I settled on, for how simple it is to use while still guaranteeing a complete workflow that respects good practices — [cloud-native-ref](https://cnref.ogenki.io) moved over to it entirely in August 2026
 * **Automode** on POCs, with a careful review of the first iteration before letting it run
 
 This workflow plays to **Claude's specific strengths**: Opus reasoning on the critical passages, the 1M context window in beta, and very reliable _function-calling_.
@@ -71,7 +71,7 @@ Files are **cumulative**: Claude loads all of them from most global to most loca
 
 ### What I put in mine
 
-Here's what the `CLAUDE.md` for [cloud-native-ref](https://github.com/Smana/cloud-native-ref) actually contains:
+Here's what the `CLAUDE.md` for [cloud-native-ref](https://github.com/Smana/cloud-native-ref/blob/main/CLAUDE.md) actually contains:
 
 - **Build/test/lint commands** — the first lines, so Claude knows how to validate its work
 - **Project conventions** — `xplane-*` prefix for IAM, Crossplane composition structure, KCL patterns
@@ -80,7 +80,7 @@ Here's what the `CLAUDE.md` for [cloud-native-ref](https://github.com/Smana/clou
 
 What I **don't** put in it: exhaustive documentation (that's what [Skills](/post/series/agentic_ai/ai-coding-agent/#skills-unlocking-new-powers) are for), long code examples (I reference existing files instead), and obvious instructions Claude already knows.
 
-Here's a condensed excerpt from the `CLAUDE.md` of [cloud-native-ref](https://github.com/Smana/cloud-native-ref) to illustrate:
+Here's a condensed excerpt from the `CLAUDE.md` of [cloud-native-ref](https://github.com/Smana/cloud-native-ref/blob/main/CLAUDE.md) to illustrate:
 
 ```markdown
 ## Common Commands

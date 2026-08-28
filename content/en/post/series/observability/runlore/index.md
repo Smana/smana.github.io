@@ -35,7 +35,7 @@ To hold on to that knowledge, I picked **OKF** (_Open Knowledge Format_), a form
 
 * 🤖 Get to know [**RunLore**](https://github.com/Smana/runlore) and how it works
 * 🧠 Its **three design choices**: a single binary, the **learning loop**, and the **human who makes the call**
-* 🛠️ **Deploy it** with Helm and watch it investigate a **real incident** on [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref)
+* 🛠️ **Deploy it** with Helm and watch it investigate a **real incident** on [`cloud-native-ref`](https://cnref.ogenki.io)
 
 ## 🔥 Why this project: the hidden cost of investigation
 
@@ -143,7 +143,7 @@ Keeping a human in the loop, on what gets done as much as on what gets learned, 
 
 ## 👀 Here's what it looks like
 
-Enough theory, here is RunLore **at work**. The incident below is a real one, investigated on [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), my reference repo: a complete platform on **EKS** combining Cilium, VictoriaMetrics, Crossplane and Flux.
+Enough theory, here is RunLore **at work**. The incident below is a real one, investigated on [`cloud-native-ref`](https://cnref.ogenki.io), my reference platform: a complete stack combining Cilium, VictoriaMetrics, Crossplane and Flux, running on both **AWS EKS** and **GCP GKE** — the incident below happened on the AWS cluster.
 
 {{% notice info "The model behind the demo 🧠" %}}
 The whole demo runs on **GLM 5.2** (Zhipu AI, through Z.ai's OpenAI-compatible API): quality **very close to frontier models** (Claude, GPT) at a **markedly lower cost per token**, which matters a lot when an agent wired to Alertmanager can kick off a lot of investigations. Since RunLore accepts any OpenAI-compatible endpoint, **switching takes a few lines**, all the way to a [self-hosted LLM stack](/post/series/agentic_ai/llm-self-hosted-stack/) (vLLM, Ollama) if you want to keep everything within your perimeter.
@@ -339,5 +339,5 @@ So I'll report back after a longer run. Until then, the project is **open** (Apa
 * [Open Knowledge Format (OKF) — Knowledge Catalog](https://github.com/GoogleCloudPlatform/knowledge-catalog)
 * [Open Knowledge Format — Google Cloud announcement](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing)
 * [Andrej Karpathy's _LLM-wiki_ pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)
-* [cloud-native-ref — reference platform](https://github.com/Smana/cloud-native-ref)
+* [cloud-native-ref — documentation](https://cnref.ogenki.io) · [GitHub repo](https://github.com/Smana/cloud-native-ref)
 * [k8sgpt](https://github.com/k8sgpt-ai/k8sgpt) · [HolmesGPT](https://github.com/HolmesGPT/holmesgpt) · [kagent](https://github.com/kagent-dev/kagent)

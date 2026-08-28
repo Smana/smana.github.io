@@ -38,7 +38,7 @@ This article aims to **lay the foundations** of an alternative meant to evolve a
 * Honestly evaluate what works, what doesn't, and what it really costs
 
 {{% notice tip "The reference repo" %}}
-The whole stack is deployed via GitOps from [**cloud-native-ref**](https://github.com/Smana/cloud-native-ref) — beyond the LLM layer, the repo illustrates **a complete cloud-native ecosystem**:
+The whole stack is deployed via GitOps from [**cloud-native-ref**](https://cnref.ogenki.io) ([source on GitHub](https://github.com/Smana/cloud-native-ref)) — beyond the LLM layer, the project illustrates **a complete cloud-native ecosystem**, running on both AWS EKS and GCP GKE:
 
 * **GitOps** — Flux, continuous reconciliation
 * **Platform engineering** — Crossplane (one YAML claim generates all the Kubernetes plumbing)
@@ -67,7 +67,7 @@ The whole thing is driven by **GitOps** (Flux reconciles everything from [`cloud
 
 ## :electric_plug: The centerpiece: the `InferenceService` abstraction
 
-If you've read some of [my previous articles](/post/crossplane_composition_functions/), you know I particularly like `Crossplane` for providing the right abstraction to end users. It's one of my essential components and lets me expose a **simple, fit-for-purpose interface**. I already have a few: `App`, `SQLInstance`, `EPI` — and now `InferenceService`.
+If you've read some of [my previous articles](/post/crossplane_composition_functions/), you know I particularly like `Crossplane` for providing the right abstraction to end users. It's one of my essential components and lets me expose a **simple, fit-for-purpose interface**. I already have a few: `App`, `SQLInstance`, `EPI` — and now `InferenceService`. All of them are packaged and versioned in a dedicated repository: [crossplane-configuration](https://github.com/Smana/crossplane-configuration).
 
 ### Declaring a new model
 
@@ -135,8 +135,8 @@ Four lines change. Flux reconciles, KEDA readjusts triggers, Karpenter provision
 {{% notice tip "KCL: version, test, validate a composition" %}}
 The composition isn't written as YAML patches (unreadable, untestable) but in [**KCL**](https://kcl-lang.io/) via the [function-kcl](https://github.com/crossplane-contrib/function-kcl) — a **typed** configuration language with **native assertions**. Three direct consequences:
 
-* **Unit tests** — a [`main_test.k`](https://github.com/Smana/cloud-native-ref/blob/main/infrastructure/base/crossplane/configuration/kcl/inference-service/main_test.k) file validates each behavior (`kcl test` runs in CI on every PR).
-* **Versioned OCI packaging** — the composition is published as an OCI image (`oci://ghcr.io/smana/cloud-native-ref/crossplane-inference-service:0.6.0`), referenced by immutable tag.
+* **Unit tests** — a [`main_test.k`](https://github.com/Smana/crossplane-configuration/blob/main/apis/inferenceservice/kcl/main_test.k) file validates each behavior (`kcl test` runs in CI on every PR).
+* **Versioned OCI packaging** — the composition is published as a Crossplane Configuration package (`ghcr.io/smana/crossplane-configuration-aws:v0.4.1`) from the dedicated [crossplane-configuration](https://github.com/Smana/crossplane-configuration) repository, referenced by immutable tag.
 * **Claim schema validated at the API server** — `kubectl apply` rejects inconsistent claims (e.g. `minReplicas > maxReplicas`) **before** the composition is even triggered.
 
 Versions, tests, schema — not just "YAML we copy-paste".
@@ -425,7 +425,7 @@ Let's be clear: today I wouldn't trade my Claude ecosystem. Mainly for **financi
 
 That said, I would have liked to push my use of **OpenCode** further and migrate my Claude setup (skills, MCPs, sub-agents) onto that backend for good — that may be the topic of a future article dedicated to this open-source coding agent.
 
-But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a quantized L4 — a path documented in [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/main/docs/llm-platform-future-paths.md) — the swap will be a few-line PR. That's the **main point** of this demo: positioning yourself to **move fast when the time comes**, rather than scrambling to (re)build everything the day open-weight catches up to the frontier.
+But I'm keeping the stack alive. The day a Qwen3-Coder-30B-A3B runs cleanly on a quantized L4 — a path documented in the [AI platform roadmap](https://cnref.ogenki.io/docs/platform/ai-platform/roadmap/) — the swap will be a few-line PR. That's the **main point** of this demo: positioning yourself to **move fast when the time comes**, rather than scrambling to (re)build everything the day open-weight catches up to the frontier.
 
 And this catch-up isn't only about models: the open-source serving layer evolves just as fast and regularly brings in capabilities previously reserved for proprietary solutions. For instance, [**vLLM-Omni**](https://github.com/vllm-project/vllm-omni) (first stable late 2025) extends `vLLM` to **omni-modality** (text, image, audio, video, as **inputs and outputs**) with the same OpenAI-compatible API, so it plugs directly into the platform described here.
 
@@ -436,9 +436,10 @@ And this catch-up isn't only about models: the open-source serving layer evolves
 ## :bookmark: References
 
 ### Repos
-- [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) — The complete platform
-- [`docs/decisions/`](https://github.com/Smana/cloud-native-ref/tree/main/docs/decisions) — ADRs (vLLM Production Stack, S3 Files…)
-- [`docs/llm-platform-future-paths.md`](https://github.com/Smana/cloud-native-ref/blob/main/docs/llm-platform-future-paths.md) — Evolution paths
+- [`cloud-native-ref`](https://cnref.ogenki.io) — The complete platform documentation · [source on GitHub](https://github.com/Smana/cloud-native-ref)
+- [`crossplane-configuration`](https://github.com/Smana/crossplane-configuration) — The Crossplane compositions (`App`, `SQLInstance`, `InferenceService`…)
+- [Architecture decisions](https://cnref.ogenki.io/docs/decisions/) — ADRs (vLLM Production Stack, S3 Files…)
+- [AI platform roadmap](https://cnref.ogenki.io/docs/platform/ai-platform/roadmap/) — Evolution paths
 
 ### Technical components
 - [vLLM Production Stack](https://github.com/vllm-project/production-stack) — Production-grade LLM inference
