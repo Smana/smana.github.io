@@ -179,7 +179,7 @@ cost_per_Mtok = (hourly_instance_cost / (throughput_tok_s * 3600)) * 1_000_000
 
 Throughput comes from serving metrics you already collect (vLLM exports generation-token counters; sustained tokens/s over a busy window is the denominator that reflects real load). The method is the durable part of this section; the prices below are its perishable inputs.
 
-<!-- TODO(author): fill tok/s and $/Mtok using the PromQL in docs/superpowers/plans/2026-08-28-multicloud-strategy-post-inputs.md and re-verify $/h before publishing. The AWS row MUST be measured; the GKE row may ship as pending (the note below explains why) if quota still hasn't landed (if the GKE quota lands before publication, also update the Final thoughts sentence that references the pending row). Then delete this comment. -->
+<!-- TODO(author): fill tok/s and $/Mtok using the PromQL in docs/superpowers/plans/2026-08-28-multicloud-strategy-post-inputs.md and re-verify $/h before publishing. The AWS row MUST be measured; the GKE row may ship as pending (the note below explains why) if quota still hasn't landed (if the GKE quota lands before publication, also update the Final thoughts sentence that references the pending row). Also add the missing thumbnail.png to this bundle (front matter references it; homepage card renders broken without it). Then delete this comment. -->
 
 | Cloud | GPU | Instance | $/h (on-demand) | tok/s | $/Mtok |
 |---|---|---|---|---|---|

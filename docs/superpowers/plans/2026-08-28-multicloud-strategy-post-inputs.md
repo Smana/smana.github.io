@@ -135,7 +135,7 @@ lines, all added lines are comments plus the name change.)
 
 ## Cost per million tokens
 
-**Do not paste this table into the post until tok/s and $/Mtok are filled; re-verify $/h at drafting time.**
+**Publish gate (agreed during drafting, supersedes the earlier blanket guard):** the draft post carries this table with `_pending_` cells behind an in-post `TODO(author)` comment. Before `draft = false`: the **AWS row must be measured**; the **GKE row may ship as pending** with the post's accompanying note, because gcp-0 has an additional blocker on top of the metrics-access one below — it has never provisioned a GPU node at all (GPU quota not yet granted; recorded in a comment in `cloud-native-ref/infrastructure/gcp-0/computeclass/gpu-l4.yaml`), so no historical vLLM series can exist for it yet. Re-verify $/h at publish time.
 
 | Cloud | GPU | Instance | $/h (on-demand) | tok/s | $/Mtok |
 |---|---|---|---|---|---|
