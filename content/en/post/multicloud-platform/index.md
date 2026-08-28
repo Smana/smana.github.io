@@ -18,9 +18,25 @@ tags = [
 thumbnail = "thumbnail.png"
 +++
 
-<!-- Hook / lead -->
+On October 20, 2025, a **latent race condition** in DynamoDB's automated DNS management [wiped the service's DNS records](https://www.thousandeyes.com/blog/aws-outage-analysis-october-20-2025) in us-east-1. DNS came back in about three hours, but EC2's internal **DropletWorkflow Manager** then entered **congestive collapse** — recovery work piling up faster than it could be processed — adding more than five hours; total impact reached roughly fourteen hours. And because us-east-1 hosts global control-plane services such as **IAM** (Identity and Access Management) and **STS** (Security Token Service), the blast radius extended well beyond the region.
+
+Every outage of this magnitude restarts the same conversation. ❓ **Should we be running on more than one cloud?**
+
+**Multicloud** is usually a slide. Rarely a repo. What follows is neither a vendor comparison nor a thought experiment: it's a strategy derived from a platform that actually runs on both **AWS EKS** and **GCP GKE**, with its trade-offs measured rather than assumed.
 
 ## 🎯 Goals of this article
+
+* Identify the **real drivers for multicloud in 2026** — and the counter-case for staying on one cloud
+* Decide **what to abstract and what to leave cloud-shaped**
+* See how **one Flux tree** reconciles **two clusters** without a fork per cloud
+* Define a **GPU consumption strategy**, with measured **cost per million tokens**
+* Understand **when a fleet needs more than Flux**
+* Assess **what surviving the loss of a cloud actually requires**
+* Get the honest bill: **what it really cost**
+
+{{% notice tip "The reference repo" %}}
+Everything in this article runs today in the <strong><a href="https://cnref.ogenki.io">Cloud Native Ref</a></strong> project (<a href="https://github.com/Smana/cloud-native-ref">source on GitHub</a>): the same platform on AWS EKS and GCP GKE, reconciled from one repository and one Flux tree — not a fork each. Compositions live in a dedicated repo, <a href="https://github.com/Smana/crossplane-configuration">crossplane-configuration</a>.
+{{% /notice %}}
 
 ## 🌍 Why multicloud — the honest version
 
