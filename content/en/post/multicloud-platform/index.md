@@ -153,7 +153,7 @@ Three seams, each kept small, each with an ADR recording why it exists. Everythi
 
 ## 🎮 GPUs: a consumption strategy for cost and availability
 
-The GPU question is tractable here because of the layering above: the `InferenceService` claim is cloud-neutral, and everything GPU-shaped underneath it — Karpenter's node pools on AWS, the ComputeClass on GKE — stays cloud-local. When the same manifest runs on either cluster, GPU capacity stops being a constraint you inherit from your provider and becomes a market you shop: across pricing models first, and across clouds when a region runs dry. The byte-identical `spec` from the doctrine section is what makes that shopping credible — the option to move is proven rather than promised, which is exactly what a GPU renewal negotiation responds to.
+The GPU question is tractable here because of the layering above: the `InferenceService` claim is cloud-neutral, and everything GPU-shaped underneath it — Karpenter's node pools on AWS, the ComputeClass on GKE — stays cloud-local. When the same manifest runs on either cluster, GPU capacity stops being a constraint you inherit from your provider and becomes a market you shop: across pricing models first, and across clouds when a region runs dry. The byte-identical `spec` from the doctrine section is what makes that shopping credible — the option to move is proven rather than promised, and that proof is what a GPU renewal negotiation responds to.
 
 ### Match the pricing model to the workload
 
@@ -179,7 +179,7 @@ cost_per_Mtok = (hourly_instance_cost / (throughput_tok_s * 3600)) * 1_000_000
 
 Throughput comes from serving metrics you already collect (vLLM exports generation-token counters; sustained tokens/s over a busy window is the denominator that reflects real load). The method is the durable part of this section; the prices below are its perishable inputs.
 
-<!-- TODO(author): fill tok/s and $/Mtok using the PromQL in docs/superpowers/plans/2026-08-28-multicloud-strategy-post-inputs.md and re-verify $/h before publishing. The AWS row MUST be measured; the GKE row may ship as pending (the note below explains why) if quota still hasn't landed. Then delete this comment. -->
+<!-- TODO(author): fill tok/s and $/Mtok using the PromQL in docs/superpowers/plans/2026-08-28-multicloud-strategy-post-inputs.md and re-verify $/h before publishing. The AWS row MUST be measured; the GKE row may ship as pending (the note below explains why) if quota still hasn't landed (if the GKE quota lands before publication, also update the Final thoughts sentence that references the pending row). Then delete this comment. -->
 
 | Cloud | GPU | Instance | $/h (on-demand) | tok/s | $/Mtok |
 |---|---|---|---|---|---|
@@ -226,13 +226,13 @@ What the posture deliberately omits is live cross-cluster interconnection — Ci
 
 The bill, then.
 
-The second cloud was a second foundation layer: another OpenTofu stack — network, GKE, secrets, identity — a second Crossplane provider family with its own per-cloud Compositions, and a decision record of its own just for running Cilium self-managed on GKE. None of it was hard the way a research problem is hard; it was volume — weeks of evenings, not a weekend. And the stream of small asymmetries wore me down more than any of the big pieces did: quota requests that have no equivalent on the other side, ComputeClass semantics that only mostly map onto Karpenter's, a GPU pool that is spot-only on one cloud and mixed on the other. The federation seams — DNS and identity — were the inverse: small in line count, large in thinking time.
+The second cloud was a second foundation layer: another OpenTofu stack — network, GKE, secrets, identity — a second Crossplane provider family with its own per-cloud Compositions, and a decision record of its own just for running Cilium self-managed on GKE. None of it was hard the way a research problem is hard; it was volume — weeks of evenings, not a weekend. And the stream of small asymmetries wore me down more than any of the big pieces did: quota requests that have no equivalent on the other side, ComputeClass semantics that only mostly map onto Karpenter's, a GPU pool that is spot-only on one cloud and mixed on the other — even the deliberate ones. The federation seams — DNS and identity — were the inverse: small in line count, large in thinking time.
 
-The abstractions held better than I expected: the `SQLInstance` claim never learned which cloud it was on — its composition's backup render is where the difference concentrates, `s3://` on one cluster, `gs://` on the other. The leak that stayed open is operational: the GKE row of the GPU table is still _pending_ because the quota request is.
+The abstractions held better than I expected: the `SQLInstance` claim never learned which cloud it was on — the difference never climbed above the composition's backup render. The leak that stayed open is operational: the GKE row of the GPU table is still _pending_ because the quota request is.
 
-Part of the bill is what I chose to leave unbuilt. There is no Cilium Cluster Mesh, so nothing spans the two clouds at runtime — the resilience section flagged that omission, and it stays on the books as a carried-forward obligation. There is no symmetric active-active, and no fleet manager over two named clusters. These omissions *are* the strategy — capability built selectively, as the drivers section argued — and each of them can still be added later, without paying its standing cost in the meantime.
+Part of the bill is what I chose to leave unbuilt. There is no Cilium Cluster Mesh, so nothing spans the two clouds at runtime — the resilience section flagged that omission, and it stays on the books as a carried-forward obligation. There is no symmetric active-active, and no fleet manager over two named clusters. These omissions *are* the strategy — capability built selectively — and each of them can still be added later, without paying its standing cost in the meantime.
 
-Several of those deferred decisions deserve a measured article of their own, and the backlog currently looks like this:
+Several of those open threads deserve a measured article of their own, and the backlog currently looks like this:
 
 * **GPU benchmarks** — spot, Dynamic Workload Scheduler and Capacity Blocks measured, with the $/Mtok method applied in full
 * **Cluster vending with Crossplane + Sveltos** — the GitOps bridge built end to end
@@ -241,7 +241,7 @@ Several of those deferred decisions deserve a measured article of their own, and
 
 If one of these would be useful to you, say so in the comments or in the repo's GitHub issues — the votes decide the order.
 
-The next us-east-1 morning will restart the conversation this article opened; this time, the answer runs in a repo.
+The next us-east-1 morning will restart the conversation that opened this article; this time, the answer runs in a repo.
 
 ## 🔖 References
 
