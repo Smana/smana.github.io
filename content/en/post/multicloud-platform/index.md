@@ -18,7 +18,7 @@ tags = [
 thumbnail = "thumbnail.png"
 +++
 
-On October 20, 2025, a **latent race condition** in DynamoDB's automated DNS management [wiped the service's DNS records](https://www.thousandeyes.com/blog/aws-outage-analysis-october-20-2025) in us-east-1. DNS came back in about three hours, but EC2's internal **DropletWorkflow Manager** then entered **congestive collapse** — recovery work piling up faster than it could be processed — adding more than five hours; total impact reached roughly fourteen hours. And because us-east-1 hosts global control-plane services such as **IAM** (Identity and Access Management) and **STS** (Security Token Service), the blast radius extended well beyond the region.
+On October 20, 2025, a **latent race condition** in DynamoDB's automated DNS management [wiped the service's DNS records](https://www.thousandeyes.com/blog/aws-outage-analysis-october-20-2025) in us-east-1. DNS came back in about three hours, but EC2's internal **DropletWorkflow Manager** entered **congestive collapse** — recovery work piling up faster than it could be processed — and full recovery stretched to roughly fourteen hours. And because us-east-1 hosts global control-plane services such as **IAM** (Identity and Access Management) and **STS** (Security Token Service), the blast radius extended well beyond the region.
 
 Every outage of this magnitude restarts the same conversation. ❓ **Should we be running on more than one cloud?**
 
@@ -26,9 +26,9 @@ Every outage of this magnitude restarts the same conversation. ❓ **Should we b
 
 ## 🎯 Goals of this article
 
-* Identify the **real drivers for multicloud in 2026** — and the counter-case for staying on one cloud
+* Identify the **real drivers for multicloud in 2026** — and the case for staying on one cloud
 * Decide **what to abstract and what to leave cloud-shaped**
-* See how **one Flux tree** reconciles **two clusters** without a fork per cloud
+* See how **one Git repository** drives **two production clusters**
 * Define a **GPU consumption strategy**, with measured **cost per million tokens**
 * Understand **when a fleet needs more than Flux**
 * Assess **what surviving the loss of a cloud actually requires**
