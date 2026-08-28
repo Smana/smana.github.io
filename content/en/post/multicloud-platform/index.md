@@ -76,7 +76,7 @@ Some vocabulary first. The platform's APIs are built with **Crossplane**, which 
 
 Platform engineers already know which cloud they are configuring. Hiding it from them buys nothing, and costs error messages that point at the wrong abstraction.
 
-**An escape hatch keeps the neutral surface honest.** Neutral claims carry optional `aws {}` / `gcp {}` blocks for the provider-specific knobs that inevitably exist — the `SQLInstance` backup destination is the canonical one: an `s3://` or `gs://` bucket URL, because backup storage is never neutral. Portability stays the default; reaching a cloud-specific feature costs a clearly-marked block, not a fork of the API — and a reviewer can measure a claim's cloud coupling by grepping for those two keys.
+**An escape hatch keeps the neutral surface honest.** Neutral claims carry optional `aws {}` / `gcp {}` blocks for the provider-specific knobs that inevitably exist. Portability stays the default; reaching a cloud-specific feature costs a clearly-marked block, not a fork of the API — and a reviewer can measure a claim's cloud coupling by grepping for those two keys. And when a knob can stay neutral, the composition absorbs the difference instead: a `SQLInstance` backup asks for a plain `bucketName`, and the render turns it into an `s3://` or `gs://` destination depending on the cluster's cloud.
 
 Does the neutral surface hold in practice? Here is the diff between the AWS and the GCP example of the same `InferenceService` claim, trimmed of repo-internal comments — in the full diff, every changed line above `apiVersion:` is a YAML comment:
 
@@ -228,7 +228,7 @@ The bill, then.
 
 The second cloud was a second foundation layer: another OpenTofu stack — network, GKE, secrets, identity — a second Crossplane provider family with its own per-cloud Compositions, and a decision record of its own just for running Cilium self-managed on GKE. None of it was hard the way a research problem is hard; it was volume — weeks of evenings, not a weekend. And the stream of small asymmetries wore me down more than any of the big pieces did: quota requests that have no equivalent on the other side, ComputeClass semantics that only mostly map onto Karpenter's, a GPU pool that is spot-only on one cloud and mixed on the other. The federation seams — DNS and identity — were the inverse: small in line count, large in thinking time.
 
-The abstractions held better than I expected, and they leaked exactly where the doctrine said they would: `SQLInstance` backups live in a cloud-shaped block, and the GKE row of the GPU table is still _pending_ because the quota request is.
+The abstractions held better than I expected: the `SQLInstance` claim never learned which cloud it was on — its composition's backup render is where the difference concentrates, `s3://` on one cluster, `gs://` on the other. The leak that stayed open is operational: the GKE row of the GPU table is still _pending_ because the quota request is.
 
 Part of the bill is what I chose to leave unbuilt. There is no Cilium Cluster Mesh, so nothing spans the two clouds at runtime — the resilience section flagged that omission, and it stays on the books as a carried-forward obligation. There is no symmetric active-active, and no fleet manager over two named clusters. These omissions *are* the strategy — capability built selectively, as the drivers section argued — and each of them can still be added later, without paying its standing cost in the meantime.
 
