@@ -1,4 +1,4 @@
-# Inputs — multicloud strategy post (measured 2026-08-28)
+# Inputs — multicloud strategy post (inputs collected 2026-08-28 — throughput PENDING)
 
 ## Same-claim diffs
 
@@ -10,7 +10,9 @@ Reading note: in both pairs, every `-`/`+` line above `apiVersion:` is a YAML
 `metadata.name` for the InferenceService pair, and in `metadata.name` plus the
 optional `backup` block for the SQLInstance pair — the `backup` block being the
 entire cloud-specific surface of that composition (gs:// vs s3://), set
-deliberately in the GCP example so the golden render proves something.
+deliberately in the GCP example so the golden render proves something. In the
+SQLInstance spec, the remaining -/+ lines differ only by removed inline
+comments — values are identical.
 
 ### inferenceservice (aws vs gcp)
 
@@ -129,12 +131,20 @@ lines, all added lines are comments plus the name change.)
 +    retentionPolicy: "30d"
 ```
 
+(This diff is complete through end-of-file — 28 vs 46 lines, nothing elided.)
+
 ## Cost per million tokens
+
+**Do not paste this table into the post until tok/s and $/Mtok are filled; re-verify $/h at drafting time.**
 
 | Cloud | GPU | Instance | $/h (on-demand) | tok/s | $/Mtok |
 |---|---|---|---|---|---|
-| AWS EKS | 1x NVIDIA L4 (24 GB) | g6.2xlarge (8 vCPU / 32 GiB), eu-west-3 | $1.24095 | PENDING | PENDING |
+| AWS EKS | 1x NVIDIA L4 (24 GB) | g6.2xlarge (8 vCPU / 32 GB[^mem]), eu-west-3 | $1.2410 | PENDING | PENDING |
 | GCP GKE | 1x NVIDIA L4 (24 GB) | g2-standard-8 (8 vCPU / 32 GB), europe-west4 | $0.8972 | PENDING | PENDING |
+
+[^mem]: Vendor docs differ on the unit: AWS documents g6.2xlarge memory as
+32 GiB, GCP documents g2-standard-8 as 32 GB — treated as the same nominal
+capacity here.
 
 Measurement window: PENDING — not yet measured. Target model:
 `xplane-qwen3-8b` = Qwen/Qwen3-8B, quantization fp8, 32k context,
@@ -165,9 +175,10 @@ curl -sk 'https://vm.priv.gcp.ogenki.io/api/v1/query' \
 
 # 2. Peak sustained generation throughput (tokens/s) over the last 30 days
 #    (GPUs may be scaled to zero right now — historical window is fine;
-#    record the window actually used)
+#    record the window actually used; substitute the model_name label
+#    value found in step 1)
 curl -sk 'https://vm.priv.aws.ogenki.io/api/v1/query' \
-  --data-urlencode 'query=max_over_time(rate(vllm:generation_tokens_total{model_name="xplane-qwen3-8b"}[10m])[30d:1h])'
+  --data-urlencode 'query=max_over_time(rate(vllm:generation_tokens_total{model_name="xplane-qwen3-8b"}[10m])[30d:10m])'
 # same query against vm.priv.gcp.ogenki.io
 
 # 3. Compute
@@ -176,7 +187,8 @@ curl -sk 'https://vm.priv.aws.ogenki.io/api/v1/query' \
 
 ### Sources and caveats
 
-- **AWS $/h**: g6.2xlarge on-demand in eu-west-3 (Paris) = $1.24095/h —
+- **AWS $/h**: g6.2xlarge on-demand in eu-west-3 (Paris) = $1.24095/h exact
+  (table rounds to 4 decimal places) —
   ec2.shop (data derived from the public AWS Pricing API), queried 2026-08-28
   (`curl 'https://ec2.shop?region=eu-west-3&filter=g6.2xlarge'`).
   For reference: g6.xlarge eu-west-3 = $1.0216/h; g6.2xlarge us-east-1 =
@@ -188,7 +200,7 @@ curl -sk 'https://vm.priv.aws.ogenki.io/api/v1/query' \
 - **Instance choice is inferred, not observed** (clusters unreachable): the
   composition's default pod sizing is requests cpu=2 / memory=16Gi
   (`apis/inferenceservice/kcl/main.k`, `_DEFAULTS`), which does not fit the
-  16 GiB nodes (g6.xlarge / g2-standard-4) after system reserves, so
+  16 GB nodes (g6.xlarge / g2-standard-4) after system reserves, so
   Karpenter (`instance-family: g6`, `instance-gpu-count: 1`, i.e.
   g6.xlarge–g6.16xlarge) and GKE NAP (ComputeClass `gpu-l4`, `machineFamily:
   g2`, 1x nvidia-l4) both land on the smallest 32 GB single-L4 SKU:
