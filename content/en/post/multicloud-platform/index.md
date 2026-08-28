@@ -64,9 +64,118 @@ My position, which the rest of this article defends: multicloud is a **capabilit
 
 ## 🧭 The doctrine: abstract the developer, not the platform
 
+The lowest-common-denominator trap has a structural fix: stop asking *how much* to abstract and ask *for whom*. The rule this platform runs on — split the API surface by audience — decides nearly every design question that follows, so it's worth stating precisely.
+
+Some vocabulary first. The platform's APIs are built with **Crossplane**, which extends Kubernetes with custom infrastructure APIs: an **XRD** (Composite Resource Definition) declares the schema, and a **Composition** renders a **claim** — the manifest a user actually writes — into real cloud resources.
+
+**Developer-facing claims are cloud-neutral.** `App`, `SQLInstance`, `InferenceService`: the kinds name intent, and so do the fields — `spec.objectStore`, never `spec.s3Bucket`. The same manifest applies unchanged on the AWS cluster and the GCP cluster; which cloud renders it is decided by the Composition installed there, not by anything in the claim. This is the layer where portability actually pays: application manifests are the platform's most numerous artifact, and the most expensive one to migrate by hand.
+
+**Platform-facing APIs stay deliberately cloud-shaped**, as sibling XRDs per cloud. The clearest example: `EPI` (**EKS Pod Identity**, AWS's mechanism for granting IAM permissions to pods) has as its central field `spec.policyDocument` — inline AWS IAM policy JSON. There is no neutral form of that field. Its GCP sibling, `GCPWorkloadIdentity`, binds Google IAM roles to a ServiceAccount instead. A merged "WorkloadIdentity" API would have to carry both shapes and pick one at render time: two APIs wearing one name, with pretended portability as the only addition. [ADR-0007](https://cnref.ogenki.io/docs/decisions/0007-cloud-abstraction-boundaries/) states the principle we keep coming back to:
+
+> An API that looks neutral but is not causes worse errors than one that is visibly cloud-shaped.
+
+Platform engineers already know which cloud they are configuring. Hiding it from them buys nothing, and costs error messages that point at the wrong abstraction.
+
+**An escape hatch keeps the neutral surface honest.** Neutral claims carry optional `aws {}` / `gcp {}` blocks for the provider-specific knobs that inevitably exist. Portability stays the default; reaching a cloud-specific feature costs a clearly-marked block, not a fork of the API — and a reviewer can measure a claim's cloud coupling by grepping for those two keys.
+
+Does the neutral surface hold in practice? Here is the complete diff between the AWS and the GCP example of the same `InferenceService` claim — note that every changed line above `apiVersion:` is a YAML comment:
+
+```diff
+--- inferenceservice-basic.yaml	2026-08-28 09:21:24
++++ inferenceservice-gcp.yaml	2026-08-28 09:21:24
+@@ -1,23 +1,26 @@
+ ---
+-# Basic InferenceService — smallest viable model.
+-# Minimal claim: HF model, 1 GPU, defaults applied (min=1 always-warm per
+-# SPEC-001), no gateway, no LoRA.
++# GCP InferenceService example — exercises the composition-gcp.yaml branch.
+ #
+-# `model.preload.enabled: true` is NOT optional here, despite defaulting to
+-# false. The serving pod is always launched with `--model /models/<revision>`
+-# (a path on the shared S3 Files mount — never an HF repo id), and its
+-# CiliumNetworkPolicy allows egress to kube-dns and NOTHING else. So a serving
+-# pod cannot reach HuggingFace even in principle: with no preload Job, /models
+-# stays empty and vLLM fails to start, permanently.
++# Identical in shape to inferenceservice-basic.yaml, and deliberately so: the
++# claim is cloud-neutral and nothing below says "gcp". Which cloud renders is
++# decided by the EnvironmentConfig the installed Composition selects, which is
++# what apis/inferenceservice/kcl/main.k's `_cloud` reads.
+ #
+-# The only claim that may leave preload off is one whose
+-# `weightsFileSystem.subPath` points at a directory ANOTHER claim already
+-# preloaded — that is the deliberate weight-sharing case, and it is why the
+-# default is false rather than true.
++# scripts/render_check.py resolves this file to composition-gcp.yaml via the
++# "-gcp" filename marker — see composition_for().
++#
++# What the golden pins that the AWS goldens cannot: a per-claim
++# GCPWorkloadIdentity granting the serving ServiceAccount read access to the
++# weights bucket. AWS needs no such resource, because the EFS CSI driver
++# authenticates at the CONTROLLER and serving pods just mount (ADR-0004, and
++# the note in main.k where the per-claim EPI was dropped). Cloud Storage FUSE
++# authenticates as the MOUNTING POD's own ServiceAccount instead, so without
++# this the mount succeeds and every read 403s — a failure that looks like a
++# broken volume and is actually IAM.
+ apiVersion: cloud.ogenki.io/v1alpha1
+ kind: InferenceService
+ metadata:
+-  name: xplane-qwen3-8b-basic
++  name: xplane-qwen3-8b-gcp
+   namespace: llm
+ spec:
+   model:
+```
+
+The rest of both files — the entire `spec:` — is byte-identical. The only difference in the actual claim surface is `metadata.name`.
+
 ## 🌳 One Flux tree, two clusters
 
+The doctrine decides API shapes; the repository decides who applies them. Both clusters are reconciled by **Flux** — the GitOps engine that watches a Git repository and continuously applies what it finds — from the *same tree*, not a fork each. `clusters/aws-0/` and `clusters/gcp-0/` are the two entrypoints, and they are deliberately thin: they declare what each cluster runs, pointing at shared definitions.
+
+```text
+clusters/
+├── aws-0/           # entrypoint: what aws-0 runs, at which versions
+└── gcp-0/           # same file layout, different paths and pins
+infrastructure/
+├── base/            # component definitions, written once
+├── aws-0/           # AWS-only overlay
+└── gcp-0/           # GCP-only overlay (ComputeClass, public DNS…)
+observability/       # same base / aws-0 / gcp-0 split
+security/            # same split
+```
+
+That base/overlay division is what makes a cross-cloud pull request legible. Touch `infrastructure/base/` or `observability/base/` and **both** clusters reconcile the change on their next sync; touch `infrastructure/gcp-0/` and only one does. The diff's paths announce the blast radius before the reviewer reads a single line of YAML.
+
+Shared does not mean symmetric, though. The base holds *definitions*, and each cluster's entrypoint decides which ones it consumes: Karpenter lives in `infrastructure/base/`, yet only `aws-0` includes it — GKE node autoscaling goes through a `ComputeClass` in the `gcp-0` overlay instead. The entrypoint, not the base, is the source of truth for what a cluster runs.
+
+The Compositions from the previous section are *not* in this tree. They are consumed as versioned **Configuration packages** — **OCI** (Open Container Initiative, the registry format built for container images, which Crossplane reuses) artifacts published from the dedicated [crossplane-configuration](https://github.com/Smana/crossplane-configuration) repo: `crossplane-configuration-core` carries the cloud-neutral contracts, `-aws` and `-gcp` the per-cloud Compositions. The OCI tag *is* the git tag, so the version running in a cluster is always a commit you can check out. Each cluster's Flux tree pins what it installs — `clusters/aws-0/infrastructure/crossplane-configuration.yaml` reconciles the AWS pin, its `gcp-0` twin the GCP one — and the pin itself is three lines of spec:
+
+```yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Configuration
+metadata:
+  name: crossplane-configuration-aws
+spec:
+  package: ghcr.io/smana/crossplane-configuration-aws:v0.4.1
+```
+
+A platform API upgrade is therefore a pull request that bumps one tag on one cluster, soaks, then bumps the other — never a synchronized big bang across clouds.
+
+The mechanics of standing up a new cluster in this tree — accounts, OpenTofu stacks, Flux bootstrap, ordering — are a how-to rather than a strategy topic; the [Add a cloud provider](https://cnref.ogenki.io/docs/guides/add-a-cloud-provider/) guide walks through them end to end.
+
+{{< img src="multicloud-overview.png" alt="One Git repository reconciled by Flux into EKS and GKE, with Crossplane configuration packages per cloud" width="1000" >}}
+
 ## 🔗 The seams: identity, DNS, secrets
+
+However clean the abstraction, there are places where the two clouds must actually touch each other — not coexist side by side, but trust, resolve, or read one another. Keeping that list short is a strategy outcome in itself. Ours has exactly three entries.
+
+**Identity.** Some workloads on GKE need to call AWS APIs (the DNS seam below explains why). They do it by assuming an AWS IAM role via `AssumeRoleWithWebIdentity`: an AWS **OIDC** (OpenID Connect) identity provider is declared to trust GKE's token issuer, the workload presents its **bound ServiceAccount token** — short-lived, audience-restricted, projected into the pod by Kubernetes — and STS exchanges it for temporary AWS credentials. Zero static keys anywhere: no access key sitting in a GCP secret, nothing to rotate, nothing to leak. And the trust is narrow by construction — the role grants only Route53 record changes on a single hosted zone (plus the read-only lookups to find it). The entire seam is one small OpenTofu stack, `opentofu/shared/aws-gcp-federation`, filed under `shared/` precisely because these are resources whose only job is to couple the two clouds.
+
+**DNS.** There is one authoritative public zone, `cloud.ogenki.io`, hosted in Route53. GCP services live under the child domain `gcp.cloud.ogenki.io`, which keeps them clear of the AWS side's wildcard records — two clouds publishing into one namespace collide exactly at wildcards, so the clouds don't share the level where wildcards exist. On the GKE side, certificates are issued **per hostname**, never as wildcards: a stolen key buys one service, not the whole subdomain. The federated role from the identity seam is what makes all of this work from GCP: cert-manager on GKE proves domain control by solving **DNS-01** challenges — writing a TXT record the certificate authority then verifies — directly into Route53, and external-dns publishes each `HTTPRoute` hostname into the same zone the same way. The full reasoning, including the wildcard collision that forced the child-domain split, is recorded in [ADR-0019](https://cnref.ogenki.io/docs/decisions/0019-cross-cloud-dns-federation/).
+
+**Secrets — and who "you" are.** Manifests reference secrets through one portable `ClusterSecretStore` name, with a key grammar both clouds accept ([ADR-0023](https://cnref.ogenki.io/docs/decisions/0023-portable-secret-store-names/)); each cluster backs that name with its own cloud-managed store — AWS Secrets Manager on EKS, GCP Secret Manager on GKE ([ADR-0024](https://cnref.ogenki.io/docs/decisions/0024-cloud-managed-secret-stores/)). The manifests never encode which store answers. Above the stores sits a single identity provider for the whole platform: one ZITADEL instance, hosted on aws-0 and serving both clusters ([ADR-0022](https://cnref.ogenki.io/docs/decisions/0022-single-identity-provider-across-clouds/)) — because two instances would mean two unfederated user directories, and "log in twice, once per cloud" is how a platform convinces its users that multicloud was a mistake.
+
+Three seams, each deliberately small, each with an ADR recording why it exists. Everything else stays cloud-local — which is exactly what makes the next question tractable.
 
 ## 🎮 GPUs: a consumption strategy for cost and availability
 
