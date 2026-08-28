@@ -153,6 +153,45 @@ Three seams, each kept small, each with an ADR recording why it exists. Everythi
 
 ## 🎮 GPUs: a consumption strategy for cost and availability
 
+Tractable, concretely, because of the layering above: the `InferenceService` claim is cloud-neutral, and everything GPU-shaped underneath it — Karpenter's node pools on AWS, the ComputeClass on GKE — stays cloud-local. When the same manifest runs on either cluster, GPU capacity stops being a constraint you inherit from your provider and becomes a market you shop: across pricing models first, and across clouds when a region runs dry.
+
+### Match the pricing model to the workload
+
+GPU pricing comes in three shapes, and the strategy is a portfolio, not a pick. **Committed-use / reserved** capacity covers the 24/7 baseline you know you will consume. **On-demand** absorbs burst above it. **Spot/preemptible** — steeply discounted capacity the provider can [reclaim with minutes of notice](https://www.thundercompute.com/blog/cloud-gpu-spot-instance-availability) — is for interruptible batch only: fine-tuning, evaluation runs, embedding backfills. It has no business under a real-time inference endpoint, where a reclaimed node is a user-facing outage. That segmentation — [classifying workloads by interruption tolerance before chasing discounts](https://www.cloudmagazin.com/en/2026/04/03/ai-inference-costs-cloud-finops-gpu-workloads-2026/) — is most of GPU FinOps; the discount itself is the easy part.
+
+At the reserved end, the two clouds sell certainty differently. AWS **EC2 Capacity Blocks for ML** are defined-duration reservations: a block of accelerators booked for a set window at published per-accelerator-hour rates. GCP's **Dynamic Workload Scheduler** queues the request instead — flex-start mode provisions whenever capacity appears, calendar mode reserves a future window. With B200-class supply constrained through mid-2026 (the third driver on the opening list), these mechanisms are less about paying less than about getting scarce accelerators at all.
+
+### Right-size the accelerator
+
+The most expensive mistake precedes any pricing model: defaulting to "the AI GPU". An L4-class card (24 GB) comfortably serves the 8B-class models this platform runs; A100/H100-class parts exist for models an order of magnitude larger, and picking one by default costs 5–10x for headroom that idles. Our choice on both clouds is the smallest single-L4 instance — g6 on AWS, g2-standard on GCP: the same silicon on purpose, so the comparison below measures clouds, not GPUs.
+
+### Scale to zero is the biggest lever
+
+Cast AI's 2026 State of Kubernetes report puts average GPU utilization in production clusters at [about 5%](https://cast.ai/blog/gpu-cloud-pricing/). Read that number again: the industry's GPU bill is roughly twenty times its GPU usage. No discount negotiates that away — the fix is architectural. On this platform, every `InferenceService` scales to zero through **KEDA** (Kubernetes Event-driven Autoscaling), which scales on request activity rather than CPU, so a model nobody is querying costs the object storage its weights sit in, not GPU-hours.
+
+The portfolio, the right-sized card and scale-to-zero all work on a single cloud. What multicloud adds is leverage: the same claim runs on either cluster — the byte-identical `spec` from the doctrine section — which converts GPU procurement from a negotiation you lose into a market you arbitrate. A capacity hedge when your provider's region runs dry, and pricing leverage the moment a renewal discussion starts.
+
+### The unit that compares: cost per million tokens
+
+Instance prices don't answer the question that matters — what does inference actually cost? The comparable unit is dollars per million output tokens, and the method fits in one line:
+
+```text
+cost_per_Mtok = (hourly_instance_cost / (throughput_tok_s * 3600)) * 1_000_000
+```
+
+Throughput comes from serving metrics you already collect (vLLM exports generation-token counters; sustained tokens/s over a busy window is the honest denominator). The method is the durable part of this section; the prices below are its perishable inputs.
+
+<!-- TODO(author): fill tok/s and $/Mtok using the PromQL in docs/superpowers/plans/2026-08-28-multicloud-strategy-post-inputs.md, re-verify $/h, then delete this comment. Do not publish with pending cells. -->
+
+| Cloud | GPU | Instance | $/h (on-demand) | tok/s | $/Mtok |
+|---|---|---|---|---|---|
+| AWS EKS | 1x NVIDIA L4 (24 GB) | g6.2xlarge (8 vCPU / 32 GB), eu-west-3 | $1.2410 | _pending_ | _pending_ |
+| GCP GKE | 1x NVIDIA L4 (24 GB) | g2-standard-8 (8 vCPU / 32 GB), europe-west4 | $0.8972 | _pending_ | _pending_ |
+
+Three caveats before anyone quotes this table. The prices are on-demand list rates as read on 2026-08-28 — they will drift, which is exactly why the method matters more than the cells. The rows are not like-for-like: the regions differ because that is where each cluster actually runs, and the GCP figure bundles the L4 into the machine price where the AWS figure is the instance's own rate. And although both rows use on-demand for comparability, the platform's actual buying policy is asymmetric — the AWS node pool mixes spot and on-demand, while the GKE ComputeClass is deliberately spot-only. One more honesty note: the GKE row may stay pending longer than the AWS one, because that cluster has yet to be granted the quota to provision its first GPU node — a live illustration of the availability half of this section's title.
+
+How the inference layer itself works — vLLM serving, KEDA-driven scale-to-zero, the Envoy AI Gateway in front — is the subject of the [self-hosted LLM stack post](/post/series/agentic_ai/llm-self-hosted-stack/); here we stay at the altitude of what to buy, and when not to buy at all.
+
 ## 📈 When two clusters become a fleet
 
 ## 🛡️ The resilience posture
