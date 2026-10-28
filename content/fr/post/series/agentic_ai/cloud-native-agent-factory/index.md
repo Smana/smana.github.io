@@ -145,7 +145,7 @@ Un mot sur les noms, parce qu'ils changent et que la documentation technique, el
 
 ### Maku : ce que fait le composant sur mesure
 
-Trois choses, et c'est tout. D'abord la **room** : un journal **append-only** par tâche, avec un `seq` sans trou par room, une clé d'idempotence par événement (`room_id`, client, numéro d'origine) et un **sceau** — une room scellée refuse tout ajout, y compris au niveau de la base, et ne se rouvre pas. Ensuite `roomctl`, le client terminal : il regarde, poste, met en file et forke, mais il ne pilote pas et **n'approuve jamais**. Enfin le **merge gate** : un ordre fixe de contrôles, du scan de secrets à l'identité de l'auteur, où chaque refus part vers un humain et où la dernière ligne n'est lue que si toutes les autres laisseraient merger. Le détail du gate est en section suivante ; retenez pour l'instant que c'est du code, pas une politique dans un wiki. <!-- status: V --> <!-- TODO-check: le gate de docs/factory.md (relevé 2026-10-28) liste 13 entrées — 1, 2a, 2, puis 3 à 12 — alors que le plan de l'article en fige 12 : recompter dans le code et trancher le chiffre avant de passer draft = false -->
+Trois choses, et c'est tout. D'abord la **room** : un journal **append-only** par tâche, avec un `seq` sans trou par room, une clé d'idempotence par événement (`room_id`, client, numéro d'origine) et un **sceau** — une room scellée refuse tout ajout, y compris au niveau de la base, et ne se rouvre pas. Ensuite `roomctl`, le client terminal : il regarde, poste, met en file et forke, mais il ne pilote pas et **n'approuve jamais**. Enfin le **merge gate** : un ordre fixe de contrôles, du scan de secrets à l'identité de l'auteur, où chaque refus part vers un humain et où la dernière ligne n'est lue que si toutes les autres laisseraient merger. Le détail du gate est en section suivante ; retenez pour l'instant que c'est du code, pas une politique dans un wiki. <!-- status: V -->
 
 Ce que le composant ne fait pas est aussi important. **Aucun classifieur n'est déployé** : quand l'URL du classifieur n'est pas configurée, aucun appel n'a lieu et chaque tâche prend le palier statique `standard` ; les paliers, les plafonds et les gabarits sont réels, le tri intelligent ne l'est pas <!-- status: X -->. Le modèle logique demandé reste `agent-default`. Les **budgets** par run et par tâche, en dollars, sont appliqués ; le budget par personne compte en shadow (`budget-principal-shadow`) et ne refuse qu'une fois l'option d'application activée ; le budget de flotte met le run en attente plutôt que de le refuser. <!-- status: W --> Le **scoper** (qui découpe ou questionne une issue), le **split** et le **tester** existent dans la documentation et les runbooks de preuve, avec leurs interrupteurs éteints : aucune preuve live publiée <!-- status: X -->. Le **compte machine sponsorisé** — un compte machine ZITADEL qu'un mainteneur parraine pour ouvrir du travail à sa place, avec son propre budget en dollars — est lui aussi éteint par défaut : sans entrée `api.sponsored`, la route `POST /v1/tasks` répond `404` et aucun principal machine ne crée de tâche. Le chemin est écrit et testé en runbook, pas encore prouvé live. <!-- status: W -->
 
@@ -225,11 +225,112 @@ Quatre angles morts nommés, et ils sont dans notre propre plateforme : le confi
 
 ## 🧑‍💻 Scénario 1 : un développeur backend
 
+Vous reproduisez le défaut dans `opencode`, `claude` ou votre client, puis demandez `/factory handoff`. `roomctl` fait vérifier le brouillon d'issue par le broker — symptôme, résultat attendu, critère d'acceptation, absence de secret — sans rien déposer. Vous relisez le texte exact avant que votre `gh` le publie. <!-- status: V -->
+
+Le démarrage reste **votre geste** : l'option *start* du formulaire, à non par défaut, est la seule qui applique ensuite `factory/ready`. Ni argument d'outil, ni label posé sur la parole de l'agent, ni run automatique. La factory ouvre alors la room et le premier run. <!-- status: V -->
+
+Dans **needs-you**, la carte d'approbation montre la commande puis **l'action brute caviardée**, jamais le récit de l'agent. Vous décidez dans la WebUI. Le reviewer rend ensuite son verdict dans la room ; l'implémenteur pousse la branche et ouvre la PR. <!-- status: V -->
+
+<!-- TODO-shot: S1 — file needs-you et carte d'approbation avec action brute caviardée ; capture live ou replay daté, sans donnée de fixture -->
+
+Le pied de PR porte la provenance, écrite par le harnais plutôt que par le modèle :
+
+```text
+---
+Agent-Room: <room>
+Agent-Run: <run>
+Agent-Task: <task>
+```
+
+Ces *trailers* relient le travail à son exécution, sans rien autoriser. Après la CI, le gate vérifie verdict et provenance, puis **un mainteneur merge** hors des classes live. Le reviewer ne remplace ni ce contrôle ni cette responsabilité. <!-- status: V -->
+
+<!-- TODO-shot: S2 — pied de PR avec trailers de provenance et identité du bot ; capture live ou replay daté, sans donnée de fixture -->
+
+### Ce que montre réellement le run #2238 / la PR #2239
+
+Ce walkthrough du **2026-10-07** est parti d'un label, pas du chemin `roomctl` décrit ci-dessus. Il donne néanmoins un parcours mesuré, avec quatre intervalles après le label : <!-- status: V -->
+
+| Jalon (UTC) | Horodatage | Depuis le label |
+|---|---:|---:|
+| Label sur l'issue #2238 | 18:40:15 | 0 |
+| PR #2239 ouverte | 18:45 | 4 min |
+| *Request changes* | 19:11:30 | +31 min |
+| Révision poussée | 19:22 | +42 min |
+| Approbation du mainteneur | 19:24:42 | +44 min |
+
+**Échantillon : une tâche et une PR, cinq runs d'agent.** Une récupération Spot a interrompu la révision, reprise depuis son checkpoint. La PR fut approuvée puis **fermée sans merge** : preuve de révision et de reprise, pas de livraison autonome. Les fixtures `internal/roomview/testdata` réutilisent ces numéros ; leurs captures ne sont pas des runs réels. <!-- status: V -->
+
 ## 🛠️ Scénario 2 : un ingénieur plateforme
+
+Côté plateforme, nous exploitons des **classes** et leurs preuves. Sur `cloud-native-ref`, `docs-links` et son disjoncteur `revert` sont live ; `dead-links` et `deps` (`deps-patch`, `deps-minor`) sont en shadow : le gate juge sans merger. Si tout passerait, `shadow_would_arm` enregistre le head ; un humain merge ensuite et nous comparons. Ces décisions alimentent l'échantillon de promotion, pas le taux de merge autonome. <!-- status: V -->
+
+Sur une action risquée, la règle **four-eyes**, quand la room l'exige, interdit à quiconque a prompté le tour de l'approuver. Exemple de refus : une PR `docs-links` touchant `.github/` devient `gate_path` chez `policy-bot` et repart vers un humain, même avec liens et CI corrects. <!-- status: V -->
+
+### Le gate réel : 13 entrées, dans l'ordre
+
+Gate relu dans `docs/factory.md` le **2026-10-28** : `1`, `2a`, `2`, puis `3` à `12`, soit treize contrôles. Chaque « non » échoue vers un humain. <!-- status: V -->
+
+| # | Contrôle, dans l'ordre | Refus ou attente |
+|---|---|---|
+| 1 | Le scan de secrets n'est pas rouge | `secret_scan_red` |
+| 2a | Le fence du dépôt nomme cette factory | `not_owned` |
+| 2 | Tous les checks requis sont verts | Rouge : run de correction borné puis `ci_red` ; annulé : relance bornée ; en cours : attente |
+| 3 | `policy-bot: main` est vert et vient du login attendu | `policy_absent`, `policy_pending`, `gate_path` |
+| 4 | L'auteur est l'App des agents, sans approbation de mainteneur | `not_agent_authored`, `maintainer_approved` |
+| 5 | La classe est live ou shadow | `class_unarmed` |
+| 6 | Le reviewer approuve le head rapporté ; tous les verdicts portent sur ce head | `no_approving_verdict`, `head_unreported`, `verdict_stale` |
+| 7 | Le trailer `Agent-Run` du head nomme un run de la tâche | `foreign_trailer` |
+| 8 | Les conditions de la classe passent : chemins, fichiers protégés, modification seule, taille, forme du diff, holdouts et oracle | Par exemple `file_protected`, `patch_too_large`, `class_mismatch`, `holdout_red` |
+| 9 | Le breaker de la classe n'a pas sauté | `class_paused` |
+| 10 | Les plafonds quotidiens global et de classe ne sont pas atteints | `auto_merge_cap` |
+| 11 | La classe est live | Sinon `shadow_would_arm`, sans merge |
+| 12 | Chaque push de la branche vient de l'App des agents | `human_commit_in_pr` |
+
+La promotion exige une borne supérieure unilatérale de **Clopper-Pearson à 95 %** sous `0,10`, calculée hors merges immatures et non concluants. Avec zéro mauvais merge, il faut **29 merges concluants** — ni PR ouvertes, ni décisions shadow seules. Règle relevée le 2026-10-28. <!-- status: V -->
+
+### Le DevX autour du gate
+
+Dans Slack, `@factory` vérifie votre brouillon sans rien générer. Le ✅ ne dépose et ne démarre que pour un utilisateur lié à un mainteneur, sur le brouillon du bot dont l'empreinte correspond. Le fil suit les états sans recopier le transcript. Chemin implémenté, preuve Slack live non publiée. <!-- status: W -->
+
+La file **needs-you** rassemble les attentes humaines. Les approbations restent **exclusivement dans la WebUI** : jamais dans Slack, `roomctl` ou par un agent. <!-- status: V -->
 
 ## 🩺 RunLore : la boucle incident, honnêtement
 
+[RunLore](/fr/post/series/observability/runlore/) analyse nos alertes. La boucle visée, conçue le **2026-10-27**, part de `system:runlore` : une tâche `investigate` propose sans écrire ; un stub public ne contient ni finding interne ni preuve ; le mainteneur applique `factory/publish` pour publier la proposition comme issue de correctif ; après relecture, un second label `factory/ready` démarre ; des webhooks signés relient le travail à l'incident ; après merge, un *soak* de 30 min aboutit à `resolved` ou `persisting`. <!-- status: W -->
+
+Le second label contrôle **la dépense** : le premier autorise la publication, le second un nouveau run. Entre les deux, le mainteneur lit ce qui devient public et ce qui va coûter. `persisting` alimente le monitoring post-merge et peut suspendre la classe, sans dépenser seul. <!-- status: W -->
+
+{{% notice warning "La boucle sans humain n'est pas démontrée" %}}
+Je n'ai pas de preuve live d'un incident semé traversant cette chaîne. **La boucle sans humain n'est donc pas démontrée** : c'est la prochaine candidate au statut de lane, pas une fonctionnalité livrée. <!-- status: X -->
+{{% /notice %}}
+
 ## 📊 Performance, coûts et monitoring
+
+Ces mesures figées portent date et échantillon ; les coûts « sans cache » sont des recalculs tarifaires, pas des seconds runs. <!-- status: V -->
+
+| Mesure | Valeur | Date | Échantillon |
+|---|---:|---|---|
+| Label → PR, run #2238 / PR #2239 | 4 min | 2026-10-07 | Une tâche et une PR |
+| Jalons de revue après le label : *request changes* / révision / approbation | +31 / +42 / +44 min | 2026-10-07 | Le même parcours unique |
+| Tokens du parcours #2238 / #2239 | 1,078 M | 2026-10-07 | Une tâche, cinq runs d'agent, total final |
+| Part des entrées lues dans le cache | 95,1 % | 2026-10-18 | Tous les appels agents de `gcp-0`, fenêtre live de 24 h |
+| Coût mesuré / coût recalculé sans cache | 10,40 $ / 41,64 $ | 2026-10-18 | La même fenêtre de 24 h |
+| Run `jcp6kl72`, coût mesuré / recalculé sans cache | 1,6487 $ / 6,39 $ | 2026-10-18 | Un run implémenteur, PR #2508 |
+| Démarrage de sandbox à chaud / à froid | 16–17 s / 1,5–3,5 min | 2026-10-17 | Dix runs à chaud en test compressé ; plage froide du pool |
+| Nœud gardé à chaud | 126 $/mois, extrapolé | 2026-10-17 | Une heure de mesure du nœud idle |
+| Acceptation sur issues difficiles : Claude / GLM-5.3 via la factory | 13/15 / 0/15 | 2026-10-14 au 2026-10-15 | Quinze issues par bras, un run par issue, un seul dépôt |
+
+Un parcours n'est pas une distribution, une fenêtre de cache n'est pas une garantie mensuelle, et le nœud à chaud reste **off par défaut**. La cohorte mono-dépôt justifie de choisir et mesurer par palier ; elle ne classe pas les modèles en général et ne valide pas un classifieur. <!-- status: V -->
+
+### Ce que nous instrumentons
+
+Les séries `agent_factory_*` couvrent phases, latence, issues, tokens, coûts, budgets et décisions du gate. La trace d'un run garde étapes et appels en métadonnées seulement : **ni prompt ni sortie**. Le transcript complet reste dans la room, sous contrôle d'accès ; les spans côté room sont incomplets. <!-- status: W -->
+
+La distribution aux lecteurs de la room expose aussi `rooms_fanout_lag_seconds`. Sa cible est un **p95 inférieur à 0,5 s**, relevée comme objectif le 2026-10-28 ; ce n'est pas un résultat mesuré publié ici. <!-- status: W -->
+
+<!-- TODO-shot: S3 — dashboard coût/cache/latence d'un run réel, avec date et identifiant ; ne pas substituer de données de fixture -->
+
+Trois caveats externes. Les attributs agent et outil d'[OpenTelemetry `gen_ai.*`](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/) restent **Development** : leurs noms peuvent bouger. [DORA 2025](https://dora.dev/research/2025/dora-report/) associe adoption de l'IA, débit en hausse et stabilité en baisse au niveau agrégé, sans valider notre factory ; [Faros](https://www.faros.ai/blog/ai-software-engineering) offre des hypothèses mono-éditeur, pas une loi. Enfin, le **coût par changement accepté** — spend total, échecs compris, divisé par les changements acceptés — n'est pas standardisé : nous le suivons sans le comparer tel quel ailleurs. <!-- status: V -->
 
 ## 💭 Dernières remarques
 
