@@ -23,7 +23,7 @@ Ce n'est pas de la modestie, c'est de la comptabilité : une lane ne passe en pr
 La question n'est donc pas *est-ce qu'un modèle sait coder*, mais : **qu'est-ce qui doit être vrai pour qu'on délègue un merge à une machine ?**
 
 {{% notice info "Mise à jour : Maku v3 en cours" %}}
-Les chiffres de cet article sont datés du **2026-10-18 au 2026-10-27** et portent leur taille d'échantillon. Le composant d'orchestration (Maku, v3) est en cours : les sections distinguent explicitement ce qui est validé, ce qui est en cours et ce qui manque. L'article sera mis à jour quand la v3 sera terminée.
+Chaque chiffre porte sa date et sa taille d'échantillon. Le composant d'orchestration (Maku, v3) est en cours : les sections distinguent explicitement ce qui est validé, ce qui est en cours et ce qui manque. L'article sera mis à jour quand la v3 sera terminée.
 {{% /notice %}}
 
 ## 🎯 Objectifs de cet article
@@ -246,9 +246,9 @@ Ces *trailers* relient le travail à son exécution, sans rien autoriser. Après
 
 <!-- TODO-shot: S2 — pied de PR avec trailers de provenance et identité du bot ; capture live ou replay daté, sans donnée de fixture -->
 
-### Ce que montre réellement le run #2238 / la PR #2239
+### Ce que montre réellement le parcours de l'issue #2238 / PR #2239
 
-Ce walkthrough du **2026-10-07** est parti d'un label, pas du chemin `roomctl` décrit ci-dessus. Il donne néanmoins un parcours mesuré, avec quatre intervalles après le label : <!-- status: V -->
+Ce parcours du **2026-10-07** est parti d'un label, pas du chemin `roomctl` décrit ci-dessus. Il donne néanmoins un parcours mesuré, avec quatre intervalles après le label : <!-- status: V -->
 
 | Jalon (UTC) | Horodatage | Depuis le label |
 |---|---:|---:|
@@ -310,7 +310,7 @@ Ces mesures figées portent date et échantillon ; les coûts « sans cache » s
 
 | Mesure | Valeur | Date | Échantillon |
 |---|---:|---|---|
-| Label → PR, run #2238 / PR #2239 | 4 min | 2026-10-07 | Une tâche et une PR |
+| Label → PR, parcours de l'issue #2238 / PR #2239 | 4 min | 2026-10-07 | Une tâche et une PR |
 | Jalons de revue après le label : *request changes* / révision / approbation | +31 / +42 / +44 min | 2026-10-07 | Le même parcours unique |
 | Tokens du parcours #2238 / #2239 | 1,078 M | 2026-10-07 | Une tâche, cinq runs d'agent, total final |
 | Part des entrées lues dans le cache | 95,1 % | 2026-10-18 | Tous les appels agents de `gcp-0`, fenêtre live de 24 h |
@@ -330,7 +330,7 @@ La distribution aux lecteurs de la room expose aussi `rooms_fanout_lag_seconds`.
 
 <!-- TODO-shot: S3 — dashboard coût/cache/latence d'un run réel, avec date et identifiant ; ne pas substituer de données de fixture -->
 
-Trois caveats externes. Les attributs agent et outil d'[OpenTelemetry `gen_ai.*`](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/) restent **Development** : leurs noms peuvent bouger. [DORA 2025](https://dora.dev/research/2025/dora-report/) associe adoption de l'IA, débit en hausse et stabilité en baisse au niveau agrégé, sans valider notre factory ; [Faros](https://www.faros.ai/blog/ai-software-engineering) offre des hypothèses mono-éditeur, pas une loi. Enfin, le **coût par changement accepté** — spend total, échecs compris, divisé par les changements acceptés — n'est pas standardisé : nous le suivons sans le comparer tel quel ailleurs. <!-- status: V -->
+Trois limites externes. Les attributs agent et outil d'[OpenTelemetry `gen_ai.*`](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/) restent **Development** : leurs noms peuvent bouger. [DORA 2025](https://dora.dev/research/2025/dora-report/) associe adoption de l'IA, débit en hausse et stabilité en baisse au niveau agrégé, sans valider notre factory ; [Faros](https://www.faros.ai/blog/ai-software-engineering) offre des hypothèses mono-éditeur, pas une loi. Enfin, le **coût par changement accepté** — dépense totale, échecs compris, divisée par les changements acceptés — n'est pas standardisé : nous le suivons sans le comparer tel quel ailleurs. <!-- status: V -->
 
 ## 💭 Dernières remarques
 
