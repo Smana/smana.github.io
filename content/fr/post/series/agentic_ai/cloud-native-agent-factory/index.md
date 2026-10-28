@@ -2,7 +2,7 @@
 author = "Smaine Kahlouch"
 title = "Agent factory cloud-native : déléguer un merge sans abandonner le contrôle"
 date = "2026-11-04"
-summary = "De gVisor à Maku, en passant par Cilium, Kueue, ZITADEL et OpenBao : anatomie d'une agent factory cloud-native, ses chiffres datés, et ce qui ne marche pas encore."
+summary = "Anatomie d'une agent factory cloud-native : identité par run, sandbox gVisor, egress Cilium, gate mesuré, coûts datés — et ce qui ne marche pas encore."
 featured = false
 draft = true
 codeMaxLines = 30
@@ -95,7 +95,7 @@ Avant de comparer des outils, il faut un vocabulaire qui ne dépende d'aucun d'e
 | **Boucle réutilisable** — l'API du harnais | Peut-on relancer la même boucle sur un deuxième dépôt, ou sur un deuxième fournisseur de modèle, sans réécrire l'intégration ? | Chaque dépôt devient un fork : l'outillage se duplique, et le coût de maintenance dépasse le temps gagné sur les runs. |
 | **Coût et observabilité par run** | Combien a coûté ce run précis, qu'a-t-il appelé, et à quel moment a-t-il dérivé ? | Une facture mensuelle agrégée et un incident anonyme. Élargir l'autonomie devient alors une opinion, pas une décision. |
 
-Le **gate de revue** n'est volontairement pas dans ce tableau. Ce n'est plus un différenciateur mais le plancher : en 2026, tous les produits comparables ouvrent une branche ou une *pull request* et attendent un humain, et un agent qui merge sans gate est un incident, pas une fonctionnalité. Ce qui reste ouvert — et ce qui décide vraiment de ce que vous pourrez déléguer — tient en quatre axes : **où se situe la frontière de confiance** (auto-hébergé, API managée, VPC dédié), **si la boucle est exposée comme une API réutilisable**, **la granularité de l'identité et de la gouvernance** (par run ou par dépôt), et **le coût et l'observabilité par run**. Ces quatre axes sont une lecture de notre relevé du paysage (octobre 2026, une dizaine de produits, documentation primaire) : aucun classement ne les mesure, ils décrivent une architecture. <!-- status: V -->
+Le **gate de revue** n'est volontairement pas dans ce tableau : dans notre relevé d'octobre 2026, les produits comparés savent ouvrir une branche ou une *pull request* et la soumettre à un contrôle humain. Ce n'est plus un différenciateur mais le plancher. Ce qui décide de ce que vous pourrez déléguer tient en quatre axes : **où se situe la frontière de confiance** (auto-hébergé, API managée, VPC dédié), **si la boucle est exposée comme une API réutilisable**, **la granularité de l'identité et de la gouvernance** (par run ou par dépôt), et **le coût et l'observabilité par run**. Cette lecture porte sur une dizaine de produits et leur documentation primaire : elle décrit une architecture, pas un classement universel. <!-- status: V -->
 
 ## ☁️ La traduction cloud-native : qui fait quoi
 
@@ -119,7 +119,7 @@ flowchart LR
   PLAT -->|"exécute et identifie"| CUS
 ```
 
-Le tableau ci-dessous donne, pour chaque composant, son rôle exact, le dépôt où il vit et ce que nous pouvons honnêtement affirmer de son état. **Validé** veut dire mesuré par un runbook daté ou par un run réel ; **implémenté, non mesuré** veut dire que le code est là et tourne, mais qu'aucune preuve chiffrée n'est publiable ; **en cours** veut dire partiel, encore en mouvement, donc susceptible de changer sous vos pieds ; **absent** veut dire non branché — et il vaut mieux le lire ici que le découvrir en production. La différence entre les deux états du milieu n'est pas cosmétique : un composant « implémenté, non mesuré » ne bouge plus guère, un composant « en cours » peut changer de contrat avant la publication.
+Le tableau associe chaque composant à son rôle, son dépôt et son état. **Validé** signifie mesuré par un runbook daté ou un run réel ; **implémenté, non mesuré**, en fonctionnement sans preuve chiffrée publiable ; **en cours**, partiel et susceptible de changer ; **absent**, non branché. La distinction évite de confondre une fonctionnalité stable mais non mesurée avec un chantier encore mouvant.
 
 | Composant | Rôle dans la factory | Dépôt | Statut |
 |---|---|---|---|
@@ -141,16 +141,16 @@ Le tableau ci-dessous donne, pour chaque composant, son rôle exact, le dépôt 
 | **WebUI** | Carte d'approbation, file « needs-you », pilotage de la room | agent-platform-maku | validé <!-- status: V --> |
 | **RunLore** | La boucle incident agent-à-agent : alerte → investigation → correctif proposé | ai-native-ref | en cours <!-- status: W --> |
 
-Un mot sur les noms, parce qu'ils changent et que la documentation technique, elle, ne change pas encore. **Maku** est le nom produit retenu le **2026-10-27** ; tout le reste — module, binaires, images, CRD, API — reste `agent-platform` et `agent-factory` jusqu'à ce que le renommage soit fait. Quand vous lirez `agent-factory` dans un manifeste, c'est Maku. Et surtout : **Maku n'est pas la factory**, c'est le composant d'orchestration et de journal, celui de la troisième couche ; le harnais, la sandbox, l'identité et l'egress appartiennent à la plateforme, et le cluster à personne d'autre qu'au socle. Cette confusion est de loin la plus facile à commettre en lisant notre dépôt, parce que c'est celui qui porte le plus de vocabulaire produit. <!-- status: V -->
+**Maku** est le nom produit retenu le **2026-10-27** ; module, binaires, images, CRD et API restent `agent-platform` et `agent-factory` jusqu'au renommage. Surtout, **Maku n'est pas la factory** : il assure l'orchestration et le journal dans la troisième couche. Le harnais, la sandbox, l'identité et l'egress appartiennent à la plateforme, le cluster au socle. <!-- status: V -->
 
 ### Maku : ce que fait le composant sur mesure
 
-Trois choses, et c'est tout. D'abord la **room** : un journal **append-only** par tâche, avec un `seq` sans trou par room, une clé d'idempotence par événement (`room_id`, client, numéro d'origine) et un **sceau** — une room scellée refuse tout ajout, y compris au niveau de la base, et ne se rouvre pas. Ensuite `roomctl`, le client terminal : il regarde, poste, met en file et forke, mais il ne pilote pas et **n'approuve jamais**. Enfin le **merge gate** : un ordre fixe de contrôles, du scan de secrets à l'identité de l'auteur, où chaque refus part vers un humain et où la dernière ligne n'est lue que si toutes les autres laisseraient merger. Le détail du gate est en section suivante ; retenez pour l'instant que c'est du code, pas une politique dans un wiki. <!-- status: V -->
+Le composant fait trois choses. La **room** est un journal **append-only** par tâche : `seq` sans trou, clé d'idempotence par événement (`room_id`, client, numéro d'origine) et **sceau** définitif, qui refuse tout ajout jusqu'au niveau de la base. `roomctl` regarde, poste, met en file et forke, mais ne pilote ni **n'approuve jamais**. Enfin, le **merge gate** applique un ordre fixe de contrôles, du scan de secrets à l'identité de l'auteur, et renvoie chaque refus vers un humain : c'est du code, pas une politique dans un wiki. <!-- status: V -->
 
 Ce que le composant ne fait pas est aussi important. **Aucun classifieur n'est déployé** : quand l'URL du classifieur n'est pas configurée, aucun appel n'a lieu et chaque tâche prend le palier statique `standard` ; les paliers, les plafonds et les gabarits sont réels, le tri intelligent ne l'est pas <!-- status: X -->. Le modèle logique demandé reste `agent-default`. Les **budgets** par run et par tâche, en dollars, sont appliqués ; le budget par personne compte en shadow (`budget-principal-shadow`) et ne refuse qu'une fois l'option d'application activée ; le budget de flotte met le run en attente plutôt que de le refuser. <!-- status: W --> Le **scoper** (qui découpe ou questionne une issue), le **split** et le **tester** existent dans la documentation et les runbooks de preuve, avec leurs interrupteurs éteints : aucune preuve live publiée <!-- status: X -->. Le **compte machine sponsorisé** — un compte machine ZITADEL qu'un mainteneur parraine pour ouvrir du travail à sa place, avec son propre budget en dollars — est lui aussi éteint par défaut : sans entrée `api.sponsored`, la route `POST /v1/tasks` répond `404` et aucun principal machine ne crée de tâche. Le chemin est écrit et testé en runbook, pas encore prouvé live. <!-- status: W -->
 
 {{% notice warning "Ce qui n'est pas branché" %}}
-Trois absences à garder en tête avant de nous comparer à un produit fini : **aucun classifieur de complexité** n'est déployé (modèle statique `agent-default`, paliers et plafonds seulement) <!-- status: X --> ; les **budgets par personne et par flotte** ne refusent pas encore — ils comptent, ou mettent en attente <!-- status: W --> ; **`scoper`, `split` et `tester`** sont documentés et outillés mais sans preuve live <!-- status: X -->. Les deux lanes réellement autonomes, et le reste en shadow, sont décrits plus loin avec leurs dates.
+Quatre limites avant de nous comparer à un produit fini : **aucun classifieur de complexité** n'est déployé <!-- status: X --> ; les **budgets par personne et par flotte** comptent ou mettent en attente, sans refuser <!-- status: W --> ; **`scoper`, `split` et `tester`** n'ont pas de preuve live <!-- status: X --> ; le **compte machine sponsorisé**, éteint par défaut, reste lui aussi sans preuve live <!-- status: W -->. Les deux lanes autonomes et le reste en shadow sont détaillés plus loin.
 {{% /notice %}}
 
 ## 🔐 Sécurité de bout en bout : une identité par run
@@ -211,7 +211,7 @@ flowchart TB
   GT --> MG
 ```
 
-La première frontière est celle du cluster : le code des agents ne peut pas créer de run, un humain ou la boucle de mesure le fait, et l'admission passe par une file plafonnée. La deuxième est la sandbox : egress refusé par défaut, liste d'autorisation par nom de domaine, et le refus a lieu **à la résolution de nom**, pas seulement au niveau TCP — sur le round 7 de nos runbooks, le 2026-09-30 sur `gcp-0`, un nom non autorisé ne résolvait pas du tout, ce que Hubble confirme côté proxy DNS. La troisième est le dépôt distant : ce qui y entre est une branche poussée par une application, avec un diff et un verdict attachés à un run identifiable. <!-- status: V -->
+Le code des agents ne peut pas créer de run : un humain ou la boucle de mesure le fait, via une file plafonnée. Dans la sandbox, l'egress est refusé par défaut **à la résolution de nom**, pas seulement au niveau TCP — lors du round 7 de nos runbooks, le 2026-09-30 sur `gcp-0`, Hubble a confirmé qu'un nom non autorisé ne résolvait pas. Sur le dépôt distant, l'application pousse une branche dont le diff et le verdict restent attachés à un run identifiable. <!-- status: V -->
 
 L'isolation est un **spectre**, pas un label. Un conteneur ordinaire partage le noyau du nœud : bon marché, compatible, et une seule évasion d'appel système suffit. gVisor intercale un noyau utilisateur qui intercepte ces appels : la surface d'attaque se réduit au *Sentry* de gVisor, au prix de la compatibilité et d'un surcoût. Un **microVM** (Firecracker) repousse la frontière au niveau matériel ; ses auteurs annoncent un démarrage sous 125 ms pour moins de 5 Mio de surcoût — des annonces de projet, pas une mesure indépendante. Nous avons choisi gVisor parce qu'il est disponible sur les deux clouds que nous visons et que la primitive `agent-sandbox` standardise le pod ; le prix est réel : sous gVisor le profil seccomp `RuntimeDefault` n'est pas appliqué (`Seccomp: 0` dans le pod), et c'est le *Sentry* qui tient la frontière. Qui prétend que gVisor est « plus sûr » que Firecracker sans dire ce qu'il abandonne n'a pas regardé le compromis. <!-- status: V -->
 
@@ -282,7 +282,7 @@ Gate relu dans `docs/factory.md` le **2026-10-28** : `1`, `2a`, `2`, puis `3` à
 | 7 | Le trailer `Agent-Run` du head nomme un run de la tâche | `foreign_trailer` |
 | 8 | Les conditions de la classe passent : chemins, fichiers protégés, modification seule, taille, forme du diff, holdouts et oracle | Par exemple `file_protected`, `patch_too_large`, `class_mismatch`, `holdout_red` |
 | 9 | Le breaker de la classe n'a pas sauté | `class_paused` |
-| 10 | Les plafonds quotidiens global et de classe ne sont pas atteints | `auto_merge_cap` |
+| 10 | Les plafonds quotidiens global et de classe, ainsi que le plafond par requête, ne sont pas atteints | `auto_merge_cap` |
 | 11 | La classe est live | Sinon `shadow_would_arm`, sans merge |
 | 12 | Chaque push de la branche vient de l'App des agents | `human_commit_in_pr` |
 
@@ -296,7 +296,7 @@ La file **needs-you** rassemble les attentes humaines. Les approbations restent 
 
 ## 🩺 RunLore : la boucle incident, honnêtement
 
-[RunLore](/fr/post/series/observability/runlore/) analyse nos alertes. La boucle visée, conçue le **2026-10-27**, part de `system:runlore` : une tâche `investigate` propose sans écrire ; un stub public ne contient ni finding interne ni preuve ; le mainteneur applique `factory/publish` pour publier la proposition comme issue de correctif ; après relecture, un second label `factory/ready` démarre ; des webhooks signés relient le travail à l'incident ; après merge, un *soak* de 30 min aboutit à `resolved` ou `persisting`. <!-- status: W -->
+RunLore analyse nos alertes. La boucle visée, conçue le **2026-10-27**, part de `system:runlore` : une tâche `investigate` propose sans écrire ; un stub public ne contient ni finding interne ni preuve ; le mainteneur applique `factory/publish` pour publier la proposition comme issue de correctif ; après relecture, un second label `factory/ready` démarre ; des webhooks signés relient le travail à l'incident ; après merge, un *soak* de 30 min aboutit à `resolved` ou `persisting`. <!-- status: W -->
 
 Le second label contrôle **la dépense** : le premier autorise la publication, le second un nouveau run. Entre les deux, le mainteneur lit ce qui devient public et ce qui va coûter. `persisting` alimente le monitoring post-merge et peut suspendre la classe, sans dépenser seul. <!-- status: W -->
 
@@ -334,4 +334,63 @@ Trois limites externes. Les attributs agent et outil d'[OpenTelemetry `gen_ai.*`
 
 ## 💭 Dernières remarques
 
+Je ne rangerais plus l'autonomie parmi les fonctionnalités d'un produit. C'est un **privilège calibré par lane**, réversible et borné par la classe de changement. Une correction de liens et une mise à jour de dépendances ne présentent ni le même risque ni la même preuve ; elles ne méritent donc pas le même droit de merger. Le modèle peut rester identique : ce qui change, c'est le nombre de résultats concluants, la sévérité du gate et la capacité à revenir en arrière. Cette règle évite de transformer quelques démos réussies en prétention d'autonomie générale.
+
+Le point dur n'a pas été le modèle. Le remplacer tient dans une configuration ; faire en sorte qu'un run agisse sous une identité courte, sans secret durable ni sortie réseau implicite, et laisse une preuve consultable touche toute la plateforme. Le modèle produit un diff, mais la factory doit pouvoir dire **qui a agi, avec quels droits et jusqu'où**, sans croire le récit de l'agent. L'identité et l'egress ont donc davantage structuré nos choix que le classement du moment.
+
+Le prochain investissement le moins rentable serait, à mes yeux, le classifieur de complexité. Notre petit échantillon mono-dépôt aide à choisir un modèle par palier ; il ne démontre pas qu'un routeur saura généraliser cette décision. Un second dépôt éprouverait au contraire la portabilité de la factory, de son ownership fence et de ses preuves. Une démonstration RunLore de bout en bout testerait une nouvelle lane et la dépense qu'elle autorise. Avant d'automatiser davantage de décisions, je préfère élargir ce que nous savons vérifier.
+
+La comparaison avec Copilot, Codex, Devin ou OpenHands reste asymétrique. Ils gagnent sur le clé-en-main, l'intégration à leurs surfaces de travail et le temps nécessaire pour obtenir une première PR ; notre assemblage demande un cluster, plusieurs composants et une exploitation réelle. En revanche, nous possédons ici la **frontière de confiance** et la **piste d'audit** : nous pouvons changer une règle d'egress, relier un verdict à un run et conserver le journal sans dépendre d'un service externe. Ce n'est pas une victoire universelle, mais un arbitrage entre adoption immédiate et contrôle du socle.
+
+Maku v3, qui n'est que le composant d'orchestration de cette factory, est encore en cours. Je mettrai cet article à jour lorsque son état et les preuves changeront, en conservant la date et l'échantillon de chaque mesure. L'objectif n'est pas d'annoncer une usine vide d'humains : c'est de savoir précisément quelle lane peut merger sans intervention humaine, pourquoi, et comment lui retirer ce privilège.
+
 ## 📚 Références
+
+### Dépôts et démonstration
+
+* [Maku / agent-platform — orchestration, rooms et merge gate](https://github.com/Smana/agent-platform)
+* [ai-native-ref — plateforme IA déployable](https://github.com/Smana/ai-native-ref)
+* [cloud-native-ref — cluster hôte de référence](https://github.com/Smana/cloud-native-ref)
+* [Replay public de la démonstration Maku](https://blog.ogenki.io/agent-platform/)
+* [RunLore — transformer les alertes en boucle d'apprentissage](/fr/post/series/observability/runlore/)
+* [Agentic Coding — concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/)
+
+### Standards et identité
+
+* [NIST NCCoE — identité et autorisation des agents logiciels et IA](https://www.nccoe.nist.gov/projects/software-and-ai-agent-identity-and-authorization)
+* [IETF — jetons de transaction, brouillon -11](https://datatracker.ietf.org/doc/draft-ietf-oauth-transaction-tokens/)
+* [OpenTelemetry — attributs sémantiques `gen_ai`](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
+* [gVisor — documentation de l'isolation des conteneurs](https://gvisor.dev/docs/)
+* [Firecracker — documentation des microVM](https://firecracker-microvm.github.io/)
+* [Kubernetes agent-sandbox — guide de la primitive Sandbox](https://agent-sandbox.sigs.k8s.io/docs/guides/)
+
+### Documentation produit
+
+* [GitHub — fonctionnement de l'agent cloud Copilot](https://docs.github.com/copilot/concepts/agents/cloud-agent/about-cloud-agent)
+* [GitHub — configuration de l'accès Internet de l'agent Copilot](https://github.blog/changelog/2025-07-15-configure-internet-access-for-copilot-coding-agent)
+* [OpenAI — présentation de l'Agents API](https://openai.com/index/introducing-the-agents-api)
+* [Cognition — architecture et usages de Devin 2](https://cognition.com/blog/devin-2)
+* [OpenHands — agents de codage open source](https://www.openhands.dev/blog/open-source-ai-coding-agents)
+* [Anthropic — confinement de Claude et limites de la sandbox](https://www.anthropic.com/research/how-we-contain-claude)
+* [Anthropic — fonctionnement du sandboxing de Claude Code](https://www.anthropic.com/engineering/claude-code-sandboxing)
+
+### Analyse indépendante
+
+* [METR — essai contrôlé de 2025 auprès de développeurs open source expérimentés](https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study)
+* [METR — mise à jour 2026 de l'estimation des gains de productivité](https://metr.org/blog/2026-02-24-uplift-update)
+* [DORA — rapport 2025 sur l'IA et la livraison logicielle](https://dora.dev/research/2025/dora-report/)
+* [Faros — analyse de l'IA dans l'ingénierie logicielle](https://www.faros.ai/blog/ai-software-engineering)
+* [Vals AI — comparaison qualité, coût et durée sur SWE-bench](https://www.vals.ai/benchmarks/swebench)
+* [Artificial Analysis — comparaison indépendante des agents de codage](https://artificialanalysis.ai/agents/coding-agents)
+* [Hao Wang — limites et manipulations des benchmarks d'agents](https://moogician.github.io/blog/2026/trustworthy-benchmarks-cont)
+* [Cloud Security Alliance — injection de prompt et confused deputy](https://labs.cloudsecurityalliance.org/research/csa-research-note-ai-agent-confused-deputy-prompt-injection/)
+* [BeyondTrust — prise de contrôle de Copilot par injection cachée](https://www.beyondtrust.com/blog/entry/github-copilot-hidden-prompt-injection-agent-takeover)
+
+### Essais praticiens
+
+* [Addy Osmani — anatomie d'une usine logicielle](https://addyosmani.com/blog/software-factories)
+* [Dan Shapiro — les cinq niveaux vers la software factory](https://www.danshapiro.com/blog/2026/01/the-five-levels-from-spicy-autocomplete-to-the-software-factory/)
+* [Simon Willison — la trifecta létale des agents](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/)
+* [Simon Willison — examen de la factory StrongDM](https://simonwillison.net/2026/Feb/7/software-factory/)
+* [Dex Horthy — retour sur une usine automatisée, vidéo publiée le 30 juin 2026](https://youtu.be/htM02KMNZnk?t=27219)
+* [StrongDM — présentation de sa software factory](https://factory.strongdm.ai)
