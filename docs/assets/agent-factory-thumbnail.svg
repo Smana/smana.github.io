@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="1200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#002538"/>
+      <stop offset="0.55" stop-color="#002B41"/>
+      <stop offset="1" stop-color="#001C2B"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#083A52"/>
+      <stop offset="1" stop-color="#062E42"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#E8A33D"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3FB0E8"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="url(#bg)"/>
+
+  <!-- header -->
+  <text x="96" y="150" font-family="Noto Sans" font-size="26" font-weight="500" letter-spacing="5" fill="#3FB0E8">AGENTIC AI</text>
+  <text x="96" y="248" font-family="Noto Sans" font-size="72" font-weight="700" fill="#F2F7FA">Agent factory cloud-native</text>
+  <text x="96" y="308" font-family="Noto Sans" font-size="38" font-weight="400" fill="#8FB6CC">Déléguer un merge sans abandonner le contrôle</text>
+
+  <!-- human outer loop band -->
+  <rect x="96" y="372" width="1408" height="104" rx="16" fill="none" stroke="#E8A33D" stroke-opacity="0.75" stroke-width="3" stroke-dasharray="16 12"/>
+  <text x="140" y="437" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F4C77E">Humain : spec &amp; merge</text>
+  <text x="1464" y="434" text-anchor="end" font-family="DejaVu Sans Mono" font-size="27" fill="#A98452">boucle extérieure</text>
+
+  <!-- return path: provenance back up to the human band -->
+  <path d="M 1420 1076 L 1420 494" fill="none" stroke="#E8A33D" stroke-opacity="0.85" stroke-width="3"
+        stroke-dasharray="12 10" marker-end="url(#arrow)"/>
+
+  <!-- vertical capability rail -->
+  <line x1="168" y1="520" x2="168" y2="1056" stroke="#3FB0E8" stroke-opacity="0.35" stroke-width="3"/>
+
+  <!-- 01 queue -->
+  <rect x="216" y="496" width="1188" height="128" rx="18" fill="url(#card)" stroke="#0F4E6B" stroke-width="2"/>
+  <circle cx="168" cy="560" r="11" fill="#3FB0E8"/>
+  <text x="256" y="550" font-family="DejaVu Sans Mono" font-size="26" fill="#5FA8C9">01</text>
+  <text x="316" y="556" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F2F7FA">File &amp; priorité</text>
+  <text x="316" y="598" font-family="DejaVu Sans Mono" font-size="25" fill="#8FB6CC">intake · label · budget par run</text>
+
+  <!-- 02 run -->
+  <rect x="216" y="648" width="1188" height="128" rx="18" fill="url(#card)" stroke="#0F4E6B" stroke-width="2"/>
+  <circle cx="168" cy="712" r="11" fill="#3FB0E8"/>
+  <text x="256" y="702" font-family="DejaVu Sans Mono" font-size="26" fill="#5FA8C9">02</text>
+  <text x="316" y="708" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F2F7FA">Run isolé</text>
+  <text x="316" y="750" font-family="DejaVu Sans Mono" font-size="25" fill="#8FB6CC">sandbox · identité par run · egress deny</text>
+
+  <!-- 03 gate -->
+  <rect x="216" y="800" width="1188" height="128" rx="18" fill="url(#card)" stroke="#0F4E6B" stroke-width="2"/>
+  <circle cx="168" cy="864" r="11" fill="#3FB0E8"/>
+  <text x="256" y="854" font-family="DejaVu Sans Mono" font-size="26" fill="#5FA8C9">03</text>
+  <text x="316" y="860" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F2F7FA">Revue &amp; gate ordonné</text>
+  <text x="316" y="902" font-family="DejaVu Sans Mono" font-size="25" fill="#8FB6CC">12 lignes · humain décide</text>
+
+  <!-- 04 provenance -->
+  <rect x="216" y="952" width="1188" height="128" rx="18" fill="url(#card)" stroke="#0F4E6B" stroke-width="2"/>
+  <circle cx="168" cy="1016" r="11" fill="#3FB0E8"/>
+  <text x="256" y="1006" font-family="DejaVu Sans Mono" font-size="26" fill="#5FA8C9">04</text>
+  <text x="316" y="1012" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F2F7FA">Provenance</text>
+  <text x="316" y="1054" font-family="DejaVu Sans Mono" font-size="25" fill="#8FB6CC">PR signée · journal de room</text>
+
+  <!-- flow arrows between capabilities -->
+  <g stroke="#3FB0E8" stroke-width="3" opacity="0.85">
+    <path d="M 810 624 L 810 642" marker-end="url(#arrowBlue)"/>
+    <path d="M 810 776 L 810 794" marker-end="url(#arrowBlue)"/>
+    <path d="M 810 928 L 810 946" marker-end="url(#arrowBlue)"/>
+  </g>
+
+  <!-- footer claim -->
+  <text x="96" y="1136" font-family="DejaVu Sans Mono" font-size="26" fill="#6E9AB0">deux lanes seules · le reste en shadow · chiffres datés</text>
+</svg>
