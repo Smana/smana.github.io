@@ -47,7 +47,7 @@ Trois mots reviennent dans toutes les conversations sur le sujet, et ils ne dés
 flowchart LR
   Boucle["Boucle (agent)"] --> Harnais["Harnais (sandbox + outils)"]
   Harnais --> Usine["Usine (file + gate + provenance)"]
-  Usine --> Humain["Humain : spec & merge"]
+  Usine --> Humain["Humain : spec & responsabilité"]
   Humain --> Boucle
 ```
 
@@ -84,7 +84,7 @@ Notre sujet est la colonne de droite : un système où des agents prennent une p
 
 ## 🧱 Six capacités, indépendantes de la techno
 
-Avant de comparer des outils, il faut un vocabulaire qui ne dépende d'aucun d'eux. Une agent factory répond à six questions, et elles se posent de la même façon que vous louiez un service ou que vous montiez le vôtre. Ce filtre est utile dans les deux sens : un composant qui ne répond à aucune des six n'appartient pas à la factory — c'est un éditeur de code, un chatbot ou un script — et une capacité que personne ne nomme est presque toujours celle qui manquera au premier incident. <!-- status: V -->
+Avant de comparer des outils, il faut un vocabulaire qui ne dépende d'aucun d'eux. Une agent factory répond à six questions, que vous louiez un service ou montiez le vôtre. Ce filtre est utile dans les deux sens : un composant qui ne répond à aucune des six n'appartient pas à la factory — c'est un éditeur de code, un chatbot ou un script — et une capacité que personne ne nomme est presque toujours celle qui manquera au premier incident. <!-- status: V -->
 
 | Capacité | Question à laquelle elle répond | Ce qui casse sans elle |
 |---|---|---|
@@ -92,10 +92,10 @@ Avant de comparer des outils, il faut un vocabulaire qui ne dépende d'aucun d'e
 | **Isolation** — où le code s'exécute | Sur quoi l'agent a-t-il réellement les mains, et qu'est-ce qui l'empêche d'en sortir ? | Un contenu piégé lit les identifiants de l'hôte et les runs voisins. La sandbox n'est pas un confort de développement, c'est le seul endroit où l'on accepte d'exécuter du code non relu. |
 | **Identité** — qui agit, avec quel jeton | Qui a poussé ce commit, sur quel dépôt, et comment révoque-t-on ce droit en trente secondes ? | Tout se fait sous votre compte personnel : l'audit ne distingue plus l'agent de vous, et un incident ne se révoque qu'en changeant votre mot de passe. |
 | **Egress et gouvernance** — ce que l'agent peut joindre | Quelles destinations sortent, pour quelle classe de données, et qui le décide ailleurs que dans le prompt ? | Le canal de sortie devient le canal d'exfiltration, et la politique de données se résume à ce que le modèle a bien voulu respecter. |
-| **Boucle réutilisable** — l'API du harnais | Peut-on relancer la même boucle sur un deuxième dépôt, ou sur un deuxième fournisseur de modèle, sans réécrire l'intégration ? | Chaque dépôt devient un fork : l'outillage se duplique, et le coût de maintenance dépasse le temps gagné sur les runs. |
+| **Boucle réutilisable** — l'API (interface de programmation) du harnais | Peut-on relancer la même boucle sur un deuxième dépôt, ou sur un deuxième fournisseur de modèle, sans réécrire l'intégration ? | Chaque dépôt devient un fork : l'outillage se duplique, et le coût de maintenance dépasse le temps gagné sur les runs. |
 | **Coût et observabilité par run** | Combien a coûté ce run précis, qu'a-t-il appelé, et à quel moment a-t-il dérivé ? | Une facture mensuelle agrégée et un incident anonyme. Élargir l'autonomie devient alors une opinion, pas une décision. |
 
-Le **gate de revue** n'est volontairement pas dans ce tableau : dans notre relevé d'octobre 2026, les produits comparés savent ouvrir une branche ou une *pull request* et la soumettre à un contrôle humain. Ce n'est plus un différenciateur mais le plancher. Ce qui décide de ce que vous pourrez déléguer tient en quatre axes : **où se situe la frontière de confiance** (auto-hébergé, API managée, VPC dédié), **si la boucle est exposée comme une API réutilisable**, **la granularité de l'identité et de la gouvernance** (par run ou par dépôt), et **le coût et l'observabilité par run**. Cette lecture porte sur une dizaine de produits et leur documentation primaire : elle décrit une architecture, pas un classement universel. <!-- status: V -->
+Le **gate de revue** n'est volontairement pas dans ce tableau : dans notre relevé d'octobre 2026, les produits comparés savent ouvrir une branche ou une *pull request* et la soumettre à un contrôle humain. Ce n'est plus un différenciateur mais le plancher. Ce qui décide de ce que vous pourrez déléguer tient en quatre axes : **où se situe la frontière de confiance** (auto-hébergé, API managée, VPC ou réseau privé virtuel dédié), **si la boucle est exposée comme une API réutilisable**, **la granularité de l'identité et de la gouvernance** (par run ou par dépôt), et **le coût et l'observabilité par run**. Cette lecture porte sur une dizaine de produits et leur documentation primaire : elle décrit une architecture, pas un classement universel. <!-- status: V -->
 
 ## ☁️ La traduction cloud-native : qui fait quoi
 
@@ -105,7 +105,7 @@ Ces six capacités, il faut les loger quelque part. Chez nous, elles se réparti
 flowchart LR
   subgraph HOST["Cluster hôte (cloud-native-ref)"]
     direction TB
-    XP["Crossplane"] ~~~ CIL["Cilium"] ~~~ GWA["Gateway API"]
+    XP["Crossplane"] ~~~ CIL["Cilium"] ~~~ GWA["Gateway API (API de passerelle)"]
   end
   subgraph PLAT["Plateforme IA (ai-native-ref)"]
     direction TB
@@ -124,17 +124,17 @@ Le tableau associe chaque composant à son rôle, son dépôt et son état. **Va
 | Composant | Rôle dans la factory | Dépôt | Statut |
 |---|---|---|---|
 | **Crossplane** | Compose l'`AgentRun` et crée la sandbox à partir d'une réclamation, sans intervention humaine | cloud-native-ref | validé <!-- status: V --> |
-| **Cilium** | Maille et **egress** : refus par défaut, liste d'autorisation par nom de domaine, refus au niveau DNS | cloud-native-ref | validé <!-- status: V --> |
+| **Cilium** | Maille et **egress** : refus par défaut, liste d'autorisation par nom de domaine, refus au niveau DNS (résolution de noms) | cloud-native-ref | validé <!-- status: V --> |
 | **Gateway API** | Expose les interfaces internes (UI des rooms, agents) derrière la Tailscale Gateway | cloud-native-ref | validé <!-- status: V --> |
 | **gVisor** | Intercepte les appels système du pod de run ; pool de nœuds dédié `agents-gvisor` | ai-native-ref | validé <!-- status: V --> |
 | **agent-sandbox** | La primitive Kubernetes du pod de run : `Sandbox`, gabarit, réclamation | ai-native-ref | validé <!-- status: V --> |
-| **agent-router / Agent Gateway** | Seul chemin du sandbox vers les modèles, les outils MCP et GitHub ; valide le jeton et injecte les identifiants fournisseur | ai-native-ref | validé <!-- status: V --> |
+| **agent-router / Agent Gateway** | Seul chemin du sandbox vers les modèles, les outils MCP (protocole de contexte des modèles) et GitHub ; valide le jeton et injecte les identifiants fournisseur | ai-native-ref | validé <!-- status: V --> |
 | **OpenHands** (`agent-server`, uid 10001) | Le harnais : boucle d'agent, terminal, `git`, ouverture de la PR | ai-native-ref | validé <!-- status: V --> |
-| **ZITADEL** | Fournisseur d'identité des humains : OIDC, rôles de projet, groupes | ai-native-ref | validé <!-- status: V --> |
+| **ZITADEL** | Fournisseur d'identité des humains : OIDC (*OpenID Connect*), rôles de projet, groupes | ai-native-ref | validé <!-- status: V --> |
 | **OpenBao** | Coffre des secrets ; un rôle par usage, un store restreint par namespace | ai-native-ref | validé <!-- status: V --> |
 | **octo-sts** | Échange le jeton du run contre un jeton GitHub court, borné à un dépôt et à un rôle | ai-native-ref | validé <!-- status: V --> |
 | **Kueue** | Admet les sandboxes dans des files plafonnées (factory / interactif) | ai-native-ref | implémenté, non mesuré <!-- status: I --> |
-| **Factory** (`agent-factory`, CRD `Task`) | Prend une issue étiquetée, crée la room, lance les runs, mesure, narre sur l'issue | agent-platform-maku | validé <!-- status: V --> |
+| **Factory** (`agent-factory`, CRD ou définition de ressource personnalisée `Task`) | Prend une issue étiquetée, crée la room, lance les runs, mesure, narre sur l'issue | agent-platform-maku | validé <!-- status: V --> |
 | **room-broker** (CRD `Room`) | Le journal de référence : il authentifie chaque écrivain, caviarde, séquence et scelle | agent-platform-maku | validé <!-- status: V --> |
 | **`roomctl`** | Le client terminal des humains : regarder, poster, mettre en file, forker | agent-platform-maku | validé <!-- status: V --> |
 | **Merge gate** | Lit la PR dans l'ordre, ligne par ligne, et ne merge que ce que la classe autorise | agent-platform-maku | validé <!-- status: V --> |
@@ -147,7 +147,7 @@ Le tableau associe chaque composant à son rôle, son dépôt et son état. **Va
 
 Le composant fait trois choses. La **room** est un journal **append-only** par tâche : `seq` sans trou, clé d'idempotence par événement (`room_id`, client, numéro d'origine) et **sceau** définitif, qui refuse tout ajout jusqu'au niveau de la base. `roomctl` regarde, poste, met en file et forke, mais ne pilote pas et **n'approuve jamais**. Enfin, le **merge gate** applique un ordre fixe de contrôles, du scan de secrets à l'identité de l'auteur, et renvoie chaque refus vers un humain : c'est du code, pas une politique dans un wiki. <!-- status: V -->
 
-Ce que le composant ne fait pas est aussi important. **Aucun classifieur n'est déployé** : quand l'URL du classifieur n'est pas configurée, aucun appel n'a lieu et chaque tâche prend le palier statique `standard` ; les paliers, les plafonds et les gabarits sont réels, le tri intelligent ne l'est pas <!-- status: X -->. Le modèle logique demandé reste `agent-default`. Les **budgets** par run et par tâche, en dollars, sont appliqués ; le budget par personne compte en shadow (`budget-principal-shadow`) et ne refuse qu'une fois l'option d'application activée ; le budget de flotte met le run en attente plutôt que de le refuser. <!-- status: W --> Le **scoper** (qui découpe ou questionne une issue), le **split** et le **tester** existent dans la documentation et les runbooks de preuve, avec leurs interrupteurs éteints : aucune preuve live publiée <!-- status: X -->. Le **compte machine sponsorisé** — un compte machine ZITADEL qu'un mainteneur parraine pour ouvrir du travail à sa place, avec son propre budget en dollars — est lui aussi éteint par défaut : sans entrée `api.sponsored`, la route `POST /v1/tasks` répond `404` et aucun principal machine ne crée de tâche. Le chemin est écrit et testé en runbook, pas encore prouvé live. <!-- status: W -->
+Ce que le composant ne fait pas est aussi important. **Aucun classifieur n'est déployé** : quand l'URL du classifieur n'est pas configurée, aucun appel n'a lieu et chaque tâche prend le palier statique `standard` ; les paliers, les plafonds et les gabarits sont réels, le tri intelligent ne l'est pas <!-- status: X -->. Le modèle logique demandé reste `agent-default`. Les **budgets** par requête, par run et par tâche, en dollars, sont appliqués ; le budget par personne compte en shadow (`budget-principal-shadow`) et ne refuse qu'une fois l'option d'application activée ; le budget de flotte met le run en attente plutôt que de le refuser. <!-- status: W --> Le **scoper** (qui découpe ou questionne une issue), le **split** et le **tester** existent dans la documentation et les runbooks de preuve, avec leurs interrupteurs éteints : aucune preuve live publiée <!-- status: X -->. Le **compte machine sponsorisé** — un compte machine ZITADEL qu'un mainteneur parraine pour ouvrir du travail à sa place, avec son propre budget en dollars — est lui aussi éteint par défaut : sans entrée `api.sponsored`, la route `POST /v1/tasks` répond `404` et aucun principal machine ne crée de tâche. Le chemin est écrit et testé en runbook, pas encore prouvé live. <!-- status: W -->
 
 {{% notice warning "Ce qui n'est pas branché" %}}
 Quatre limites avant de nous comparer à un produit fini : **aucun classifieur de complexité** n'est déployé <!-- status: X --> ; les **budgets par personne et par flotte** comptent ou mettent en attente, sans refuser <!-- status: W --> ; **`scoper`, `split` et `tester`** n'ont pas de preuve live <!-- status: X --> ; le **compte machine sponsorisé**, éteint par défaut, reste lui aussi sans preuve live <!-- status: W -->. Les deux lanes autonomes et le reste en shadow sont détaillés plus loin.
@@ -160,23 +160,23 @@ La question de sécurité d'une factory tient en une phrase : **qui agit, sous q
 ```mermaid
 sequenceDiagram
   autonumber
-  participant H as Humain (sujet ZITADEL)
-  participant C as roomctl
-  participant R as Gate / room
+  participant H as Humain (formulaire de démarrage)
+  participant F as agent-factory
+  participant X as Composition / kubelet
+  participant P as room-bridge
   participant B as room-broker
-  participant T as Jeton SA · aud. room-broker · 600 s
+  participant I as Harnais / identity-proxy
   participant O as octo-sts
   participant GH as GitHub
-  H->>C: je démarre le run (formulaire humain)
-  C->>R: demande de démarrage
-  R->>B: crée la room et le run
-  B->>T: projette le jeton du run, 600 s
-  T->>B: le broker dérive l'identité du jeton, jamais d'un en-tête
-  B-->>T: run vivant et propriétaire de la room, sinon refus
-  T->>O: échange, via agent-router uniquement
-  O-->>T: jeton GitHub ≤ 1 h, 1 dépôt, 1 rôle
-  T->>GH: push de la branche du run (agent/…)
-  B->>GH: fin de run, jeton révoqué
+  H->>F: démarre le run
+  F->>B: crée la Room Kubernetes
+  F->>X: crée l'AgentRun avec roomRef
+  X->>P: projette le jeton de compte de service · aud. room-broker · 600 s
+  P->>B: appelle le broker avec ce jeton
+  B-->>P: agent:<runId> vérifié, run vivant et room autorisée
+  I->>O: demande un accès GitHub pour ce run
+  O-->>I: jeton ≤ 1 h · 1 dépôt · 1 rôle
+  I->>GH: pousse la branche du run (agent/…)
 ```
 
 Le jeton du run est un jeton de compte de service projeté, d'audience `room-broker`, valable 600 secondes, monté **uniquement** dans le conteneur du pont de room : le harnais lui-même ne le voit jamais. Le broker ne fait pas confiance à l'en-tête qui prétend désigner l'agent ; il dérive le principal du jeton vérifié hors ligne, puis exige que le run existe encore et nomme bien cette room. Côté GitHub, `octo-sts` échange ce jeton contre un accès de **une heure au plus**, limité à **un dépôt et un rôle** — un implémenteur pousse sa branche `agent/**`, un reviewer ne pousse pas du tout —, et le droit disparaît avec le run. L'application des agents ne merge jamais : seule l'application de merge du factory en a la clé, et une seule charge de travail la monte. <!-- status: V -->
@@ -193,7 +193,7 @@ flowchart TB
   end
   subgraph SBX["Frontière 2 · sandbox gVisor"]
     HI["harnais implémenteur"]
-    EG["egress Cilium : FQDN default-deny"]
+    EG["egress Cilium : FQDN (nom de domaine complet) refusé par défaut"]
     HR["harnais reviewer"]
   end
   subgraph REM["Frontière 3 · dépôt distant (GitHub)"]
@@ -211,7 +211,7 @@ flowchart TB
   GT --> MG
 ```
 
-Le code des agents ne peut pas créer de run : un humain ou la boucle de mesure le fait, via une file plafonnée. Dans la sandbox, l'egress est refusé par défaut **à la résolution de nom**, pas seulement au niveau TCP — lors du round 7 de nos runbooks, le 2026-09-30 sur `gcp-0`, Hubble a confirmé qu'un nom non autorisé ne résolvait pas. Sur le dépôt distant, l'application pousse une branche dont le diff et le verdict restent attachés à un run identifiable. <!-- status: V -->
+Le code des agents ne peut pas créer de run : un humain ou la boucle de mesure le fait, via une file plafonnée. Dans la sandbox, l'egress est refusé par défaut **à la résolution de nom**, pas seulement au niveau TCP (protocole de transport) — lors du round 7 de nos runbooks, le 2026-09-30 sur `gcp-0`, Hubble a confirmé qu'un nom non autorisé ne résolvait pas. Sur le dépôt distant, l'application pousse une branche dont le diff et le verdict restent attachés à un run identifiable. <!-- status: V -->
 
 L'isolation est un **spectre**, pas un label. Un conteneur ordinaire partage le noyau du nœud : bon marché, compatible, et une seule évasion d'appel système suffit. gVisor intercale un noyau utilisateur qui intercepte ces appels : la surface d'attaque se réduit au *Sentry* de gVisor, au prix de la compatibilité et d'un surcoût. Un **microVM** (Firecracker) repousse la frontière au niveau matériel ; ses auteurs annoncent un démarrage sous 125 ms pour moins de 5 Mio de surcoût — des **caractéristiques de conception annoncées par le projet** (documentation consultée le **2026-10-28**), pas des mesures issues d'un benchmark d'agents de codage. Nous avons choisi gVisor parce qu'il est disponible sur les deux clouds que nous visons et que la primitive `agent-sandbox` standardise le pod ; le prix est réel : sous gVisor le profil seccomp `RuntimeDefault` n'est pas appliqué (`Seccomp: 0` dans le pod), et c'est le *Sentry* qui tient la frontière. Qui prétend que gVisor est « plus sûr » que Firecracker sans dire ce qu'il abandonne n'a pas regardé le compromis. <!-- status: V -->
 
@@ -220,14 +220,14 @@ Le corollaire, c'est que **les identifiants ne vivent pas dans la sandbox**. Les
 Enfin, une approbation n'est pas une frontière : c'est de la **supervision**. Ce qu'un run peut faire est fixé **à sa création**, hors de la sandbox, par son profil, ses plafonds et son jeton. Un agent ne s'approuve pas lui-même, `roomctl` n'approuve pas du tout, et la carte d'approbation affiche l'action brute caviardée plutôt que la prose de l'agent — parce qu'un humain qui approuve du texte rédigé par le modèle approuve un récit, pas une action. Et la fatigue est mesurable : dans un article publié le **2026-05-25**, Anthropic rapporte un taux d'approbation d'environ **93 %** sur ses invites de permission, sans publier la taille de l'échantillon de télémétrie — un signal d'usure, pas une preuve de sûreté. <!-- status: V -->
 
 {{% notice warning "Ce qui reste ouvert, côté sécurité" %}}
-Quatre angles morts nommés, et ils sont dans notre propre plateforme : le confinement de l'application des agents est celui d'une **installation par dépôt**, pas d'un run <!-- status: W --> ; le profil seccomp n'est **pas appliqué sous gVisor**, la frontière est le *Sentry* <!-- status: V --> ; les journaux de GitHub ne relient pas un jeton d'agent à un run <!-- TODO-check: corroborer l'absence d'enregistrement jeton → run dans les audits GitHub avant publication --> ; et une évasion du *Sentry* atteindrait l'identité du nœud, les sandboxes voisines et les identifiants du kubelet — d'où le pool dédié, l'IMDS bridé et le recyclage quotidien des nœuds, qui réduisent l'impact sans l'annuler <!-- status: V -->.
+Quatre angles morts nommés, et ils sont dans notre propre plateforme : le confinement de l'application des agents est celui d'une **installation par dépôt**, pas d'un run <!-- status: W --> ; le profil seccomp n'est **pas appliqué sous gVisor**, la frontière est le *Sentry* <!-- status: V --> ; les journaux de GitHub ne relient pas un jeton d'agent à un run <!-- TODO-check: corroborer l'absence d'enregistrement jeton → run dans les audits GitHub avant publication --> ; et une évasion du *Sentry* atteindrait l'identité du nœud, les sandboxes voisines et les identifiants du kubelet — d'où le pool dédié, l'IMDS (service de métadonnées de l'instance) bridé et le recyclage quotidien des nœuds, qui réduisent l'impact sans l'annuler <!-- status: V -->.
 {{% /notice %}}
 
 ## 🧑‍💻 Scénario 1 : un développeur backend
 
 Vous reproduisez le défaut dans `opencode`, `claude` ou votre client, puis demandez `/factory handoff`. `roomctl` fait vérifier le brouillon d'issue par le broker — symptôme, résultat attendu, critère d'acceptation, absence de secret — sans rien déposer. Vous relisez le texte exact avant que votre `gh` le publie. <!-- status: V -->
 
-Le démarrage reste **votre geste** : l'option *start* du formulaire, à non par défaut, est la seule qui applique ensuite `factory/ready`. Ni argument d'outil, ni label posé sur la parole de l'agent, ni run automatique. La factory ouvre alors la room et le premier run. <!-- status: V -->
+Le démarrage reste **votre geste** : l'option *start* du formulaire, désactivée par défaut, est la seule qui applique ensuite `factory/ready`. Ni argument d'outil, ni label posé sur la parole de l'agent, ni run automatique. La factory ouvre alors la room et le premier run. <!-- status: V -->
 
 Dans **needs-you**, la carte d'approbation montre la commande puis **l'action brute caviardée**, jamais le récit de l'agent. Vous décidez dans la WebUI. Le reviewer rend ensuite son verdict dans la room ; l'implémenteur pousse la branche et ouvre la PR. <!-- status: V -->
 
@@ -242,7 +242,7 @@ Agent-Run: <run>
 Agent-Task: <task>
 ```
 
-Ces *trailers* relient le travail à son exécution, sans rien autoriser. Après la CI, le gate vérifie verdict et provenance, puis **un mainteneur merge** hors des classes live. Le reviewer ne remplace ni ce contrôle ni cette responsabilité. <!-- status: V -->
+Ces *trailers* relient le travail à son exécution, sans rien autoriser. Après la CI (intégration continue), le gate vérifie verdict et provenance, puis **un mainteneur merge** hors des classes live. Le reviewer ne remplace ni ce contrôle ni cette responsabilité. <!-- status: V -->
 
 <!-- TODO-shot: S2 — pied de PR avec trailers de provenance et identité du bot ; capture live ou replay daté, sans donnée de fixture -->
 
@@ -250,7 +250,7 @@ Ces *trailers* relient le travail à son exécution, sans rien autoriser. Après
 
 Ce parcours du **2026-10-07** est parti d'un label, pas du chemin `roomctl` décrit ci-dessus. Il donne néanmoins un parcours mesuré, avec quatre intervalles après le label : <!-- status: V -->
 
-| Jalon (UTC) | Horodatage | Depuis le label |
+| Jalon (UTC, temps universel coordonné) | Horodatage | Depuis le label |
 |---|---:|---:|
 | Label sur l'issue #2238 | 18:40:15 | 0 |
 | PR #2239 ouverte | 18:45 | 4 min |
@@ -282,7 +282,7 @@ Gate relu dans `docs/factory.md` le **2026-10-28** : `1`, `2a`, `2`, puis `3` à
 | 7 | Le trailer `Agent-Run` du head nomme un run de la tâche | `foreign_trailer` |
 | 8 | Les conditions de la classe passent : chemins, fichiers protégés, modification seule, taille, forme du diff, holdouts et oracle | Par exemple `file_protected`, `patch_too_large`, `class_mismatch`, `holdout_red` |
 | 9 | Le breaker de la classe n'a pas sauté | `class_paused` |
-| 10 | Les plafonds quotidiens global et de classe, ainsi que le plafond par requête, ne sont pas atteints | `auto_merge_cap` |
+| 10 | Les plafonds quotidiens global et de classe ne sont pas atteints | `auto_merge_cap` |
 | 11 | La classe est live | Sinon `shadow_would_arm`, sans merge |
 | 12 | Chaque push de la branche vient de l'App des agents | `human_commit_in_pr` |
 
@@ -316,7 +316,7 @@ Ces mesures figées portent date et échantillon ; les coûts « sans cache » s
 | Part des entrées lues dans le cache | 95,1 % | 2026-10-18 | Tous les appels agents de `gcp-0`, fenêtre live de 24 h |
 | Coût mesuré / coût recalculé sans cache | 10,40 $ / 41,64 $ | 2026-10-18 | La même fenêtre de 24 h |
 | Run `jcp6kl72`, coût mesuré / recalculé sans cache | 1,6487 $ / 6,39 $ | 2026-10-18 | Un run implémenteur, PR #2508 |
-| Démarrage de sandbox à chaud / à froid | 16–17 s / 1,5–3,5 min | 2026-10-17 | Dix runs à chaud en test compressé ; plage froide du pool |
+| Démarrage de sandbox à chaud / à froid | 16–17 s / 1,5–3,5 min | 2026-10-17 | Dix runs à chaud en test compressé ; taille de l'échantillon à froid non rapportée |
 | Nœud gardé à chaud | 126 $/mois, extrapolé | 2026-10-17 | Une heure de mesure du nœud idle |
 | Acceptation sur issues difficiles : Claude / GLM-5.3 via la factory | 13/15 / 0/15 | 2026-10-14 au 2026-10-15 | Quinze issues par bras, un run par issue, un seul dépôt |
 
@@ -354,11 +354,13 @@ Maku v3, qui n'est que le composant d'orchestration de cette factory, est encore
 * [Replay public de la démonstration Maku](https://blog.ogenki.io/agent-platform/)
 * [RunLore — transformer les alertes en boucle d'apprentissage](/fr/post/series/observability/runlore/)
 * [Agentic Coding — concepts et cas concrets](/fr/post/series/agentic_ai/ai-coding-agent/)
+* [Quelques mois avec Claude Code — astuces et workflows](/fr/post/series/agentic_ai/ai-coding-tips/)
+* [Self-hosted LLM stack — fondations d'une plateforme open-weight](/fr/post/series/agentic_ai/llm-self-hosted-stack/)
 
 ### Standards et identité
 
-* [NIST NCCoE — identité et autorisation des agents logiciels et IA](https://www.nccoe.nist.gov/projects/software-and-ai-agent-identity-and-authorization)
-* [IETF — jetons de transaction, brouillon -11](https://datatracker.ietf.org/doc/draft-ietf-oauth-transaction-tokens/11/)
+* [NIST (institut américain des standards) / NCCoE (centre d'excellence en cybersécurité) — identité et autorisation des agents](https://www.nccoe.nist.gov/projects/software-and-ai-agent-identity-and-authorization)
+* [IETF (groupe de normalisation Internet) — jetons de transaction, brouillon -11](https://datatracker.ietf.org/doc/draft-ietf-oauth-transaction-tokens/11/)
 * [OpenTelemetry — attributs sémantiques `gen_ai`](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
 * [gVisor — documentation de l'isolation des conteneurs](https://gvisor.dev/docs/)
 * [Firecracker — documentation des microVM](https://firecracker-microvm.github.io/)

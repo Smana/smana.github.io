@@ -26,7 +26,7 @@
 
   <!-- human outer loop band -->
   <rect x="96" y="372" width="1408" height="104" rx="16" fill="none" stroke="#E8A33D" stroke-opacity="0.75" stroke-width="3" stroke-dasharray="16 12"/>
-  <text x="140" y="437" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F4C77E">Humain : spec &amp; merge</text>
+  <text x="140" y="437" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F4C77E">Humain : spec &amp; responsabilité</text>
   <text x="1464" y="434" text-anchor="end" font-family="DejaVu Sans Mono" font-size="27" fill="#A98452">boucle extérieure</text>
 
   <!-- return path: provenance back up to the human band -->
@@ -55,14 +55,14 @@
   <circle cx="168" cy="864" r="11" fill="#3FB0E8"/>
   <text x="256" y="854" font-family="DejaVu Sans Mono" font-size="26" fill="#5FA8C9">03</text>
   <text x="316" y="860" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F2F7FA">Revue &amp; gate ordonné</text>
-  <text x="316" y="902" font-family="DejaVu Sans Mono" font-size="25" fill="#8FB6CC">12 lignes · humain décide</text>
+  <text x="316" y="902" font-family="DejaVu Sans Mono" font-size="25" fill="#8FB6CC">gate ordonné · classes bornées</text>
 
   <!-- 04 provenance -->
   <rect x="216" y="952" width="1188" height="128" rx="18" fill="url(#card)" stroke="#0F4E6B" stroke-width="2"/>
   <circle cx="168" cy="1016" r="11" fill="#3FB0E8"/>
   <text x="256" y="1006" font-family="DejaVu Sans Mono" font-size="26" fill="#5FA8C9">04</text>
   <text x="316" y="1012" font-family="Noto Sans" font-size="40" font-weight="600" fill="#F2F7FA">Provenance</text>
-  <text x="316" y="1054" font-family="DejaVu Sans Mono" font-size="25" fill="#8FB6CC">PR signée · journal de room</text>
+  <text x="316" y="1054" font-family="DejaVu Sans Mono" font-size="25" fill="#8FB6CC">PR tracée · journal de room</text>
 
   <!-- flow arrows between capabilities -->
   <g stroke="#3FB0E8" stroke-width="3" opacity="0.85">
