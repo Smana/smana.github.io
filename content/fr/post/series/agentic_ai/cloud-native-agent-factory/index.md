@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
-title = "`Agent Factory` : confier des issues GitHub à des agents sur ton cluster Kubernetes… sans leur faire confiance"
+title = "`Maku` : confier des issues GitHub à des agents sur ton cluster Kubernetes… sans leur faire confiance"
 date = "2026-11-04"
-summary = "Tu labellises une issue GitHub, un agent la traite dans une sandbox gVisor sous sa propre identité, un merge gate décide. Anatomie de l'agent factory que je fais tourner sur `cloud-native-ref` : identité par run, egress fermé, rooms append-only, classes de merge — avec les chiffres et ce qui manque encore."
+summary = "Tu labellises une issue GitHub, un agent la traite dans une sandbox gVisor sous sa propre identité, un merge gate décide. Anatomie de Maku, l'agent factory que je fais tourner sur `cloud-native-ref` : identité par run, egress fermé, rooms append-only, classes de merge — avec les chiffres et ce qui manque encore."
 featured = true
 draft = true
 codeMaxLines = 30
@@ -21,7 +21,7 @@ Depuis quelques mois, je ne code presque plus sans agent. Et comme beaucoup, j'a
 
 Sauf qu'une fois l'agent hors de ma machine, tout ce qui ne me dérangeait pas en local devient un vrai problème. Avec quel **token Git** pousse-t-il ? Vers **quels domaines** peut-il sortir ? Qui a **approuvé** quoi, et où est-ce écrit ? Et si le texte d'une issue contient une injection de prompt, jusqu'où va-t-elle ? Le modèle, finalement, s'est révélé la partie la moins compliquée : c'est une ligne de configuration. Ce qui m'a pris du temps, c'est **l'identité, l'isolation, le trafic sortant et la preuve** de ce qui s'est passé.
 
-Cet article décrit l'**Agent Factory** que je fais tourner sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), ma plateforme de référence : ce qu'elle fait, comment chaque brique cloud-native y contribue, et ce que ça donne pour de vrai — chiffres, drills et ratés compris. C'est long, mais chaque section se lit indépendamment : si tu ne veux que la sécurité, saute directement à [l'identité par run](#-une-identité-par-run-zéro-secret-dans-la-sandbox).
+Cet article décrit **Maku**, l'agent factory que je fais tourner sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), ma plateforme de référence : ce qu'elle fait, comment chaque brique cloud-native y contribue, et ce que ça donne pour de vrai — chiffres, drills et ratés compris. C'est long, mais chaque section se lit indépendamment : si tu ne veux que la sécurité, saute directement à [l'identité par run](#-une-identité-par-run-zéro-secret-dans-la-sandbox).
 
 ## 🎯 Objectifs
 
@@ -68,27 +68,27 @@ L'ensemble repose sur trois dépôts, et la séparation n'est pas cosmétique : 
 | Couche | Dépôt | Ce qu'elle apporte |
 |---|---|---|
 | **Le cluster hôte** | [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) | GKE (`gcp-0`), Cilium en *default deny*, Crossplane, Gateway API, ZITADEL, OpenBao, la stack Victoria… et le dépôt sur lequel les agents travaillent |
-| **La plateforme IA** | [`ai-native-ref`](https://github.com/Smana/ai-native-ref) | Les manifests Flux de la factory : runtime gVisor, `agent-sandbox`, l'agent gateway, `octo-sts`, Kueue, les policies Kyverno et Cilium, les dashboards et alertes |
-| **L'orchestration** | [`maku`](https://github.com/Smana/maku) | Le contrôleur de la factory, le broker de *rooms*, le sidecar *bridge*, la CLI `maku`, la Web UI et l'app Slack |
+| **La plateforme IA** | [`ai-native-ref`](https://github.com/Smana/ai-native-ref) | Les manifests Flux qui hébergent Maku : runtime gVisor, `agent-sandbox`, l'agent gateway, `octo-sts`, Kueue, les policies Kyverno et Cilium, les dashboards et alertes |
+| **Le produit** | [`maku`](https://github.com/Smana/maku) | Le contrôleur de la factory, le broker de *rooms*, le sidecar *bridge*, la CLI `maku`, la Web UI et l'app Slack |
 
 Un détail d'architecture que j'aime bien : la plateforme IA arrive dans le cluster hôte sous la forme d'un **artefact OCI signé** (`oci://ghcr.io/smana/ai-native-ref`), épinglé par digest, vérifié par cosign et **suspendu par défaut**. Le cluster hôte publie un *contrat* (`HOST-CONTRACT.md`) qui liste ce qu'il fournit — namespaces, Gateways, mounts OpenBao, pool de nœuds gVisor — et la plateforme IA se déploie par-dessus. Le jour où il faut tout refaire, un `git revert` du pin suffit.
 
-{{% notice tip "Agent Factory, Maku : qui est qui ? 🎭" %}}
-**Agent Factory** est le nom du produit. **Maku** (幕, « le rideau » en japonais) est le composant d'orchestration : `maku-factory` (le reconciler des tâches), `maku-broker` (le journal des rooms), `maku-bridge` (le sidecar dans chaque pod de run) et la CLI `maku`. Tout le reste — sandbox, identité, egress, gateway — vit dans la plateforme IA, et c'est voulu : Maku ne fait **pas** confiance à l'agent, et n'a pas les moyens de le confiner lui-même.
+{{% notice tip "Maku, la factory, la plateforme : qui est qui ? 🎭" %}}
+**Maku** (幕, « le rideau » en japonais) est le produit : `maku-factory` (le reconciler des tâches), `maku-broker` (le journal des rooms), `maku-bridge` (le sidecar dans chaque pod de run), la CLI `maku` et la Web UI. Quand j'écris « la factory » dans la suite, je parle du système complet : Maku **plus** la plateforme IA qui l'héberge — sandbox, identité, egress, gateway. Cette séparation est voulue : Maku ne fait **pas** confiance à l'agent, et ne cherche pas à le confiner lui-même ; c'est le travail de la plateforme.
 {{% /notice %}}
 
 Voici une tâche de bout en bout, dans ses grandes lignes :
 
-{{< img src="agent-factory-overview.png" alt="Vue d'ensemble : un mainteneur labellise une issue, la factory ouvre une room et démarre un run dans une sandbox gVisor ; chaque appel passe par l'agent gateway vers les modèles, les outils MCP et octo-sts ; le run pousse une branche et ouvre une PR que le mainteneur relit" width="1200" >}}
+{{< img src="agent-factory-overview.png" alt="Vue d'ensemble : un mainteneur labellise une issue, Maku ouvre une room et démarre un run dans une sandbox gVisor ; chaque appel passe par l'agent gateway vers les modèles, les outils MCP et octo-sts ; le run pousse une branche et ouvre une PR que le mainteneur relit" width="1200" >}}
 </br>
 
-1. **Un mainteneur** pose le label `factory/ready` sur une issue. Le même label posé par quelqu'un d'autre ne déclenche rien : la factory revérifie que l'auteur a bien le droit `write` sur le dépôt.
-2. **La factory** prend un instantané de l'issue, crée une `Task` et une `Room`, choisit un *tier* (modèle, budget en tokens et en dollars, durée max), puis crée un `AgentRun`.
+1. **Un mainteneur** pose le label `factory/ready` sur une issue. Le même label posé par quelqu'un d'autre ne déclenche rien : Maku revérifie que l'auteur a bien le droit `write` sur le dépôt.
+2. **Maku** prend un instantané de l'issue, crée une `Task` et une `Room`, choisit un *tier* (modèle, budget en tokens et en dollars, durée max), puis crée un `AgentRun`.
 3. **Crossplane** compose le run : un `ServiceAccount` sans aucun droit Kubernetes, une `CiliumNetworkPolicy` dédiée et une `Sandbox` qui devient un pod **gVisor** dans le namespace `agents`.
 4. **Le harnais** — [OpenHands](https://github.com/OpenHands/OpenHands) — clone le dépôt, travaille, pousse une branche `agent/<task>` et ouvre une PR. Chaque appel au modèle, à un outil MCP ou à GitHub passe par l'**agent gateway**, sous l'identité du run.
 5. **Un run reviewer** relit le diff dans la même room et pose son verdict. Puis le **merge gate** décide : merge automatique pour une classe `live`, « j'aurais mergé » pour une classe `shadow`, et sinon un humain merge.
 
-Tout ce qui précède est **narré sur l'issue GitHub** par la factory, étape par étape. Voilà par exemple ce qu'elle a écrit, telle quelle, pendant la correction d'une règle d'alerte le 28 octobre :
+Tout ce qui précède est **narré sur l'issue GitHub** par Maku, étape par étape. Voilà par exemple ce qu'il a écrit, tel quel, pendant la correction d'une règle d'alerte le 28 octobre :
 
 ```text
 Agent factory task `drq5gh2i` started run `ralxknfk` (implementer) on branch `agent/drq5gh2i`.
@@ -170,10 +170,10 @@ permissions:
 Un reviewer ou un triager obtient la même chose en **lecture seule**. Et côté GitHub, des *rulesets* limitent l'App des agents aux branches `agent/**` : impossible de pousser sur `main`, impossible de poser un tag. J'ai vérifié chaque refus en runbook : push sur sa propre branche ✅, push sur `main` → `GH013`, push d'un reviewer → `403`, échange pour un autre dépôt → `404 unable to find trust policy`.
 
 {{% notice info "Quatre GitHub Apps, un seul mergeur 🔑" %}}
-La séparation des pouvoirs passe par **quatre** GitHub Apps : `ogenki-agents` (les runs, confinée à `agent/**`), `ogenki-agent-factory` (la narration sur les issues), `ogenki-merge-gate` (le statut de [policy-bot](https://github.com/palantir/policy-bot)) et `ogenki-agent-merger`, **la seule** qui ait le droit de contourner le ruleset pour merger — et sa clé n'est montée que dans le contrôleur de la factory, jamais dans une sandbox. Un agent ne peut ni approuver ni merger sa propre PR, par construction.
+La séparation des pouvoirs passe par **quatre** GitHub Apps : `ogenki-agents` (les runs, confinée à `agent/**`), `ogenki-agent-factory` (la narration sur les issues), `ogenki-merge-gate` (le statut de [policy-bot](https://github.com/palantir/policy-bot)) et `ogenki-agent-merger`, **la seule** qui ait le droit de contourner le ruleset pour merger — et sa clé n'est montée que dans le contrôleur de Maku, jamais dans une sandbox. Un agent ne peut ni approuver ni merger sa propre PR, par construction.
 {{% /notice %}}
 
-Et l'humain ? Il n'apparaît que deux fois dans la chaîne, et toujours **hors de la sandbox** : au départ (le label, ou un appel à l'API de la factory authentifié par ZITADEL) et à l'arrivée (la revue, le merge). Dans les rooms, son identité est `human:<sub>` ; celle d'un run est `agent:<runId>` ; celle de la factory `system:factory`. Les dépenses sont **imputées au labelliseur**, pas à un compte technique anonyme.
+Et l'humain ? Il n'apparaît que deux fois dans la chaîne, et toujours **hors de la sandbox** : au départ (le label, ou un appel à l'API de Maku authentifié par ZITADEL) et à l'arrivée (la revue, le merge). Dans les rooms, son identité est `human:<sub>` ; celle d'un run est `agent:<runId>` ; celle de la factory `system:factory`. Les dépenses sont **imputées au labelliseur**, pas à un compte technique anonyme.
 
 ## 🧱 Isolation et egress : la sandbox ne sort que par la porte
 
@@ -240,11 +240,11 @@ Ce qui fait qu'on peut s'y fier :
 
 * **Séquencé sans trou.** Chaque événement reçoit un `seq` monotone sous verrou de ligne ; une clé d'idempotence `(room, client, seq d'origine)` fait qu'un rejeu renvoie l'événement déjà stocké sans en consommer un nouveau. À la fermeture, un événement de **sceau** interdit tout ajout.
 * **Caviardé d'abord.** Chaque chaîne JSON passe par gitleaks **avant** d'être stockée, loguée ou comptée.
-* **Attribué.** L'`actor` de chaque événement est tamponné par le broker à partir du jeton vérifié, jamais déclaré par l'émetteur. Les événements d'un agent sont du *contenu non fiable attribué à cet agent*, et un bridge ne peut pousser que des événements d'origine harnais : un verdict, un changement de pilote ou une décision d'approbation ne peuvent venir que de la factory ou d'un humain.
+* **Attribué.** L'`actor` de chaque événement est tamponné par le broker à partir du jeton vérifié, jamais déclaré par l'émetteur. Les événements d'un agent sont du *contenu non fiable attribué à cet agent*, et un bridge ne peut pousser que des événements d'origine harnais : un verdict, un changement de pilote ou une décision d'approbation ne peuvent venir que de Maku ou d'un humain.
 
 Tu accèdes aux rooms par la Web UI (derrière ZITADEL), par la CLI `maku` dans ton terminal, ou depuis ton propre coding agent via un serveur MCP. La CLI, volontairement, **ne peut rien approuver** : regarder, poster, mettre en file, forker — c'est tout. Les approbations se prennent dans la Web UI, et la carte d'approbation montre l'**action brute**, pas la prose de l'agent. La règle *four-eyes* (quand la room l'exige) interdit en plus à celui qui a soufflé la consigne d'approuver son résultat.
 
-{{< img src="maku-rooms.png" alt="La liste des rooms de la factory : celles qui attendent un humain d'abord, chacune avec son dépôt, sa ligne d'état, sa PR et sa dernière activité" width="1100" caption="La liste des rooms : ce qui attend un humain remonte en premier." >}}
+{{< img src="maku-rooms.png" alt="La liste des rooms de Maku : celles qui attendent un humain d'abord, chacune avec son dépôt, sa ligne d'état, sa PR et sa dernière activité" width="1100" caption="La liste des rooms : ce qui attend un humain remonte en premier." >}}
 </br>
 
 Pour te faire une idée sans rien installer, une room réelle est rejouable dans la [démo publique](https://blog.ogenki.io/maku/).
@@ -273,7 +273,7 @@ Le premier gardien est [**policy-bot**](https://github.com/palantir/policy-bot),
 
 Une PR d'agent qui touche à `.github/`, à la politique elle-même, aux pins Crossplane ou aux mounts OpenBao ne peut **jamais** relever d'une classe automatique : ces *gate paths* repartent vers un humain, liens corrects ou pas. Un script CI échoue si une règle oublie l'un d'eux.
 
-Le second gardien est le gate de la factory, qui applique une liste **ordonnée** de contrôles au head de la PR. En version courte :
+Le second gardien est le gate de Maku, qui applique une liste **ordonnée** de contrôles au head de la PR. En version courte :
 
 | Ordre | Ce qui doit être vrai | Sinon |
 |---|---|---|
@@ -288,7 +288,7 @@ Le second gardien est le gate de la factory, qui applique une liste **ordonnée*
 | 9 | Chaque push de la branche vient de l'App des agents | `human_commit_in_pr` |
 | 10 | La classe est `live` | sinon `shadow_would_arm` : un commentaire, pas de merge |
 
-Chaque « non » est un **code de raison** que la factory écrit sur la PR et expose en métrique (`agent_factory_merge_decisions_total{class, verdict, reason}`). Une PR d'agent porte aussi un pied de provenance (`Agent-Room`, `Agent-Run`, `Agent-Task`, `Agent-Model`), mais la doc de Maku est explicite : *« Trailers and footer are provenance hints, never authorisation. »* Ce qui lie un commit à la factory, c'est l'identité qui a poussé, pas ce qui est écrit dedans.
+Chaque « non » est un **code de raison** que Maku écrit sur la PR et expose en métrique (`agent_factory_merge_decisions_total{class, verdict, reason}`). Une PR d'agent porte aussi un pied de provenance (`Agent-Room`, `Agent-Run`, `Agent-Task`, `Agent-Model`), mais la doc de Maku est explicite : *« Trailers and footer are provenance hints, never authorisation. »* Ce qui lie un commit à la factory, c'est l'identité qui a poussé, pas ce qui est écrit dedans.
 
 {{< img src="merge-gate.png" alt="Le merge gate : une PR d'agent traverse dans l'ordre le scan de secrets, la CI, policy-bot, le verdict du reviewer sur ce head, les conditions de la classe, le disjoncteur et les plafonds ; une classe live est mergée par l'App merger puis surveillée, une classe shadow reçoit un commentaire « would auto-merge », tout le reste attend un humain" width="1200" >}}
 </br>
@@ -297,7 +297,7 @@ Chaque « non » est un **code de raison** que la factory écrit sur la PR et ex
 
 Une classe commence en **shadow** : le gate décide exactement comme en live, écrit *« would auto-merge: docs-links, checks green, verdict approve »* sur la PR, puis un humain merge. Chaque décision shadow nourrit un **tally** par classe. Pour passer en live, la **borne supérieure de Clopper-Pearson à 95 %** du taux de mauvais merges, calculée sur les merges mûrs et concluants, doit passer sous 10 %. Concrètement : **29 merges propres**, 46 s'il y en a un mauvais, 61 s'il y en a deux. Pas de démo réussie trois fois qui devient une autonomie générale.
 
-Et dans l'autre sens, un **disjoncteur** : un seul revert dans les dix derniers merges de la classe la renvoie en revue humaine. Ce n'est pas théorique. Le premier — et à ce jour le seul — merge entièrement autonome a eu lieu le **18 octobre à 15:20 UTC** : la PR #2520, quatre URLs de dashboards Grafana remplacées par leurs formes canoniques, mergée par `ogenki-agent-merger[bot]` après CI verte, policy-bot vert et verdict du reviewer. Trente minutes de surveillance de `main` plus tard, la factory écrivait *« merged, and main stayed green for 30 minutes »*. Le label `factory/revert` a ensuite servi à exercer la voie de secours, en conditions réelles : la factory a ouvert #2521, et écrit :
+Et dans l'autre sens, un **disjoncteur** : un seul revert dans les dix derniers merges de la classe la renvoie en revue humaine. Ce n'est pas théorique. Le premier — et à ce jour le seul — merge entièrement autonome a eu lieu le **18 octobre à 15:20 UTC** : la PR #2520, quatre URLs de dashboards Grafana remplacées par leurs formes canoniques, mergée par `ogenki-agent-merger[bot]` après CI verte, policy-bot vert et verdict du reviewer. Trente minutes de surveillance de `main` plus tard, Maku écrivait *« merged, and main stayed green for 30 minutes »*. Le label `factory/revert` a ensuite servi à exercer la voie de secours, en conditions réelles : Maku a ouvert #2521, et écrit :
 
 > Auto-merge of the class `docs-links` goes back to human review until its recent merges pass without a revert (R41).
 
@@ -305,23 +305,23 @@ La classe `docs-links` est **toujours** en revue humaine depuis, et c'est exacte
 
 ## 🩺 RunLore ferme la boucle : de l'alerte à la PR vérifiée
 
-Dans [l'article précédent](/fr/post/series/observability/runlore/), RunLore investiguait les alertes et apprenait de chaque résolution, mais s'arrêtait à la proposition. La factory lui donne une suite : depuis la v0.17.0, RunLore est un **client API ordinaire** de la factory, sous son propre principal machine (`system:runlore`, via ZITADEL), avec un plafond de **2 $ par tâche** et **10 $ par jour**.
+Dans [l'article précédent](/fr/post/series/observability/runlore/), RunLore investiguait les alertes et apprenait de chaque résolution, mais s'arrêtait à la proposition. Maku lui donne une suite : depuis la v0.17.0, RunLore est un **client API ordinaire** de Maku, sous son propre principal machine (`system:runlore`, via ZITADEL), avec un plafond de **2 $ par tâche** et **10 $ par jour**.
 
 {{< img src="runlore-loop.png" alt="La boucle RunLore : une alerte déclenche une investigation RunLore, qui crée une tâche investigate ; un run triager en lecture seule propose un correctif dans sa room ; un mainteneur publie la proposition avec factory/publish, la relit, puis la démarre avec factory/ready ; la PR est relue par un agent, mergée par un humain ; après un soak de 30 minutes RunLore interroge Alertmanager et rend son verdict" width="1200" >}}
 </br>
 
 Le point de design qui compte, ce sont les **deux labels** :
 
-* `factory/publish` : la proposition de l'agent reste **dans sa room** tant qu'un mainteneur ne l'a pas relue. L'issue créée par la factory ne contient qu'un *stub* (alerte, ressource, confiance) ; aucun finding interne ne devient public sans ce geste.
+* `factory/publish` : la proposition de l'agent reste **dans sa room** tant qu'un mainteneur ne l'a pas relue. L'issue créée par Maku ne contient qu'un *stub* (alerte, ressource, confiance) ; aucun finding interne ne devient public sans ce geste.
 * `factory/ready` : sur l'issue publiée, un **second** label autorise la dépense d'un run d'implémentation. Entre les deux, un humain a lu ce qui va devenir public **et** ce qui va coûter.
 
 Voilà ce que ça a donné le **28 octobre**, sur une vraie alerte (`PodinfoNoAvailableReplica`, qui se déclenchait en permanence à cause d'une faute de frappe — `podnfo` — dans un sélecteur de `VMRule`) :
 
 | Heure (UTC) | Quoi |
 |---|---|
-| 17:29 | RunLore rend un verdict `action_suggested` à 0,92 de confiance et crée la tâche `hvavktlo` ; la factory ouvre l'issue #2630 (stub) |
+| 17:29 | RunLore rend un verdict `action_suggested` à 0,92 de confiance et crée la tâche `hvavktlo` ; Maku ouvre l'issue #2630 (stub) |
 | 17:33 → 17:36 | Un run **triager**, en lecture seule, propose le correctif dans sa room : 206 k tokens, ~3 minutes |
-| 17:36 | Je pose `factory/publish` ; la factory publie la proposition comme issue #2631 |
+| 17:36 | Je pose `factory/publish` ; Maku publie la proposition comme issue #2631 |
 | 18:14 | Je pose `factory/ready` ; run implementer `ralxknfk` (tier standard, 1,5 M tokens / 45 min) |
 | 18:16 | PR #2638 ouverte |
 | 18:25 | Verdict du reviewer : **approve**, avec sa propre vérification (`kustomize build`, `grep` du nom fautif) |
@@ -364,15 +364,15 @@ Assez d'architecture, place aux chiffres. Je tiens à ce que chacun porte sa dat
 | Démarrage avec un nœud gardé chaud | **p50 16 s, p90 17 s** sur 10 runs | Le nœud coûte 125,80 $/mois : **désactivé** par défaut |
 | Cohorte « issues difficiles » (15 issues, 14–15 octobre) | factory + GLM-5.3 : **0/15** (9 $) · Claude Code Action + Claude : **13/15** (15,80 $) | Un dépôt, un run par issue |
 
-Deux lectures. D'abord, **le cache est le premier levier de coût** : la boucle d'un agent relit sans cesse le même contexte, et 95 % de hits divisent la facture par quatre. Ensuite, et c'est plus inconfortable, **le modèle compte énormément sur les tâches difficiles**. GLM-5.3 fait très bien les corrections de docs et de scripts qui constituent l'essentiel du flux ; sur quinze issues volontairement dures, il n'en a livré aucune là où Claude en livrait treize. C'est pour ça que la v3 de la factory travaille à **adapter la tâche au modèle** (un *scoper* qui borne l'issue avant de la lancer, un *splitter* qui la découpe) plutôt qu'à chercher le meilleur modèle unique.
+Deux lectures. D'abord, **le cache est le premier levier de coût** : la boucle d'un agent relit sans cesse le même contexte, et 95 % de hits divisent la facture par quatre. Ensuite, et c'est plus inconfortable, **le modèle compte énormément sur les tâches difficiles**. GLM-5.3 fait très bien les corrections de docs et de scripts qui constituent l'essentiel du flux ; sur quinze issues volontairement dures, il n'en a livré aucune là où Claude en livrait treize. C'est pour ça que la v3 de Maku travaille à **adapter la tâche au modèle** (un *scoper* qui borne l'issue avant de la lancer, un *splitter* qui la découpe) plutôt qu'à chercher le meilleur modèle unique.
 
 Tout est instrumenté : les séries `agent_factory_*` couvrent phases, délai label → PR, devenir des PRs par classe (auto-mergée, mergée par un humain, fermée, revertée), décisions du gate avec leur raison, budgets et coûts par run, par principal et par modèle ; les rooms exposent `rooms_events_appended_total`, les caviardages et la latence du fan-out. Les traces ne contiennent **que des identifiants, le tier, la phase et un code de raison** — jamais le texte d'une issue ni un prompt. Le transcript complet reste dans la room, sous contrôle d'accès.
 
 ## 🔬 Les alternatives
 
-Cette factory n'arrive pas sur un terrain vide. Pour situer :
+Maku n'arrive pas sur un terrain vide. Pour situer :
 
-| Solution | Ce que c'est | Ce que cette factory fait autrement |
+| Solution | Ce que c'est | Ce que Maku fait autrement |
 |---|---|---|
 | [**GitHub Copilot coding agent**](https://docs.github.com/copilot/concepts/agents/cloud-agent/about-cloud-agent) | L'agent cloud de GitHub, dans un sandbox ou GitHub Actions, firewall sortant par liste d'autorisation | Clé en main et intégré à GitHub ; mais la frontière de confiance est chez GitHub, et [des rapports](https://bex.co/blog/2026/07/28/copilot-coding-agent-self-hosted-runners-trust-boundary) décrivent un firewall à **désactiver entièrement** pour atteindre des services internes |
 | [**Codex cloud**](https://learn.chatgpt.com/docs/cloud) | Un environnement par tâche chez OpenAI, accès réseau configurable par domaines | Même logique : tu n'opères rien, tu ne possèdes ni le journal ni la politique de merge |
@@ -400,7 +400,7 @@ La suite est écrite : un **second dépôt** pour éprouver la portabilité (le 
 
 ### Dépôts et démo
 
-* [`maku`](https://github.com/Smana/maku) — orchestration, rooms, merge gate · [démo publique d'une room](https://blog.ogenki.io/maku/)
+* [`maku`](https://github.com/Smana/maku) — le produit : factory, rooms, merge gate, CLI · [démo publique d'une room](https://blog.ogenki.io/maku/)
 * [`ai-native-ref`](https://github.com/Smana/ai-native-ref) — la plateforme IA déployable · [documentation](https://airef.ogenki.io)
 * [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) — le cluster hôte · [documentation](https://cnref.ogenki.io)
 * [RunLore](https://runlore.io) · [l'article de la série observabilité](/fr/post/series/observability/runlore/)

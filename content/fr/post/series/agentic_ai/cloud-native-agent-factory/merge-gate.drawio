@@ -1,79 +1,79 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <mxfile host="drawio" version="30.3.6">
-  <diagram name="Le merge gate" id="merge-gate">
+  <diagram name="The merge gate" id="merge-gate">
     <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1540" pageHeight="660" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="title" value="Le merge gate : ce qui doit être vrai avant qu'une PR d'agent soit mergée" style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=22;fontColor=#1E293B;fontStyle=1;" vertex="1" parent="1">
+        <mxCell id="title" value="The merge gate: what must be true before an agent's PR is merged" style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=22;fontColor=#1E293B;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="20" y="16" width="1000" height="32" as="geometry" />
         </mxCell>
-        <mxCell id="caption" value="Les contrôles s'appliquent dans l'ordre, au head de la PR. Chaque « non » devient un code de raison écrit sur la PR, et une décision pour un humain." style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=13;fontColor=#475569;" vertex="1" parent="1">
+        <mxCell id="caption" value="Checks run in order, at the PR head. Every « no » becomes a reason code written on the PR, and a decision for a human." style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=13;fontColor=#475569;" vertex="1" parent="1">
           <mxGeometry x="20" y="52" width="1100" height="22" as="geometry" />
         </mxCell>
 
-        <mxCell id="pr" value="&lt;b&gt;PR d'un agent&lt;/b&gt;&lt;br&gt;branche agent/&amp;lt;task&amp;gt;&lt;br&gt;auteur : App ogenki-agents" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#F1F5F9;strokeColor=#94A3B8;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="pr" value="&lt;b&gt;An agent's PR&lt;/b&gt;&lt;br&gt;branch agent/&amp;lt;task&amp;gt;&lt;br&gt;author: the ogenki-agents App" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#F1F5F9;strokeColor=#94A3B8;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="20" y="190" width="180" height="110" as="geometry" />
         </mxCell>
 
-        <mxCell id="s1" value="&lt;b&gt;① Hygiène&lt;/b&gt;&lt;br&gt;&lt;br&gt;scan de secrets pas rouge&lt;br&gt;checks CI requis verts&lt;br&gt;&lt;font color=&quot;#64748B&quot;&gt;rouge → un run de correction borné&lt;/font&gt;" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EEF2FF;strokeColor=#6366F1;fontColor=#1E293B;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+        <mxCell id="s1" value="&lt;b&gt;① Hygiene&lt;/b&gt;&lt;br&gt;&lt;br&gt;secret scan not red&lt;br&gt;required CI checks green&lt;br&gt;&lt;font color=&quot;#64748B&quot;&gt;red → one bounded fix run&lt;/font&gt;" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EEF2FF;strokeColor=#6366F1;fontColor=#1E293B;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
           <mxGeometry x="250" y="180" width="210" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="s2" value="&lt;b&gt;② Politique&lt;/b&gt;&lt;br&gt;&lt;br&gt;ce dépôt désigne cette factory&lt;br&gt;policy-bot vert, posté par le bon login&lt;br&gt;aucun « gate path » touché&lt;br&gt;auteur = App des agents" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EEF2FF;strokeColor=#6366F1;fontColor=#1E293B;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+        <mxCell id="s2" value="&lt;b&gt;② Policy&lt;/b&gt;&lt;br&gt;&lt;br&gt;this repo names this factory&lt;br&gt;policy-bot green, posted by the right login&lt;br&gt;no « gate path » touched&lt;br&gt;author = the agents App" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EEF2FF;strokeColor=#6366F1;fontColor=#1E293B;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
           <mxGeometry x="510" y="180" width="210" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="s3" value="&lt;b&gt;③ Preuve&lt;/b&gt;&lt;br&gt;&lt;br&gt;verdict « approve » du reviewer&lt;br&gt;sur &lt;i&gt;ce&lt;/i&gt; head&lt;br&gt;trailer Agent-Run d'un run de la tâche&lt;br&gt;chaque push vient de l'App" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#1E293B;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+        <mxCell id="s3" value="&lt;b&gt;③ Evidence&lt;/b&gt;&lt;br&gt;&lt;br&gt;reviewer verdict « approve »&lt;br&gt;on &lt;i&gt;this&lt;/i&gt; head&lt;br&gt;Agent-Run trailer names a run of the task&lt;br&gt;every push came from the App" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#1E293B;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
           <mxGeometry x="770" y="180" width="210" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="s4" value="&lt;b&gt;④ La classe&lt;/b&gt;&lt;br&gt;&lt;br&gt;fichiers autorisés · taille du diff&lt;br&gt;forme (links-only, semver-patch)&lt;br&gt;disjoncteur non sauté&lt;br&gt;plafonds du jour non atteints" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#1E293B;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
+        <mxCell id="s4" value="&lt;b&gt;④ The class&lt;/b&gt;&lt;br&gt;&lt;br&gt;allowed files · diff size&lt;br&gt;shape (links-only, semver-patch)&lt;br&gt;breaker not tripped&lt;br&gt;daily caps not reached" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#1E293B;verticalAlign=top;spacingTop=6;" vertex="1" parent="1">
           <mxGeometry x="1030" y="180" width="210" height="130" as="geometry" />
         </mxCell>
 
-        <mxCell id="live" value="Classe&lt;br&gt;&lt;b&gt;live&lt;/b&gt; ?" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FFFFFF;strokeColor=#7C3AED;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="live" value="Class&lt;br&gt;&lt;b&gt;live&lt;/b&gt;?" style="rhombus;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FFFFFF;strokeColor=#7C3AED;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="1300" y="200" width="150" height="90" as="geometry" />
         </mxCell>
 
-        <mxCell id="merge" value="&lt;b&gt;Merge par l'App merger&lt;/b&gt;&lt;br&gt;squash, au head décidé&lt;br&gt;la seule App qui a la clé" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#D1FAE5;strokeColor=#059669;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="merge" value="&lt;b&gt;Merge by the merger App&lt;/b&gt;&lt;br&gt;squash, at the decided head&lt;br&gt;the only App holding the key" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#D1FAE5;strokeColor=#059669;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="1300" y="380" width="200" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="verify" value="&lt;b&gt;Surveillance de main&lt;/b&gt;&lt;br&gt;CI verte pendant 30 min → Done&lt;br&gt;sinon PR de revert · le disjoncteur compte" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#F8FAFC;strokeColor=#94A3B8;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="verify" value="&lt;b&gt;Watching main&lt;/b&gt;&lt;br&gt;CI green for 30 min → Done&lt;br&gt;otherwise a revert PR · the breaker counts it" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#F8FAFC;strokeColor=#94A3B8;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="1300" y="520" width="200" height="100" as="geometry" />
         </mxCell>
 
-        <mxCell id="shadow" value="&lt;b&gt;Classe shadow, ou simple revue&lt;/b&gt;&lt;br&gt;commentaire « would auto-merge »&lt;br&gt;la décision nourrit le tally&lt;br&gt;un humain merge" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="shadow" value="&lt;b&gt;Shadow class, or plain review&lt;/b&gt;&lt;br&gt;« would auto-merge » comment&lt;br&gt;the decision feeds the class tally&lt;br&gt;a human merges" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="1030" y="520" width="210" height="100" as="geometry" />
         </mxCell>
 
-        <mxCell id="human" value="&lt;b&gt;Un humain décide&lt;/b&gt; · le code de raison est écrit sur la PR et exposé en métrique&lt;br&gt;secret_scan_red · ci_red · not_owned · gate_path · policy_pending · verdict_stale · foreign_trailer · human_commit_in_pr · file_not_allowed · patch_too_large · class_paused · auto_merge_cap…" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="human" value="&lt;b&gt;A human decides&lt;/b&gt; · the reason code is written on the PR and exposed as a metric&lt;br&gt;secret_scan_red · ci_red · not_owned · gate_path · policy_pending · verdict_stale · foreign_trailer · human_commit_in_pr · file_not_allowed · patch_too_large · class_paused · auto_merge_cap…" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="250" y="400" width="990" height="90" as="geometry" />
         </mxCell>
 
         <mxCell id="e-pr" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="pr" target="s1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-12" value="oui" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s1" target="s2">
+        <mxCell id="e-12" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s1" target="s2">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-23" value="oui" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s2" target="s3">
+        <mxCell id="e-23" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s2" target="s3">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-34" value="oui" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s3" target="s4">
+        <mxCell id="e-34" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s3" target="s4">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-4l" value="oui" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s4" target="live">
+        <mxCell id="e-4l" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="s4" target="live">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="e-1h" value="non" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryY=0;entryDx=0;entryDy=0;entryX=0.106;" edge="1" parent="1" source="s1" target="human">
+        <mxCell id="e-1h" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryY=0;entryDx=0;entryDy=0;entryX=0.106;" edge="1" parent="1" source="s1" target="human">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-2h" value="non" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryY=0;entryDx=0;entryDy=0;entryX=0.369;" edge="1" parent="1" source="s2" target="human">
+        <mxCell id="e-2h" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryY=0;entryDx=0;entryDy=0;entryX=0.369;" edge="1" parent="1" source="s2" target="human">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-3h" value="non" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryY=0;entryDx=0;entryDy=0;entryX=0.631;" edge="1" parent="1" source="s3" target="human">
+        <mxCell id="e-3h" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryY=0;entryDx=0;entryDy=0;entryX=0.631;" edge="1" parent="1" source="s3" target="human">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-4h" value="non" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitY=1;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitX=0.5;entryX=0.894;entryY=0;" edge="1" parent="1" source="s4" target="human">
+        <mxCell id="e-4h" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitY=1;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitX=0.5;entryX=0.894;entryY=0;" edge="1" parent="1" source="s4" target="human">
           <mxGeometry relative="1" as="geometry">
             <Array as="points" /></mxGeometry>
         </mxCell>
@@ -84,7 +84,7 @@
         <mxCell id="e-verify" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;strokeColor=#475569;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="merge" target="verify">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e-shadow" value="shadow · revue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitX=0.25;exitY=0.75;entryX=1;entryY=0.5;" edge="1" parent="1" source="live" target="shadow">
+        <mxCell id="e-shadow" value="shadow · review" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=12;fontColor=#B45309;labelBackgroundColor=#ffffff;strokeColor=#F59E0B;exitDx=0;exitDy=0;entryDx=0;entryDy=0;exitX=0.25;exitY=0.75;entryX=1;entryY=0.5;" edge="1" parent="1" source="live" target="shadow">
           <mxGeometry relative="1" as="geometry">
             <Array as="points"><mxPoint x="1260" y="340" /><mxPoint x="1260" y="570" /></Array><mxPoint x="-60" y="-10" as="offset" /></mxGeometry>
         </mxCell>
