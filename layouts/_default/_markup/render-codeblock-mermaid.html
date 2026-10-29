@@ -1,9 +1,0 @@
-{{- $page := .Page -}}
-<pre class="mermaid">{{ .Inner }}</pre>
-{{- if not ($page.Scratch.Get "mermaidLoaded") -}}
-{{- $page.Scratch.Set "mermaidLoaded" true -}}
-<script type="module">
-  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
-  mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "strict" });
-</script>
-{{- end -}}
