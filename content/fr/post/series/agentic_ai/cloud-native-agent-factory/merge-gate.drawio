@@ -8,7 +8,7 @@
         <mxCell id="title" value="The merge gate: what must be true before an agent's PR is merged" style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=22;fontColor=#1E293B;fontStyle=1;" vertex="1" parent="1">
           <mxGeometry x="20" y="16" width="1000" height="32" as="geometry" />
         </mxCell>
-        <mxCell id="caption" value="Checks run in order, at the PR head. Every « no » becomes a reason code written on the PR, and a decision for a human." style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=13;fontColor=#475569;" vertex="1" parent="1">
+        <mxCell id="caption" value="Checks run in order, at the PR head. Every « no » becomes a reason code written on the PR, and one action for a maintainer." style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=13;fontColor=#475569;" vertex="1" parent="1">
           <mxGeometry x="20" y="52" width="1100" height="22" as="geometry" />
         </mxCell>
 
@@ -36,15 +36,15 @@
         <mxCell id="merge" value="&lt;b&gt;Merge by the merger App&lt;/b&gt;&lt;br&gt;squash, at the decided head&lt;br&gt;the only App holding the key" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#D1FAE5;strokeColor=#059669;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="1300" y="380" width="200" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="verify" value="&lt;b&gt;Watching main&lt;/b&gt;&lt;br&gt;CI green for 30 min → Done&lt;br&gt;otherwise a revert PR · the breaker counts it" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#F8FAFC;strokeColor=#94A3B8;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="verify" value="&lt;b&gt;Watching main&lt;/b&gt;&lt;br&gt;CI green for 30 min → Done&lt;br&gt;otherwise a revert PR · the breaker counts it (a drill does not)" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#F8FAFC;strokeColor=#94A3B8;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="1300" y="520" width="200" height="100" as="geometry" />
         </mxCell>
 
-        <mxCell id="shadow" value="&lt;b&gt;Shadow class, or plain review&lt;/b&gt;&lt;br&gt;« would auto-merge » comment&lt;br&gt;the decision feeds the class tally&lt;br&gt;a human merges" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="shadow" value="&lt;b&gt;Shadow class, or plain review&lt;/b&gt;&lt;br&gt;« would auto-merge » comment&lt;br&gt;the decision feeds the class tally&lt;br&gt;a maintainer approves, the merger App merges" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="1030" y="520" width="210" height="100" as="geometry" />
         </mxCell>
 
-        <mxCell id="human" value="&lt;b&gt;A human decides&lt;/b&gt; · the reason code is written on the PR and exposed as a metric&lt;br&gt;secret_scan_red · ci_red · not_owned · gate_path · policy_pending · verdict_stale · foreign_trailer · human_commit_in_pr · file_not_allowed · patch_too_large · class_paused · auto_merge_cap…" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
+        <mxCell id="human" value="&lt;b&gt;A maintainer decides&lt;/b&gt; · approving the current commit is the merge (the merger App merges it) · the reason code is on the PR and in a metric&lt;br&gt;secret_scan_red · ci_red · not_owned · gate_path · policy_pending · verdict_stale · foreign_trailer · human_commit_in_pr · file_not_allowed · patch_too_large · class_paused · auto_merge_cap…" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
           <mxGeometry x="250" y="400" width="990" height="90" as="geometry" />
         </mxCell>
 
