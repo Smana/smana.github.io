@@ -1,0 +1,88 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<mxfile host="drawio" version="30.3.6">
+  <diagram name="RunLore closes the loop" id="runlore-loop">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1340" pageHeight="660" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="RunLore closes the loop: from the alert to the verified PR" style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=22;fontColor=#1E293B;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="16" width="900" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="caption" value="Two agents, two repositories, one human at the three points that matter: what becomes public, what costs money, and what gets merged. Real example, 2026-10-28." style="text;html=1;fontFamily=Helvetica;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=13;fontColor=#475569;" vertex="1" parent="1">
+          <mxGeometry x="20" y="52" width="1200" height="22" as="geometry" />
+        </mxCell>
+
+        <mxCell id="alert" value="&lt;b&gt;Alert&lt;/b&gt;&lt;br&gt;Alertmanager&lt;br&gt;PodinfoNoAvailableReplica" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#F1F5F9;strokeColor=#94A3B8;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="20" y="120" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="runlore" value="&lt;b&gt;RunLore investigates&lt;/b&gt;&lt;br&gt;verdict action_suggested (0.92)&lt;br&gt;API client: POST /v1/tasks" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="250" y="120" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="task" value="&lt;b&gt;Maku&lt;/b&gt;&lt;br&gt;« investigate » task ($2 cap)&lt;br&gt;issue #2630: a stub, nothing internal" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EEF2FF;strokeColor=#6366F1;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="530" y="120" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="triager" value="&lt;b&gt;Triager run&lt;/b&gt;&lt;br&gt;read-only · 206 k tokens · 3 min&lt;br&gt;proposes the fix in its room" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="820" y="120" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="publish" value="&lt;b&gt;✋ factory/publish&lt;/b&gt;&lt;br&gt;a maintainer reads the proposal&lt;br&gt;→ issue #2631 published" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=2;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="120" width="210" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ready" value="&lt;b&gt;✋ factory/ready&lt;/b&gt;&lt;br&gt;a maintainer reads the issue&lt;br&gt;and authorises one run's spend" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=2;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="300" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="impl" value="&lt;b&gt;Implementer run&lt;/b&gt;&lt;br&gt;standard tier · gVisor sandbox&lt;br&gt;PR #2638 on agent/drq5gh2i" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="820" y="300" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="review" value="&lt;b&gt;Reviewer run&lt;/b&gt; · same room&lt;br&gt;verifies on its own (kustomize, grep)&lt;br&gt;verdict « approve » on this head" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="530" y="300" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="merge" value="&lt;b&gt;✋ Merged by a maintainer&lt;/b&gt;&lt;br&gt;alert-rules class: human review&lt;br&gt;490 k tokens in total" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=2;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#FEF3C7;strokeColor=#F59E0B;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="250" y="300" width="230" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="soak" value="&lt;b&gt;Soak · 30 min&lt;/b&gt;&lt;br&gt;RunLore asks Alertmanager&lt;br&gt;and posts its verdict to Maku" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#CCFBF1;strokeColor=#0D9488;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="250" y="480" width="230" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="verdict" value="&lt;b&gt;Monitor verdict&lt;/b&gt;&lt;br&gt;✅ resolved → task done&lt;br&gt;⚠️ persisting → follow-up, the breaker counts it" style="rounded=1;absoluteArcSize=1;arcSize=10;whiteSpace=wrap;html=1;strokeWidth=1.5;fontFamily=Helvetica;fontSize=13;shadow=1;fillColor=#D1FAE5;strokeColor=#059669;fontColor=#1E293B;" vertex="1" parent="1">
+          <mxGeometry x="530" y="480" width="240" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="alert" target="runlore">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=11;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="runlore" target="task">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="task" target="triager">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="triager" target="publish">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;strokeColor=#F59E0B;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="publish" target="ready">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;strokeColor=#475569;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ready" target="impl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=11;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="impl" target="review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;strokeColor=#475569;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="review" target="merge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="signed webhook room.merged" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=11;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="merge" target="soak">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;fontFamily=Helvetica;fontSize=11;fontColor=#1E293B;labelBackgroundColor=#ffffff;strokeColor=#475569;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="soak" target="verdict">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" value="persisting: a new task, never on its own" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=1.5;endArrow=classic;endFill=1;dashed=1;fontFamily=Helvetica;fontSize=11;fontColor=#475569;labelBackgroundColor=#ffffff;strokeColor=#94A3B8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="verdict" target="alert">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="650" y="610" /><mxPoint x="110" y="610" /></Array></mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
