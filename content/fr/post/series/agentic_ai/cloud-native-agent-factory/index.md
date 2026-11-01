@@ -250,7 +250,7 @@ Dernière brique : **Kueue** admet les sandboxes dans des `ClusterQueue` plafonn
 
 Quand l'agent travaille sans vous, la question suivante est : **qu'a-t-il fait, exactement ?** Un log de pod ne suffit pas : il disparaît avec le pod, n'importe qui peut y écrire n'importe quoi, et il mélange ce que l'agent *dit* avoir fait avec ce qu'il a *réellement* appelé. La réponse de Maku s'appelle une **room** : un journal partagé par tâche, à la fois boîte noire d'avion et salon de discussion. Pendant le run, vous suivez chaque étape, vous pouvez poster une consigne pour le run suivant, et vous approuvez ce que l'agent n'a pas le droit de faire seul. Après le run, la room reste, et c'est elle que vous rouvrez quand une PR vous surprend trois semaines plus tard.
 
-{{< img src="maku-room.png" alt="Une room Maku pendant une revue : l'état « Waiting — a maintainer decides », les chips budget (1,9 M / 3 M tokens, 64 %), PR, issue, dernier verdict du reviewer, puis le fil des tool calls du triager" width="1100" caption="Une room pendant un drill : le budget consommé, le dernier verdict, et chaque tool call du triager, repliable." >}}
+{{< img src="maku-room.png" alt="Une room Maku qui attend un mainteneur : l'état « Waiting — review and approve PR #42 », le budget en tokens, le dernier verdict du reviewer, l'encadré NEXT qui dit que l'approbation du commit courant vaut merge, l'action exacte sous « Needs you », puis le fil des événements de l'implementer" width="1100" caption="Une room qui attend votre approbation : la prochaine étape, l'action exacte à faire, et le fil des événements du run (capture rendue depuis la démo de Maku)." >}}
 </br>
 
 Ce qui fait qu'on peut s'y fier :
@@ -269,7 +269,7 @@ Ce qui fait qu'on peut s'y fier :
 
 Vous accédez aux rooms par la Web UI (derrière ZITADEL), par la CLI `maku` dans votre terminal, ou depuis votre propre coding agent via le serveur MCP. La CLI, volontairement, **ne peut rien approuver** : regarder, poster, mettre en file, forker, c'est tout. Les approbations d'actions se prennent dans la Web UI, et la carte d'approbation montre l'**action brute**, pas la prose de l'agent. La règle *four-eyes* (quand la room l'exige) interdit en plus à celui qui a soufflé la consigne d'approuver son résultat.
 
-{{< img src="maku-rooms.png" alt="La liste des rooms de Maku : celles qui attendent un humain d'abord, chacune avec son dépôt, sa ligne d'état, sa PR et sa dernière activité" width="1100" caption="La liste des rooms : ce qui attend un humain remonte en premier." >}}
+{{< img src="maku-rooms.png" alt="La liste des rooms de Maku, rafraîchie toutes les 10 secondes : les tâches qui attendent un humain portent un badge « Needs you » et remontent en premier, chacune avec son dépôt, son état, sa PR et sa dernière activité" width="1100" caption="La liste des rooms pendant la session sur EKS, le 31 octobre : ce qui attend un humain remonte en premier, et la page se rafraîchit seule." >}}
 </br>
 
 Pour vous faire une idée sans rien installer, une room réelle est rejouable dans la [démo publique](https://blog.ogenki.io/maku/).
