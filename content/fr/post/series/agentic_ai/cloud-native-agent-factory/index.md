@@ -1,8 +1,8 @@
 +++
 author = "Smaine Kahlouch"
-title = "L'Agent Factory : confier des issues GitHub à des agents sur votre cluster Kubernetes… sans leur faire confiance"
+title = "Agents et humains dans la même équipe : une `Agent Factory` efficace et sécurisée"
 date = "2026-11-04"
-summary = "Vous labellisez une issue GitHub ; des agents la cadrent, l'implémentent et la relisent dans des sandboxes gVisor, chacun sous sa propre identité ; puis un merge gate décide. Les changements à faible risque se mergent seuls, le reste sur une seule approbation. Anatomie de l'Agent Factory v3, éprouvée en live sur GCP et AWS : identité par run, egress fermé, rooms append-only, classes de merge et disjoncteur, avec les chiffres et ce qui manque encore."
+summary = "Gagner en autonomie et mieux collaborer à partir d'une simple issue GitHub : un label suffit à ouvrir un espace de travail cloisonné où agents et humains se relaient jusqu'à une PR relue, sécurisée et traçable."
 featured = true
 draft = true
 codeMaxLines = 30
@@ -14,14 +14,18 @@ thumbnail = "thumbnail.png"
 +++
 
 {{% notice info "Série Agentic AI — la suite logique 🏭" %}}
-Dans les épisodes précédents : [les fondamentaux des coding agents](/fr/post/series/agentic_ai/ai-coding-agent/), [mes workflows Claude Code au quotidien](/fr/post/series/agentic_ai/ai-coding-tips/) et [une stack LLM self-hosted](/fr/post/series/agentic_ai/llm-self-hosted-stack/). Jusqu'ici l'agent tournait **sur mon laptop, sous mes yeux**. Ici on change d'échelle : l'agent tourne **sur le cluster, sans moi devant l'écran**, et c'est précisément ça qui pose problème.
+Dans les épisodes précédents : [les fondamentaux des coding agents](/fr/post/series/agentic_ai/ai-coding-agent/), [mes workflows Claude Code au quotidien](/fr/post/series/agentic_ai/ai-coding-tips/) et [une stack LLM self-hosted](/fr/post/series/agentic_ai/llm-self-hosted-stack/). Jusqu'ici, l'agent tournait **sur mon laptop**, avec mon propre **harnais** et moi pour seul relecteur. Il est temps de changer d'échelle : un environnement **partagé**, où l'équipe travaille avec les agents et peut faire confiance à ce qu'ils livrent.
 {{% /notice %}}
 
-Depuis quelques mois, je ne code presque plus sans agent. Et comme beaucoup, j'ai fini par me poser la question qui vient naturellement : pourquoi est-ce que je reste assis devant lui ? Une issue bien rédigée le soir, une PR à relire au café le matin : voilà le workflow dont j'avais envie. C'est exactement la promesse des **software factories** dont tout le monde parle en 2026 : des agents qui prennent un backlog et rendent des pull requests.
+Depuis quelques mois, je ne code presque plus sans agent, et je constate la même évolution autour de moi : on écrit moins de code, on pilote davantage d'agents.
 
-Sauf qu'une fois l'agent hors de ma machine, tout ce qui ne me dérangeait pas en local devient un vrai problème. Avec quel **token Git** pousse-t-il ? Vers **quels domaines** peut-il sortir ? Qui a **approuvé** quoi, et où est-ce écrit ? Et si le texte d'une issue contient une injection de prompt, jusqu'où va-t-elle ? Le modèle s'est finalement révélé la partie la moins compliquée : c'est une ligne de configuration. Ce qui m'a pris du temps, c'est **l'identité, l'isolation, le trafic sortant et la preuve** de ce qui s'est passé.
+Seulement, ce qui fonctionne sur mon laptop ne se transpose pas tel quel à une équipe. Chacun arrive avec ses instructions, ses outils et ses permissions, et les pratiques divergent vite d'un poste à l'autre. Dans une organisation, il ne suffit pas que mon agent soit efficace : il faut pouvoir garantir la qualité et la sécurité de ce qui part **réellement** en production, quelle que soit la personne qui a lancé l'agent.
 
-Cet article décrit l'**Agent Factory**, la factory que je fais tourner sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), ma plateforme de référence : ce qu'elle fait, comment chaque brique cloud-native y contribue, et ce que ça donne pour de vrai, chiffres, drills et ratés compris. La [v3.0.0](https://github.com/Smana/ai-native-ref/releases/tag/v3.0.0) est sortie le 31 octobre, après deux sessions live : l'une sur **GKE**, l'autre sur **EKS**. C'est long, mais chaque section se lit indépendamment : si seule la sécurité vous intéresse, sautez directement à [l'identité par run](#-une-identité-par-run-zéro-secret-dans-la-sandbox).
+En parallèle, les agents gagnent en fiabilité, au point qu'on peut envisager de leur confier certains changements de bout en bout, de l'issue jusqu'au merge. Encore faut-il savoir sur quels critères leur faire confiance, et pouvoir le mesurer. C'est tout l'enjeu des **software factories**, dont on entend beaucoup parler cette année.
+
+Cet article décrit l'**Agent Factory**, ma tentative de réponse à ces questions : une chaîne qui va de l'issue à la PR mergée, construite avec des outils open source cloud native. Elle s'appuie sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), ma plateforme de référence, qui fournissait déjà une bonne partie du socle (Crossplane, Cilium, ZITADEL, OpenBao, l'observabilité). J'y ai ajouté une couche dédiée aux agents et la glue nécessaire pour faire tourner la machinerie 😉.
+
+Je l'ai éprouvée en conditions réelles, sur **GKE** comme sur **EKS**. Toutes les briques sont open source, et rien n'oblige à tout reprendre : piochez les idées qui vous parlent, adaptez-les à votre contexte et faites-en profiter votre équipe. Entrons dans le vif du sujet ! 🚀
 
 ## 🎯 Objectifs de cet article
 
@@ -32,19 +36,6 @@ Cet article décrit l'**Agent Factory**, la factory que je fais tourner sur [`cl
 * 🚦 Décortiquer le **merge gate** : deux façons de merger, des classes de changement, le mode *shadow* et un disjoncteur qui se teste
 * 🩺 Fermer la boucle avec [RunLore](/fr/post/series/observability/runlore/) : d'une alerte à une PR mergée et vérifiée
 * 📊 Lire des **chiffres réels** (coûts, cache, PRs mergées) et une liste honnête de ce qui manque encore
-
-## 🔥 Pourquoi se compliquer la vie ?
-
-Le déclic, c'est un vendredi soir et une demi-douzaine d'issues de documentation en retard sur `cloud-native-ref` : un lien cassé, une version de chart à mettre à jour, un chemin de script à corriger. Rien de passionnant, et pourtant chacune me coûte le même rituel : ouvrir Claude Code, lui coller l'issue, vérifier, pousser, ouvrir la PR. La version naïve d'une automatisation est évidente et prend une heure : un `Job` Kubernetes qui lance l'agent avec un **PAT GitHub dans un `Secret`** et une clé d'API de modèle dans une variable d'environnement.
-
-Et c'est précisément là que ça devient inconfortable. Ce `Job` :
-
-* pousse avec **mon** identité, ou avec un token qui vaut la mienne, sans date de péremption ;
-* peut joindre **n'importe quel** domaine, donc exfiltrer ce qu'il lit si une issue le lui demande gentiment ;
-* ne laisse comme seule trace qu'un log de pod, qui disparaît avec lui ;
-* et surtout, rien ne l'empêche d'**approuver** ou de **merger** ce qu'il vient d'écrire.
-
-Un agent qui tourne en autonomie, c'est du **code non relu qui s'exécute avec des droits**. En local, je suis le garde-fou. Sur un cluster, le garde-fou doit être dans l'architecture. C'est ce qui a transformé un script d'un soir en plateforme, et c'est ce que je décris ici.
 
 ## 🏭 Software factory : de quoi parle-t-on ?
 
@@ -129,124 +120,125 @@ Les recherches de 2026 vont toutes dans le même sens : un **scoper** améliore 
 
 Depuis la v3, vous pouvez aussi lancer une tâche **sans passer par GitHub** : depuis un fil Slack (l'app rédige l'issue, un ✅ d'un mainteneur la dépose), depuis la CLI `maku`, ou directement depuis votre coding agent (Claude Code, OpenCode) grâce au serveur MCP de Maku et au skill `factory-handoff`. Le plus pratique au quotidien : une tâche annexe qui surgit en pleine session, que je confie à la factory sans quitter mon terminal.
 
-## 🔐 Une identité par run, zéro secret dans la sandbox
+## 🔒 Un environnement cloisonné et traçable
 
-C'est le cœur du sujet, et ce qui a le plus structuré les choix. La question de sécurité d'une factory tient en une phrase : **qui agit, avec quel jeton, et jusqu'où ce jeton porte-t-il ?**
+Un agent qui travaille sans surveillance exécute du code que personne n'a relu. Plutôt que de lui demander d'être prudent, la plateforme construit pour chaque run un environnement **éphémère et cloisonné** : une identité, un accès réseau restreint et une sandbox, créés au démarrage et détruits à la fin. Et chaque action qui s'y déroule est **attribuée** à quelqu'un.
 
-La réponse s'appuie sur une primitive Kubernetes que l'on sous-estime souvent : le **jeton de ServiceAccount projeté**. C'est un JWT signé par le cluster, émis pour une **audience** précise (le service qui a le droit de l'accepter) et avec une **durée de vie courte**, renouvelé par le kubelet. Autrement dit : une identité par pod, gratuite, vérifiable hors ligne par quiconque connaît l'issuer du cluster. Toute la chaîne qui suit consiste à ne distribuer **que** ce type de jeton dans la sandbox, et à échanger le reste à l'extérieur.
+### 🧩 Un run, une claim `AgentRun`
 
-{{< img src="agent-run-identity.png" alt="Anatomie d'un run : la claim AgentRun est composée par Crossplane en ServiceAccount, CiliumNetworkPolicy et Sandbox ; dans le pod gVisor, le harnais ne détient aucun jeton, identity-proxy attache le jeton du run à chaque appel vers l'agent gateway, maku-bridge détient le jeton de room ; octo-sts échange le jeton contre un token GitHub d'une heure limité aux branches agent/**" width="1200" >}}
+C'est ici que **Crossplane** montre ce qu'il sait faire. Pour lancer un run, Maku ne crée ni pod ni policy réseau : il dépose une seule ressource de haut niveau, une claim `AgentRun`, qui décrit le *quoi* sans rien dire du *comment* :
+
+```yaml
+# Une claim AgentRun, telle que Maku la crée
+apiVersion: cloud.ogenki.io/v1alpha1
+kind: AgentRun
+metadata:
+  name: xplane-run-7f3cq2xz
+  namespace: agents
+spec:
+  role: implementer                       # implementer | reviewer | tester | triager
+  repository: Smana/cloud-native-ref
+  principal: "human:312345678901234567"   # la personne à qui le run est imputé
+  dataClass: public                       # public | internal
+  task:
+    text: "Fix the broken link in docs/README.md."
+  budget:
+    maxTokens: 2000000
+  egress:
+    profiles: [pypi]                      # registres autorisés en plus de GitHub
+```
+
+La [composition](https://github.com/Smana/crossplane-configuration/tree/main/apis/agentrun), écrite en KCL, traduit cette intention en ressources Kubernetes, toutes nommées d'après le run :
+
+{{< img src="agentrun-composition.png" alt="La composition AgentRun : une claim AgentRun est rendue par Crossplane en ServiceAccount sans droits, ConfigMap de tâche, CiliumNetworkPolicy et Sandbox ; le pod gVisor contient le harnais OpenHands, identity-proxy et maku-bridge, et tourne sur GKE Sandbox ou sur un pool Karpenter EKS ; chaque appel sort par l'agent gateway, octo-sts délivre un jeton GitHub limité aux branches agent/**, et maku-bridge relaie les événements vers le broker de rooms" width="1200" >}}
 </br>
 
-Un pod de run contient **trois conteneurs**, et la répartition des jetons entre eux n'est pas un détail :
+| Ressource composée | Son rôle |
+|---|---|
+| `ServiceAccount` | L'identité du run, **sans aucun droit** sur l'API Kubernetes |
+| `ConfigMap` | La tâche et les règles que l'agent doit suivre |
+| `CiliumNetworkPolicy` | Les seules destinations que ce run peut joindre |
+| `Sandbox` | Le pod gVisor : le harnais OpenHands, accompagné de deux sidecars. `identity-proxy` porte l'identité du run vers l'extérieur, `maku-bridge` relaie ses événements vers la room |
 
-* **`harness`** (OpenHands, UID 10001) : le seul qui exécute du code non relu. Il n'a **aucun** jeton de ServiceAccount monté (`automountServiceAccountToken: false`, imposé par Kyverno), aucun `Secret` Kubernetes, aucune clé de fournisseur de modèle. Son unique identifiant est le token GitHub d'installation, **en mémoire**, révoqué dans le `preStop`.
-* **`identity-proxy`** (Envoy, sidecar natif) : il détient les **jetons projetés** du ServiceAccount du run et les attache à chaque appel sortant. Le harnais parle à `127.0.0.1`, le proxy parle au gateway.
-* **`maku-bridge`** : il détient un troisième jeton, d'audience `room-broker`, valable **600 secondes**, et pousse chaque événement du harnais vers le broker de rooms. Le harnais ne voit jamais ce jeton : un harnais compromis ne peut donc **pas forger** un verdict ou une décision dans la room.
+Au-delà du YAML économisé, ce modèle apporte quatre propriétés :
 
-Ces jetons sont de simples `serviceAccountToken` projetés, avec une **audience par destination** :
+* **Des garde-fous dans l'API.** Un run `internal` qui demande un profil d'egress est refusé dès sa création, par le schéma lui-même. Et une claim est **immuable** : seul son budget de tokens peut changer. Pour modifier un run, on en lance un autre.
+* **Un état au même endroit.** Le statut de la claim donne la phase du run, les tokens consommés et la PR ouverte. Une révocation (budget épuisé, arrêt manuel) y est **définitive** : un run révoqué ne redémarre pas.
+* **La même claim sur deux clouds.** Un `AgentRun` produit le même pod gVisor sur GKE et sur EKS ; seuls les nœuds diffèrent.
+* **Un nettoyage garanti.** À la fin du run, le pod est supprimé sans jamais être recréé, et l'identité du run disparaît avec lui.
 
-```yaml
-# Extrait d'une Sandbox (agents.x-k8s.io/v1beta1) composée pour un run implementer
-spec:
-  podTemplate:
-    spec:
-      serviceAccountName: xplane-run-ralxknfk
-      automountServiceAccountToken: false
-      runtimeClassName: gvisor
-      restartPolicy: Never
-      activeDeadlineSeconds: 2700          # le runMinutes du tier, ici 45 min
-      volumes:
-        - name: public
-          projected:
-            sources:
-              - serviceAccountToken: {audience: agent-router.implementer.public, expirationSeconds: 600, path: token}
-        - name: sts
-          projected:
-            sources:
-              - serviceAccountToken: {audience: octo-sts/Smana/cloud-native-ref/implementer, expirationSeconds: 600, path: token}
-```
+Enfin, **Kueue** admet les sandboxes dans une file plafonnée (16 CPU, 64 Gi, 4 pods) : une factory qui s'emballe ne peut pas remplir le cluster.
 
-De l'autre côté, l'**agent gateway** ([agentgateway](https://agentgateway.dev/), déployé comme `Gateway` Kubernetes) valide ce JWT **hors ligne** contre l'issuer du cluster, exige que le `sub` commence par `system:serviceaccount:agents:`, puis **écrase** l'en-tête `x-ar-agent` avec ce `sub`. Un run ne peut pas se faire passer pour un autre : l'identité vient du jeton vérifié, jamais d'un en-tête. C'est aussi le gateway qui **injecte la clé du fournisseur** (Z.ai, Anthropic, Moonshot, Mistral) depuis un Secret du namespace `agent-system` : la clé n'entre jamais dans `agents`. Et c'est lui qui compte les tokens par run, par personne et par flotte : quand un budget est épuisé, la réponse est un `429` explicite, observé en conditions réelles :
+### 🙌 Le harnais : OpenHands
 
-```json
-{"error":{"type":"rate_limit_error","code":"agent_budget_exhausted",
- "message":"agent-router refused this call: a gateway token budget is spent (limit 5000000, resets in 12877 s). Not retryable."}}
-```
+[OpenHands](https://github.com/OpenHands/OpenHands) est une plateforme open source d'agents de développement, disponible en SDK Python, en CLI, en interface web et en offre cloud. Toutes ces déclinaisons reposent sur la même boucle : l'agent observe, agit avec ses outils et vérifie le résultat, jusqu'à ce que la tâche soit terminée. Ses principales fonctionnalités :
 
-### Et GitHub, dans tout ça ?
+* **Des outils de développeur** : un terminal, un éditeur de fichiers et un gestionnaire de tâches, extensibles par des serveurs **MCP**.
+* **L'indépendance vis-à-vis du modèle** : il s'adresse à n'importe quel fournisseur via LiteLLM.
+* **Un condenseur de contexte** : à intervalles réguliers, la première moitié de l'historique est remplacée par un résumé, ce qui garde les longues sessions dans la fenêtre de contexte.
+* **Un serveur d'agent** (*agent-server*) : il exécute les conversations et expose chaque action de l'agent comme un événement, via une API REST et WebSocket.
 
-C'est là que ça devient intéressant. Le run ne possède **aucun** credential GitHub durable. Quand le harnais a besoin de pousser, `git-credential-agent` demande au proxy un échange sur [`octo-sts`](https://github.com/octo-sts/app), auto-hébergé : le jeton projeté (audience `octo-sts/Smana/cloud-native-ref/implementer`) est vérifié contre une **politique de confiance versionnée dans le dépôt cible**, puis échangé contre un token d'installation GitHub App valable **au plus une heure**, pour **un dépôt** et **un rôle** :
+**Dans la factory**, OpenHands ne tourne qu'à un seul endroit : le conteneur du harnais, dans le pod gVisor de chaque run. Rien ne s'y connecte depuis l'extérieur ; c'est la sandbox qui ouvre chaque connexion, vers l'agent gateway ou vers la room. Trois fonctionnalités font ce lien :
 
-```yaml
-# .github/chainguard/agent-implementer.sts.yaml (dans cloud-native-ref), exemple pour le cluster GKE
-issuer_pattern: 'https://container\.googleapis\.com/v1/projects/ogenki-435905/locations/europe-west4-a/clusters/gcp-0'
-subject_pattern: 'system:serviceaccount:agents:xplane-run-[a-z2-7]{8}'
-audience: octo-sts/Smana/cloud-native-ref/implementer
-permissions:
-  contents: write
-  pull_requests: write
-  issues: read
-  checks: read
-```
+| OpenHands fournit | Dans la sandbox | Hors de la sandbox |
+|---|---|---|
+| Les outils MCP | L'agent appelle un outil | Les serveurs MCP (Flux, Victoria…) tournent derrière l'agent gateway, qui vérifie l'identité du run |
+| LiteLLM | L'agent appelle un modèle | L'agent gateway injecte la clé du fournisseur et n'autorise que les modèles permis pour la classe de données : open-weight pour un dépôt public, Claude pour un travail interne |
+| L'API d'événements | `maku-bridge`, sidecar du même pod, lit chaque événement en local | Le bridge relaie ces événements au broker, qui les inscrit dans la room |
 
-Sur EKS, seul l'`issuer_pattern` change : c'est celui du cluster EKS. Un reviewer ou un juge obtient la même chose en **lecture seule**. Et côté GitHub, des *rulesets* limitent l'App des agents aux branches `agent/**` : impossible de pousser sur `main`, impossible de poser un tag. J'ai vérifié chaque refus dans un runbook : push sur sa propre branche ✅, push sur `main` → `GH013`, push d'un reviewer → `403`, échange pour un autre dépôt → `404 unable to find trust policy`.
+L'image du harnais n'ajoute que le strict nécessaire : un *credential helper* Git qui obtient le jeton GitHub du run, un wrapper `gh` qui ajoute un pied de provenance aux PR, et la boucle du juge.
 
-{{% notice info "Quatre GitHub Apps, un seul mergeur 🔑" %}}
-La séparation des pouvoirs passe par **quatre** GitHub Apps : `ogenki-agents` (les runs, confinée à `agent/**`), `ogenki-agent-factory` (la narration sur les issues), `ogenki-merge-gate` (le statut de [policy-bot](https://github.com/palantir/policy-bot)) et `ogenki-agent-merger`, **la seule** qui ait le droit de contourner le ruleset pour merger. Sa clé n'est montée que dans le contrôleur de Maku, jamais dans une sandbox. Un agent ne peut ni approuver ni merger sa propre PR, par construction.
+{{% notice info "Le *harness engineering* en bref 🧰" %}}
+Le terme s'est imposé début 2026 : le **harness engineering** est la conception de tout ce qui entoure le modèle, selon l'équation **Agent = Modèle + Harnais**. OpenAI a [raconté](https://openai.com/index/harness-engineering/) comment une de ses équipes a cessé d'écrire du code pour concevoir l'environnement, les contraintes et les boucles de feedback de ses agents. Birgitta Böckeler en [propose une grille de lecture](https://martinfowler.com/articles/harness-engineering.html) selon deux axes : un contrôle agit **avant** ou **après** l'agent, et il est **déterministe** ou confié à un modèle.
+
+| | Computationnel (déterministe, rapide) | Inférentiel (un modèle évalue) |
+|---|---|---|
+| **Guide** (*feedforward*) : oriente l'agent avant qu'il agisse | Codemods, scripts de bootstrap | Conventions dans `AGENTS.md`, skills |
+| **Senseur** (*feedback*) : vérifie ce qu'il a produit | Tests, linters, tests d'architecture | Revue de code par IA, *LLM as judge* |
+
+Elle distingue aussi le harnais **intégré** à l'outil, conçu par ses auteurs, du harnais **extérieur** que chacun construit autour pour son propre contexte. Ici, OpenHands fournit le premier. La factory est un harnais extérieur porté par la plateforme, avec ses guides (les règles du run, les critères d'acceptation du scoper) et ses senseurs (les checks du dépôt, le juge, le reviewer).
 {{% /notice %}}
 
-Et l'humain ? Il n'apparaît que deux fois dans la chaîne, et toujours **hors de la sandbox** : au départ (le label, un ✅ dans Slack, ou un appel à l'API de Maku authentifié par ZITADEL) et à l'arrivée (l'approbation, qui vaut merge). Dans les rooms, son identité est `human:<sub>` ; celle d'un run est `agent:<runId>` ; celle de la factory, `system:factory`. Les dépenses sont **imputées à la personne qui a lancé la tâche**, pas à un compte technique anonyme.
+### 🪪 Qui agit ? Une identité par intervenant
 
-## 🧱 Isolation et egress : la sandbox ne sort que par la porte
+Dans une room comme sur GitHub, chaque action est attribuée à l'un de ces trois intervenants. Et une identité n'est jamais **déclarée** par celui qui écrit : le broker la déduit du jeton qu'il vient de vérifier.
 
-L'identité ne sert à rien si le code peut s'échapper de son pod ou parler à n'importe qui. Deux choix ici.
+| Intervenant | Identité | Comment elle est établie |
+|---|---|---|
+| 👤 Un humain | `human:<sub>` | Sa connexion SSO via ZITADEL (Web UI, CLI `maku`). Ses comptes GitHub et Slack sont liés à ce compte |
+| 🤖 Un agent | `agent:<runId>` | L'identité Kubernetes de son pod, émise par le cluster pour ce seul run |
+| ⚙️ La factory | `system:factory` | L'identité de service du contrôleur Maku |
 
-### gVisor, et ce qu'il coûte
+Deux conséquences concrètes :
 
-Chaque pod du namespace `agents` tourne sous la `RuntimeClass` **gVisor**, sur des nœuds spot dédiés : GKE Sandbox côté GCP, un pool Karpenter côté AWS. gVisor intercale un noyau en espace utilisateur, le *Sentry*, entre le conteneur et le noyau de l'hôte : une évasion par appel système doit d'abord traverser le Sentry. J'ai retenu gVisor plutôt que des microVMs parce qu'il tourne **sur des nœuds standards** des deux clouds (une microVM Kata ou Firecracker exige des hôtes bare-metal ou de la virtualisation imbriquée) et que la primitive [`agent-sandbox`](https://agent-sandbox.sigs.k8s.io/) (projet Kubernetes SIG, `Sandbox`/`SandboxTemplate`/`SandboxClaim`) le supporte directement.
+* Les dépenses sont **imputées à la personne** qui a lancé la tâche (le champ `principal` de la claim), pas à un compte technique anonyme.
+* Ce qu'écrit un agent reste du **contenu non fiable, attribué à cet agent**. Un verdict, un changement de pilote ou une approbation ne peuvent venir que de Maku ou d'un humain.
 
-Le prix est réel, et mieux vaut le connaître avant de le payer :
+### 🔑 Aucun secret dans la sandbox
 
-* Le profil seccomp `RuntimeDefault` est **désactivé** sous gVisor : `runsc` ignore `errnoRet` ([gvisor#14688](https://github.com/google/gvisor/issues/14688)), ce qui transforme le `clone3 → ENOSYS` attendu par glibc ≥ 2.34 en `EPERM`, et plus aucun thread ne démarre. C'est le Sentry qui tient la frontière, pas seccomp.
-* Les I/O fichiers sont environ **1,74×** plus lentes (mesuré sur un clone + build représentatif). Ça ne se voit presque pas : une étape d'agent passe l'essentiel de son temps à attendre le modèle.
-* Cilium a besoin de `socketLB.hostNamespaceOnly: true` : la pile réseau de gVisor n'appelle jamais `connect()` dans le noyau hôte, donc le socket-LB ne peut pas traduire une ClusterIP.
-* Et un pod gVisor ne reçoit pas les événements inotify du kubelet : un jeton projeté **tourné** sur l'hôte n'est jamais vu par le pod. La parade est simple (le TTL du jeton vaut la durée max du run), mais il fallait le découvrir.
+Les clés des fournisseurs de modèles restent dans OpenBao. C'est l'**agent gateway** ([agentgateway](https://agentgateway.dev/)) qui les injecte au passage, après avoir vérifié l'identité du run. Il compte aussi les tokens par run, par personne et pour toute la flotte : un budget épuisé se traduit par un refus explicite, pas par une facture surprise.
 
-Trois policies Kyverno figent la forme de tout pod dans `agents` : `runtimeClassName == gvisor`, pas de jeton d'API monté, et créé par une `Sandbox`, rien d'autre.
+Même principe pour GitHub : le run ne détient **aucun** credential durable. Quand il doit pousser, son identité est échangée via [`octo-sts`](https://github.com/octo-sts/app) contre un jeton GitHub valable **au plus une heure**, pour **un dépôt** et **un rôle**. Les règles de cet échange sont versionnées **dans le dépôt cible** : c'est son propriétaire qui décide quels runs peuvent y écrire. Un reviewer ou un juge n'obtient qu'un accès en lecture, et des *rulesets* GitHub cantonnent les agents aux branches `agent/**` : pas de push sur `main`, pas de tag.
 
-### L'egress, refusé à la résolution de nom
+Enfin, une seule GitHub App a le droit de merger, et sa clé ne quitte jamais le contrôleur de Maku : **un agent ne peut ni approuver ni merger sa propre PR**, par construction.
 
-Le namespace `agents` commence par une `CiliumNetworkPolicy` **default deny** complète, et chaque run reçoit la sienne, composée par Crossplane. Sa forme :
+### 🧱 L'isolation : gVisor
 
-```yaml
-# CiliumNetworkPolicy d'un run (extrait)
-egress:
-  - toEndpoints:
-      - matchLabels: {io.kubernetes.pod.namespace: kube-system, k8s-app: kube-dns}
-    toPorts:
-      - ports: [{port: "53", protocol: UDP}]
-        rules:
-          dns:
-            - matchPattern: "*"           # le proxy DNS de Cilium observe chaque requête
-  - toFQDNs:
-      - matchName: github.com
-      - matchName: api.github.com
-      - matchName: objects.githubusercontent.com
-    toPorts:
-      - ports: [{port: "443", protocol: TCP}]
-  # + le data plane de l'agent gateway (8080/8081/8082) et le broker (8443)
-```
+Chaque pod de run tourne sous **gVisor**, sur des nœuds dédiés : GKE Sandbox côté GCP, un pool Karpenter côté AWS. gVisor intercale un noyau en espace utilisateur entre le conteneur et le noyau de l'hôte : une tentative d'évasion par appel système doit d'abord le traverser. Je l'ai préféré aux microVMs (Kata, Firecracker) parce qu'il tourne sur des **nœuds standards** des deux clouds, et que [`agent-sandbox`](https://agent-sandbox.sigs.k8s.io/), un projet des SIG Kubernetes, le prend en charge directement.
 
-Un nom non autorisé **ne résout pas** : l'agent reçoit `Temporary failure in name resolution`, pas un timeout TCP, et Hubble journalise un `dns-request proxy DROPPED`. Des *profils* opt-in (`pypi`, `npm`, `golang`, `crates`) ajoutent les registres de paquets quand une classe de tâche en a besoin, pour que l'implementer puisse lancer les checks du dépôt avant de pousser. Et pour la classe de données `internal`, c'est plus strict encore : **aucun** egress GitHub direct ; `git` passe par le gateway, qui n'autorise que `git-upload-pack` (la lecture) sur les dépôts explicitement listés.
+Le surcoût est réel mais discret : des I/O fichiers environ 1,7× plus lentes, presque invisibles puisqu'un agent passe l'essentiel de son temps à attendre le modèle. Des policies Kyverno garantissent qu'aucun pod du namespace `agents` ne tourne autrement que sous gVisor, créé par une `Sandbox`.
+
+### 🌐 L'egress : tout est fermé, sauf ce qui est nommé
+
+Le namespace `agents` refuse tout trafic par défaut, et la `CiliumNetworkPolicy` de chaque run n'ouvre que le strict nécessaire : GitHub, l'agent gateway et le broker de rooms. Les registres de paquets (`pypi`, `npm`, `golang`, `crates`) ne s'ajoutent que si la tâche en a besoin. Un nom non autorisé **ne résout même pas** : l'agent reçoit `Temporary failure in name resolution`, et Hubble journalise la requête refusée. Pour un travail `internal`, c'est plus strict encore : aucun accès direct à GitHub, la lecture passe par le gateway et aucun push n'est possible.
 
 {{% notice warning "Pourquoi autant d'insistance sur l'egress ? ☠️" %}}
 Parce que c'est le troisième terme de la [*lethal trifecta*](https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/) de Simon Willison : accès à des données privées + exposition à du contenu non fiable + **capacité à communiquer vers l'extérieur**. Un agent qui lit des issues GitHub et du code tiers a forcément les deux premiers. Anthropic a documenté [un cas réel](https://www.anthropic.com/research/how-we-contain-claude) d'exfiltration **par l'endpoint d'inférence autorisé**, avec une clé fournie par l'attaquant, et conclut : *« Design for containment at the environment layer first, then steer behavior at the model layer. »* Je ne demande pas au modèle de se méfier ; je coupe le canal.
 {{% /notice %}}
 
-Dernière brique : **Kueue** admet les sandboxes dans des `ClusterQueue` plafonnées (16 CPU / 64 Gi / 4 pods pour la file `factory`), sans emprunt possible. Une factory qui s'emballe ne peut pas remplir le cluster.
-
 ## 📓 La room : la boîte noire de chaque run
+
+{{< img src="room.gif" alt="Trafalgar Law (One Piece) qui déploie sa « Room »" width="498" >}}
 
 Quand l'agent travaille sans vous, la question suivante est : **qu'a-t-il fait, exactement ?** Un log de pod ne suffit pas : il disparaît avec le pod, n'importe qui peut y écrire n'importe quoi, et il mélange ce que l'agent *dit* avoir fait avec ce qu'il a *réellement* appelé. La réponse de Maku s'appelle une **room** : un journal partagé par tâche, à la fois boîte noire d'avion et salon de discussion. Pendant le run, vous suivez chaque étape, vous pouvez poster une consigne pour le run suivant, et vous approuvez ce que l'agent n'a pas le droit de faire seul. Après le run, la room reste, et c'est elle que vous rouvrez quand une PR vous surprend trois semaines plus tard.
 
@@ -265,7 +257,7 @@ Ce qui fait qu'on peut s'y fier :
 
 * **Séquencé sans trou.** Chaque événement reçoit un `seq` monotone sous verrou de ligne ; une clé d'idempotence `(room, client, seq d'origine)` fait qu'un rejeu renvoie l'événement déjà stocké sans en consommer un nouveau. À la fermeture, un événement de **sceau** interdit tout ajout.
 * **Caviardé d'abord.** Chaque chaîne JSON passe par gitleaks **avant** d'être stockée, loguée ou comptée.
-* **Attribué.** L'`actor` de chaque événement est tamponné par le broker à partir du jeton vérifié, jamais déclaré par l'émetteur. Les événements d'un agent sont du *contenu non fiable attribué à cet agent*, et un bridge ne peut pousser que des événements d'origine harnais : un verdict, un changement de pilote ou une décision d'approbation ne peuvent venir que de Maku ou d'un humain.
+* **Attribué.** Chaque événement porte l'identité de son auteur (`human:`, `agent:` ou `system:`), établie par le broker à partir du jeton vérifié, jamais déclarée par l'émetteur.
 
 Vous accédez aux rooms par la Web UI (derrière ZITADEL), par la CLI `maku` dans votre terminal, ou depuis votre propre coding agent via le serveur MCP. La CLI, volontairement, **ne peut rien approuver** : regarder, poster, mettre en file, forker, c'est tout. Les approbations d'actions se prennent dans la Web UI, et la carte d'approbation montre l'**action brute**, pas la prose de l'agent. La règle *four-eyes* (quand la room l'exige) interdit en plus à celui qui a soufflé la consigne d'approuver son résultat.
 
@@ -276,7 +268,7 @@ Pour vous faire une idée sans rien installer, une room réelle est rejouable da
 
 ## 🚦 Le merge gate : deux façons de merger
 
-Voilà le point où l'on décide de ce qu'on délègue vraiment. Mon parti pris : l'autonomie n'est pas une fonctionnalité globale qu'on active, c'est un **privilège par classe de changement**, gagné statistiquement et **révocable**. Une *classe*, c'est une famille de PR définie par ce qu'elle a le droit de toucher et par la forme attendue de son diff : `docs-links` pour les liens de la documentation, `deps-patch` pour les mises à jour de dépendances en version patch, `alert-rules` pour les règles d'alerte, et ainsi de suite.
+Voilà le point où l'on décide de ce qu'on délègue vraiment. Mon choix : l'autonomie n'est pas une fonctionnalité globale qu'on active, c'est un **privilège par classe de changement**, gagné statistiquement et **révocable**. Une *classe*, c'est une famille de PR définie par ce qu'elle a le droit de toucher et par la forme attendue de son diff : `docs-links` pour les liens de la documentation, `deps-patch` pour les mises à jour de dépendances en version patch, `alert-rules` pour les règles d'alerte, et ainsi de suite.
 
 Une PR d'agent se merge donc de deux façons, et **c'est toujours l'App merger qui appuie sur le bouton** :
 
@@ -314,22 +306,34 @@ Le second gardien est le gate de Maku, qui applique une liste **ordonnée** de c
 
 Chaque « non » est un **code de raison** que Maku écrit sur la PR, avec la **seule action** qui vous revient, et qu'il expose en métrique (`maku_factory_merge_decisions_total{class, verdict, reason, repository}`). Une PR d'agent porte aussi un pied de provenance (`Agent-Room`, `Agent-Run`, `Agent-Task`, `Agent-Model`), mais la doc de Maku est explicite : *« Trailers and footer are provenance hints, never authorisation. »* Ce qui lie un commit à la factory, c'est l'identité qui a poussé, pas ce qui est écrit dedans.
 
-{{< img src="merge-gate.png" alt="Le merge gate : une PR d'agent traverse dans l'ordre le scan de secrets, la CI, policy-bot, le verdict du reviewer sur ce commit, les conditions de la classe, le disjoncteur et les plafonds ; une classe live est mergée par l'App merger puis surveillée, une classe shadow reçoit un commentaire « would auto-merge », et tout le reste attend l'approbation d'un mainteneur, que l'App merger transforme en merge" width="1200" >}}
+{{< img src="merge-gate.png" alt="Le merge gate : une PR d'agent passe quatre contrôles dans l'ordre (hygiène, politique, preuve, limites de la classe) ; le moindre « non » l'envoie à un mainteneur, dont l'approbation vaut merge. Si tout passe et que la classe est live, l'App merger merge sans humain, puis main est surveillée 30 minutes ; une classe en shadow écrit « would merge » et attend le mainteneur" width="760" >}}
 </br>
+
+**Et après un merge sans humain ?** Seuls deux événements déclenchent un revert :
+
+| Déclencheur | Pendant | Ce qui se passe |
+|---|---|---|
+| 🔴 Un check de CI qui tourne sur `main` (pre-commit, scan de sécurité, validation Kubernetes, scripts, liens de la doc) échoue sur le commit de merge | 30 minutes après le merge | Revert automatique : l'App merger ouvre la PR de revert |
+| 🙋 Un mainteneur pose le label `factory/revert` sur la PR | 7 jours après le merge | L'App merger ouvre la PR de revert à sa demande |
+
+Sur `cloud-native-ref`, cette PR de revert se merge elle-même sans humain, puisque la classe `revert` y est `live`. Chaque revert compte pour le disjoncteur décrit plus bas. Une PR mergée par un humain, elle, n'est jamais revertée par la factory.
+
+Certaines classes sont surveillées plus longtemps : un moniteur vérifie par exemple que Flux applique bien le changement, ou qu'aucune PR ne vient le corriger dans la semaine. Ce moniteur ne revert jamais rien. Il note le résultat, et c'est le disjoncteur qui en tient compte.
 
 ### Du shadow au live, et retour
 
-Une classe commence en **shadow** : le gate décide exactement comme en live, écrit *« would auto-merge: docs-links, checks green, verdict approve »* sur la PR, puis c'est votre approbation qui merge. Chaque décision shadow nourrit un **tally** par classe, que l'on peut rejouer contre les règles actuelles. Pour passer en live, je regarde la **borne supérieure de Clopper-Pearson à 95 %** du taux de mauvais merges, calculée sur les merges mûrs et concluants : je veux qu'elle passe sous 10 %. Concrètement : **29 merges propres**, 46 s'il y en a un mauvais, 61 s'il y en a deux. Pas de démo réussie trois fois qui devient une autonomie générale.
+Comment décider qu'une classe peut se merger sans humain ? En la mettant d'abord à l'épreuve, sans risque. C'est le rôle du **mode shadow** (« ombre »), une sorte de répétition générale :
 
-Dans l'autre sens, un **disjoncteur** : un seul revert ou une seule PR de correction dans les dix derniers merges de la classe la renvoie en revue humaine. La v3 lui a ajouté une sortie, sur le modèle du *half-open* des circuit breakers : la classe repart d'elle-même quand ses **trois merges les plus récents** sont propres, mûrs et postérieurs au mauvais.
+* **En shadow**, le gate fait tout son travail mais ne merge rien. Il écrit simplement sur la PR ce qu'il aurait fait (*« would auto-merge »*). Un mainteneur relit et merge, comme d'habitude.
+* **En live**, le gate merge lui-même, sans humain.
 
-Ce disjoncteur, je l'ai déclenché exprès, deux fois. Le premier **drill** a eu lieu le **18 octobre**, sur GKE : la PR #2520 (quatre URLs de dashboards Grafana remplacées par leurs formes canoniques) a été le premier merge entièrement autonome de la factory, puis le label `factory/revert` a exercé la voie de secours. Maku a ouvert le revert #2521, et le disjoncteur a sauté :
+Chaque PR traitée en shadow devient un test. Quand le gate disait « j'aurais mergé » et que la PR, mergée par un humain, n'a rien cassé (ni revert, ni correctif, ni régression), c'est un bon point. Sinon, c'en est un mauvais. Un merge n'est compté qu'après un délai d'observation, le temps de voir s'il a vraiment tenu.
 
-> Auto-merge of the class `docs-links` goes back to human review until its recent merges pass without a revert (R41).
+Pour passer une classe en live, quelques succès ne suffisent pas. Je veux pouvoir affirmer, avec 95 % de confiance, que **moins d'un merge sur dix** poserait problème. Le calcul statistique (la borne de Clopper-Pearson) donne le nombre de merges propres nécessaires : **29** s'il n'y a eu aucun mauvais merge, 46 s'il y en a eu un, 61 s'il y en a eu deux. Pas de démo réussie trois fois qui devient une autonomie générale.
 
-Exactement le comportement voulu, avec deux défauts. Le revert ne s'est **pas** mergé seul (j'ai dû le faire), et un disjoncteur qui saute sur un revert *demandé* ne distingue pas un exercice d'un incident. La v3 corrige les deux : un label `factory/drill`, posé **avant** `factory/revert`, marque l'exercice, et l'App merger merge elle-même le revert d'un merge de la factory.
+Dans l'autre sens, un **disjoncteur** protège les classes déjà en live. Au moindre incident parmi les dix derniers merges d'une classe (un revert, ou une PR qui a dû corriger la précédente), la classe perd son autonomie et repasse sous approbation humaine. Elle la retrouve d'elle-même quand ses trois merges suivants, approuvés entre-temps par un humain, se sont révélés propres.
 
-Le second drill a eu lieu le **31 octobre**, cette fois sur EKS. La classe `dead-links`, dont un oracle (un scan de liens morts) doit confirmer le correctif, était passée `live` le temps de la session. La PR #2697 (un lien AWS mort remplacé par un instantané de la Wayback Machine) s'est mergée seule à 11:11 UTC. J'ai posé `factory/drill` puis `factory/revert`, et l'App merger a ouvert puis **mergé elle-même** le revert #2698, sans personne. Le tally de la classe affichait ensuite `drill=1 bad=0`, et la décision suivante sur la classe lisait `paused=false` : l'exercice n'a pas compté comme un incident. Puis la classe est retournée en shadow, en attendant ses 29 merges propres.
+Ce disjoncteur, je l'ai testé exprès, lors de deux exercices (des *drills*). Le principe : laisser une PR se merger seule, puis demander son annulation avec le label `factory/revert`. La factory ouvre alors la PR de revert et la merge elle-même, sans personne. Pour que l'exercice ne compte pas comme un incident, il suffit de poser le label `factory/drill` juste avant : le disjoncteur l'ignore et la classe garde son autonomie. Le premier de ces exercices, sur GKE, a d'ailleurs été l'occasion du tout premier merge entièrement autonome de la factory.
 
 ## 🩺 RunLore ferme la boucle : de l'alerte à la PR vérifiée
 
@@ -454,6 +458,8 @@ La suite est écrite, et elle a un nom : la v4, **« anyone can run it »**. Auj
 ### Software factories
 
 * [Addy Osmani : Software Factories, Light and Dark](https://addyosmani.com/blog/software-factories/)
+* [OpenAI : Harness engineering](https://openai.com/index/harness-engineering/)
+* [Birgitta Böckeler : Harness engineering for coding agent users](https://martinfowler.com/articles/harness-engineering.html)
 * [Dan Shapiro : The five levels, from spicy autocomplete to the software factory](https://www.danshapiro.com/blog/2026/01/the-five-levels-from-spicy-autocomplete-to-the-software-factory/)
 * [Simon Willison : la software factory de StrongDM](https://simonwillison.net/2026/Feb/7/software-factory/)
 * [Firecrawl : How to build an AI software factory](https://www.firecrawl.dev/blog/ai-software-factory)
