@@ -74,15 +74,12 @@ Concrètement, quatre questions changent de nature :
 
 À ces quatre questions s'ajoute celle de l'**homogénéité** : quand toute l'équipe passe par le même circuit (les mêmes rôles d'agents, les mêmes contrôles, le même gate), la qualité ne dépend plus de la configuration de chaque poste.
 
-## 🗺️ La solution en un coup d'œil
+## 🗺️ Vue d'ensemble de la solution
 
-L'ensemble repose sur trois dépôts, et la séparation n'est pas cosmétique : elle dit qui possède quelle frontière de confiance.
+L'ensemble repose sur trois dépôts ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) et [`maku`](https://github.com/Smana/maku)), et la séparation n'est pas cosmétique : elle dit qui possède quelle frontière de confiance.
 
-| Couche | Dépôt | Ce qu'elle apporte |
-|---|---|---|
-| **Le cluster hôte** | [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) | Une plateforme Kubernetes GitOps sur EKS ou GKE : Cilium, Crossplane, Flux, ZITADEL, OpenBao, la stack Victoria… et le dépôt sur lequel les agents travaillent |
-| **La plateforme IA** | [`ai-native-ref`](https://github.com/Smana/ai-native-ref) | Tout ce qui est propre aux agents : runtime gVisor, `agent-sandbox`, l'agent gateway, `octo-sts`, Kueue, les policies, les dashboards et les alertes |
-| **Le contrôleur** | [`maku`](https://github.com/Smana/maku) | Le chef d'orchestre : il transforme une issue en tâche, lance les agents, tient le journal de chaque tâche et applique la politique de merge |
+{{< img src="solution-layers.png" alt="Trois couches imbriquées, avec le logo de chaque brique. Le cluster hôte (cloud-native-ref) : une plateforme Kubernetes GitOps sur EKS ou GKE, avec Cilium, Crossplane, Flux, ZITADEL, OpenBao et VictoriaMetrics, et le dépôt sur lequel les agents travaillent. À l'intérieur, la plateforme IA (ai-native-ref) : tout ce qui est propre aux agents, avec gVisor, agent-sandbox, agentgateway, octo-sts et Kueue. Au cœur, le contrôleur (maku) : il transforme une issue en tâche, lance les agents, tient le journal de chaque tâche et applique la politique de merge" width="800" >}}
+</br>
 
 La plateforme IA arrive dans le cluster hôte sous la forme d'un **artefact OCI signé**, épinglé par digest et **suspendu par défaut** : rien ne s'active sans une décision explicite. Le cluster hôte s'engage, dans un *contrat* écrit, sur ce qu'il fournit (namespaces, identité, secrets, nœuds gVisor, observabilité), et la plateforme IA se déploie par-dessus.
 
@@ -150,10 +147,14 @@ Le modèle s'est révélé la partie la plus simple : une ligne de configuration
 
 Soyons clairs sur l'état du projet : c'est un chantier de quelques semaines, éprouvé sur GKE puis sur EKS, et mes clusters de référence sont démontés entre deux sessions pour des raisons de coût. Aujourd'hui, l'ensemble tourne bien… sur ma plateforme. La prochaine étape, déjà sur la [feuille de route](https://airef.ogenki.io/docs/status/) mais pas encore construite, s'appelle **« anyone can run it »** : faire tourner toute la boucle sur un laptop en une demi-heure, puis l'installer sur votre propre cluster avec votre fournisseur d'identité, vos secrets et votre outil GitOps.
 
-En attendant, deux portes d'entrée existent déjà :
+En attendant, deux portes d'entrée existent déjà. La première est la **démo publique d'une room**, qui rejoue une tâche réelle sans rien installer :
 
-* la [**démo publique d'une room**](https://blog.ogenki.io/maku/), qui rejoue une tâche réelle sans rien installer ;
-* le [**quickstart de Maku**](https://github.com/Smana/maku/blob/main/docs/quickstart.md), qui lance un agent dans une sandbox gVisor sur un cluster kind. C'est une version réduite : pas de factory, pas de gateway, et vos propres clés dans la sandbox. Parfait pour comprendre, pas pour la production.
+<figure style="text-align:center;">
+  <a href="https://blog.ogenki.io/maku/"><img src="maku-room.webp" alt="Screencast de 38 secondes de la démo publique : la liste des rooms, puis le replay d'une tâche de la factory. Le rail des étapes se dessine (implementer, reviewer, merge), un humain oriente l'agent, le push attend son approbation, puis une tâche terminée se rejoue : scoper, tester, implementer et reviewer s'allument tour à tour jusqu'à Done" width="800" loading="lazy" style="border-radius:6px;"></a>
+  <figcaption><small><a href="https://blog.ogenki.io/maku/">Ouvrir la démo interactive ↗</a></small></figcaption>
+</figure>
+
+La seconde est le [**quickstart de Maku**](https://github.com/Smana/maku/blob/main/docs/quickstart.md), qui lance un agent dans une sandbox gVisor sur un cluster kind. C'est une version réduite : pas de factory, pas de gateway, et vos propres clés dans la sandbox. Parfait pour comprendre, pas pour la production.
 
 Les [issues](https://github.com/Smana/ai-native-ref/issues) sont le meilleur endroit pour me dire où ça casse chez vous. Rendez-vous dans le prochain article pour entrer dans Maku. 🏭
 
