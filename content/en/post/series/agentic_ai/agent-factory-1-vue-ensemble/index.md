@@ -26,7 +26,7 @@ The catch is that what works on my laptop doesn't carry over to a team as is. Ev
 
 Meanwhile, agents are getting reliable enough that we can consider handing them some changes end to end, from the issue all the way to the merge. Provided we know which criteria earn that trust, and can measure them. That's the whole point of **software factories**.
 
-This series describes the **Agent Factory**, my attempt at an answer: a pipeline from issue to merged pull request, built from cloud native open source tools. It sits on [`cloud-native-ref`](https://cnref.ogenki.io/), my reference platform, which already provided most of the foundation (Crossplane, Cilium, ZITADEL, OpenBao, observability). I added a layer dedicated to agents, plus the glue that keeps the machinery turning 😉.
+This series describes the **Agent Factory**, my attempt at an answer: a pipeline from issue to merged pull request, built from cloud native open source tools. It sits on [`cloud-native-ref`](https://cnref.ogenki.io/), my reference platform, which already provided most of the foundation (Crossplane, Cilium, ZITADEL, OpenBao, observability). I added a layer dedicated to agents, plus the glue that keeps the machinery turning 😉. The whole thing is documented at **[airef.ogenki.io](https://airef.ogenki.io/)**, the entry point for everything this series will cover.
 
 This first post lays out the problem and sketches the solution. The next ones will go into each building block, starting with Maku. Everything is open source, and nothing forces you to adopt it all: pick the ideas that speak to you and adapt them to your own context. 🚀
 
@@ -68,9 +68,7 @@ What sets factories apart most is how much room they leave for humans. Dan Shapi
 
 The dark factory is not where I'm heading. When nobody reads the code anymore, one question becomes unavoidable: **who still understands the system?** Knowledge thins out, and the day something breaks, nobody knows where to look. As with [RunLore](/post/series/observability/runlore/), I'd rather have agents do the work while **humans keep their hands on the decision that matters**: what ships to production. Steering the boat rather than watching it drift. ⛵
 
-{{% notice note "Where does this factory sit? 🧭" %}}
-**Level 4 for almost everything, level 5 for a single lane.** I write the issue, the agents scope, implement, test and review each other's work, and **my approval of the commit is the merge**. Only one family of changes merges without me: broken-link fixes in the documentation, at most one a day, with a circuit breaker that sends the lane back to human review at the first incident. And that autonomy comes with one condition: knowing **exactly** what must be true before a machine merges anything.
-{{% /notice %}}
+This factory therefore sits at **level 4**: I write the issue, the agents scope, implement, test and review each other's work, and **my approval of the commit is the merge**. **Level 5** is granted only to changes that meet **conditions we define ourselves**, as *gates* versioned in the repository, with a circuit breaker that hands control back to humans at the first incident.
 
 ## 🧩 From laptop to team: what's in it for me?
 
@@ -117,7 +115,7 @@ In all honesty, I've tested a lot (37 agent PRs merged since late September), bu
 
 ## 🗺️ The solution from above
 
-The Agent Factory rests on three repositories ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) and [`maku`](https://github.com/Smana/maku)), each with a clearly defined scope.
+The Agent Factory rests on three repositories ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) and [`maku`](https://github.com/Smana/maku)), each with a clearly defined scope. The AI platform, the one that carries everything specific to agents, has its own documentation: **[airef.ogenki.io](https://airef.ogenki.io/)**.
 
 {{< img src="solution-layers.png" width="800" >}}
 </br>
@@ -166,7 +164,7 @@ Here is the journey of a task, in broad strokes:
 
 For a project that is only a few weeks old, the first results are stunning! It helps that I started from a cloud native foundation that was already battle-tested 😉. Until now, I had mostly been busy getting an efficient local setup with Claude Code or OpenCode, and keeping up with the breakneck pace of new models. Company needs pushed me to look more closely at the organizational side: **giving autonomy and power while keeping control**.
 
-This software factory started as a way to explore a lot of topics, but I got hooked, and the result is getting more serious by the week. The next step, already on the [roadmap](https://airef.ogenki.io/docs/status/), proves it: it's called **"anyone can run it"**, and it's quite a challenge, one I'll tell you about in the adventures to come.
+This software factory started as a way to explore a lot of topics, but I got hooked, and it has grown into something I now take seriously. The next step, already on the [roadmap](https://airef.ogenki.io/docs/status/), shows where it's heading: it's called **"anyone can run it"**, and it's quite a challenge. More on that in the posts to come.
 
 The next post will be about **Maku**, the layer that orchestrates this whole crowd. Here's a sneak peek:
 
