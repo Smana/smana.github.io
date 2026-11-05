@@ -1,6 +1,6 @@
 +++
 author = "Smaine Kahlouch"
-title = "Agent Factory : agents et humains dans la même équipe"
+title = "`Agent Factory` : agents et humains dans la même équipe"
 date = "2026-11-04"
 summary = "Gagner en autonomie et mieux collaborer à partir d'une simple issue GitHub : un label suffit à ouvrir un espace de travail cloisonné où agents et humains se relaient jusqu'à une PR relue, sécurisée et traçable. Premier épisode : le problème, et la solution vue d'ensemble."
 featured = true
@@ -14,77 +14,120 @@ thumbnail = "thumbnail.png"
 +++
 
 {{% notice info "Série Agentic AI : place à l'Agent Factory 🏭" %}}
-Dans les épisodes précédents : [les fondamentaux des coding agents](/fr/post/series/agentic_ai/ai-coding-agent/), [mes workflows Claude Code au quotidien](/fr/post/series/agentic_ai/ai-coding-tips/) et [une stack LLM self-hosted](/fr/post/series/agentic_ai/llm-self-hosted-stack/). Jusqu'ici, l'agent tournait **sur mon laptop**, avec mon propre **harnais** et moi pour seul relecteur. Il est temps de changer d'échelle : un environnement **partagé**, où l'équipe travaille avec les agents et peut faire confiance à ce qu'ils livrent. Cet article ouvre une série consacrée à cette **Agent Factory**, dont chaque article approfondira une brique.
+Dans les épisodes précédents : [les fondamentaux des coding agents](/fr/post/series/agentic_ai/ai-coding-agent/), [mes workflows Claude Code au quotidien](/fr/post/series/agentic_ai/ai-coding-tips/) et [une stack LLM self-hosted](/fr/post/series/agentic_ai/llm-self-hosted-stack/).
+
+Il est temps de changer d'échelle : un environnement **partagé**, où l'équipe travaille avec les agents et peut faire confiance à ce qu'ils livrent. Cet article ouvre une série consacrée à cette **Agent Factory**, dont chaque article approfondira une brique.
 {{% /notice %}}
 
-Depuis quelques mois, je ne code presque plus sans agent, et je constate la même évolution autour de moi : on écrit moins de code, on pilote davantage d'agents.
+Depuis quelques mois, je ne code presque plus sans agent, et je constate la même évolution autour de moi : on écrit moins de code, on **pilote** davantage d'agents.
 
-Seulement, ce qui fonctionne sur mon laptop ne se transpose pas tel quel à une équipe. Chacun arrive avec ses instructions, ses outils et ses permissions, et les pratiques divergent vite d'un poste à l'autre. Dans une organisation, il ne suffit pas que mon agent soit efficace : il faut pouvoir garantir la qualité et la sécurité de ce qui part **réellement** en production, quelle que soit la personne qui a lancé l'agent.
+Seulement, ce qui fonctionne sur mon laptop ne se transpose pas tel quel à une équipe. Chacun arrive avec ses instructions et ses outils, et les pratiques divergent vite d'un poste à l'autre. Dans une organisation, il ne suffit pas que notre coding agent soit efficace : il faut pouvoir garantir la qualité et la sécurité de ce qui part **réellement** en production, quelle que soit la personne qui a lancé l'agent.
 
 En parallèle, les agents gagnent en fiabilité, au point qu'on peut envisager de leur confier certains changements de bout en bout, de l'issue jusqu'au merge. Encore faut-il savoir sur quels critères leur faire confiance, et pouvoir le mesurer. C'est tout l'enjeu des **software factories**.
 
-Cette série décrit l'**Agent Factory**, ma tentative de réponse à ces questions : une chaîne qui va de l'issue à la PR mergée, construite avec des outils open source cloud native. Elle s'appuie sur [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), ma plateforme de référence, qui fournissait déjà une bonne partie du socle (Crossplane, Cilium, ZITADEL, OpenBao, l'observabilité). J'y ai ajouté une couche dédiée aux agents et la glue nécessaire pour faire tourner la machinerie 😉.
+Cette série décrit l'**Agent Factory**, ma tentative de réponse à ces questions : une chaîne qui va de l'issue à la PR mergée, construite avec des outils open source cloud native. Elle s'appuie sur [`cloud-native-ref`](https://cnref.ogenki.io/), ma plateforme de référence, qui fournissait déjà une bonne partie du socle (Crossplane, Cilium, ZITADEL, OpenBao, l'observabilité). J'y ai ajouté une couche dédiée aux agents et la glue nécessaire pour faire tourner la machinerie 😉.
 
-Ce premier article pose le problème et présente la solution dans ses grandes lignes. Les suivants entreront dans chaque brique, à commencer par Maku. Toutes sont open source, et rien n'oblige à tout reprendre : piochez les idées qui vous parlent, adaptez-les à votre contexte et faites-en profiter votre équipe. 🚀
+Ce premier article pose le problème et présente la solution dans ses grandes lignes. Les suivants entreront dans chaque brique, à commencer par Maku. Toutes sont open source, et rien n'oblige à tout reprendre : piochez les idées qui vous parlent, adaptez-les à votre contexte. 🚀
 
 ## 🎯 Objectifs de cet article
 
 * 🏭 Comprendre ce qu'on appelle une **software factory**, et où se situe celle-ci sur l'échelle de l'autonomie
-* 🧩 Voir ce qui change quand un agent quitte le laptop pour travailler **pour une équipe**
+* 🧩 Explorer ce qu’**apporte concrètement** la factory, côté développeur et côté organisation
 * 🗺️ Découvrir l'architecture d'ensemble : **trois dépôts, trois couches**, et les briques open source qui les composent
 * 🔄 Suivre une tâche **de bout en bout**, de l'issue à la PR mergée
-* 🧭 Découvrir ce que la suite de la série va approfondir
 
 ## 🏭 Software factory : de quoi parle-t-on ?
 
-On entend de plus en plus parler de **software factory**. Les deux exemples les plus cités viennent de grandes équipes d'ingénierie : les [Minions de Stripe](https://www.infoq.com/news/2026/03/stripe-autonomous-coding-agents/), qui produisent plus de 1 300 PR par semaine, et [Honk, chez Spotify](https://engineering.atspotify.com/2025/11/spotifys-background-coding-agent-part-1), à l'origine de plus de 1 500 PR mergées.
+Une **software factory** est une chaîne qui transforme une file de travail (des issues, un backlog) en changements livrés, avec des agents à chaque étape. Les exemples les plus cités viennent de grandes équipes d'ingénierie :
 
-Concrètement, une software factory est une chaîne qui transforme une file de travail (des issues, un backlog) en changements livrés, avec des agents à chaque poste. Chaque agent travaille en **boucle** : il observe, agit et vérifie, jusqu'à ce que la tâche soit terminée. Autour de cette boucle, un **harnais** (*harness*) fixe le cadre : où l'agent s'exécute, avec quels outils et quelles permissions, et ce que « terminé » veut dire. Enfin, avant la production, un **gate de revue** décide de ce qui passe. C'est cette chaîne que nous allons détailler, brique par brique, au fil de la série.
+* les [Minions de Stripe](https://www.infoq.com/news/2026/03/stripe-autonomous-coding-agents/), qui produisent plus de **1 300 PR par semaine** ;
+* [Honk, chez Spotify](https://engineering.atspotify.com/2025/11/spotifys-background-coding-agent-part-1), à l'origine de plus de **1 500 PR mergées**.
 
-Toutes les factories ne laissent pas la même place à l'humain, et c'est ce qui les distingue le plus. Pour les situer, Dan Shapiro a proposé [une échelle](https://www.danshapiro.com/blog/2026/01/the-five-levels-from-spicy-autocomplete-to-the-software-factory/) calquée sur les niveaux de la conduite autonome. Plus on monte, plus l'humain prend du recul :
+Derrière ces chiffres, trois notions suffisent à décrire n'importe quelle factory :
 
-* **Niveau 0, l'autocomplétion améliorée** : vous écrivez le code, l'IA suggère la suite. *Exemple : l'éditeur complète la boucle que vous venez de commencer.*
-* **Niveau 1, les tâches ponctuelles** : vous confiez à l'IA des tâches précises et bornées, le reste du travail ne change pas. *Exemple : « écris un test unitaire pour cette fonction ».*
-* **Niveau 2, le binôme** : vous travaillez avec l'IA comme avec un collègue junior, à qui vous laissez le travail répétitif. *Exemple : une session Claude Code où vous validez chaque modification.*
-* **Niveau 3, le manager** : l'agent écrit l'essentiel du code, et vous **relisez chaque diff**. *Exemple : plusieurs agents travaillent en parallèle, et vous passez de l'un à l'autre pour relire.*
-* **Niveau 4, le rédacteur de specs** : vous écrivez la spécification, vous relisez le plan, puis vous revenez plus tard vérifier que les tests passent. *Exemple : une issue rédigée le soir, une PR à relire le lendemain matin.*
-* **Niveau 5, la *dark factory*** : **plus personne ne lit le code**, des specs entrent et du logiciel sort. *Exemple : chez [StrongDM](https://simonwillison.net/2026/Feb/7/software-factory/), « Code must not be reviewed by humans », et les scénarios de test sont tenus hors du dépôt pour que les agents ne puissent pas les voir.*
+* 🔁 **La boucle** : chaque agent observe, agit et vérifie, jusqu'à ce que la tâche soit terminée.
+* 🧰 **Le harnais** (*harness*) : le cadre autour de la boucle. Où l'agent s'exécute, avec quels outils et quelles permissions, et ce que « terminé » veut dire.
+* 🚦 **Le gate** : une ultime étape de validation, qui décide de ce qui part en production.
 
-La dark factory n'est pas la direction que je prends. Quand plus personne ne lit le code, une question devient inévitable : **qui comprend encore le système ?** La connaissance se dilue, et le jour où quelque chose casse, plus personne ne sait où regarder. Mon approche rejoint celle que j'ai suivie avec [RunLore](/fr/post/series/observability/runlore/) : les agents font le travail, mais **l'humain garde la main sur les décisions déterminantes**, comme ce qui part en production, ce qui devient public ou ce qui coûte. C'est ce qui permet de conserver la connaissance du système, et de continuer à diriger le bateau plutôt que de le regarder dériver.
+### 🪜 Quelle place pour l'humain ?
 
-{{< img src="autonomy-levels.png" alt="Les niveaux d'autonomie de Dan Shapiro, du niveau 0 (spicy autocomplete) au niveau 5 (dark factory) : l'Agent Factory se situe au niveau 4 pour l'essentiel du travail, et n'atteint le niveau 5 que pour une seule voie, les corrections de liens, au plus une par jour et avec un disjoncteur. À gauche, clin d'œil à Magritte : une usine aux fenêtres allumées, légendée « Ceci n'est pas une dark factory »" width="900" >}}
+Ce qui distingue le plus les factories entre elles, c'est la place qu'elles laissent à l'humain. Dan Shapiro a proposé [une échelle](https://www.danshapiro.com/blog/2026/01/the-five-levels-from-spicy-autocomplete-to-the-software-factory/) calquée sur les niveaux de la conduite autonome. Plus on monte, plus l'humain prend du recul :
+
+| Niveau | Votre rôle | Exemple |
+|---|---|---|
+| **0 · L'autocomplétion améliorée** | Vous écrivez le code, l'IA suggère la suite | L'éditeur complète la boucle que vous venez de commencer |
+| **1 · Les tâches ponctuelles** | Vous confiez des tâches précises et bornées, le reste ne change pas | « Écris un test unitaire pour cette fonction » |
+| **2 · Le binôme** | Vous travaillez avec l'IA comme avec un collègue junior, à qui vous laissez le répétitif | Une session Claude Code où vous validez chaque modification |
+| **3 · Le manager** | L'agent écrit l'essentiel du code, vous **relisez chaque diff** | Plusieurs agents en parallèle, vous passez de l'un à l'autre pour relire |
+| **4 · Le rédacteur de specs** | Vous écrivez la spec, relisez le plan, puis revenez vérifier que les tests passent | Une issue rédigée le soir, une PR à relire le lendemain matin |
+| **5 · La *dark factory*** | **Plus personne ne lit le code** : des specs entrent, du logiciel sort | Chez [StrongDM](https://simonwillison.net/2026/Feb/7/software-factory/), « Code must not be reviewed by humans », et les scénarios de test sont tenus hors du dépôt pour que les agents ne les voient pas |
+
+{{< img src="autonomy-levels.png" width="900" >}}
 </br>
 
+La dark factory n'est pas la direction que je prends. Quand plus personne ne lit le code, **qui comprend encore le système ?** La connaissance se dilue, et le jour où quelque chose casse, plus personne ne sait où regarder. Comme avec [RunLore](/fr/post/series/observability/runlore/), je préfère que les agents fassent le travail et que **l'humain garde la main sur la décision déterminante** : ce qui part en production. Diriger le bateau plutôt que le regarder dériver. ⛵
+
 {{% notice note "Où se situe cette factory ? 🧭" %}}
-**Au niveau 4 pour presque tout, au niveau 5 pour une seule voie.** J'écris l'issue, les agents cadrent, implémentent, testent et se relisent entre eux, et **mon approbation du commit vaut merge**. Une seule famille de changements se merge sans moi : les corrections de liens dans la documentation, au plus une par jour, avec un disjoncteur qui la renvoie en revue humaine au premier incident. Et cette autonomie ne s'accorde qu'avec des critères explicites : savoir **exactement** ce qui doit être vrai avant qu'une machine merge quoi que ce soit.
+**Au niveau 4 pour presque tout, au niveau 5 pour une seule voie.** J'écris l'issue, les agents cadrent, implémentent, testent et se relisent entre eux, et **mon approbation du commit vaut merge**. Une seule famille de changements se merge sans moi : les corrections de liens dans la documentation, au plus une par jour, avec un disjoncteur qui la renvoie en revue humaine au premier incident. Cette autonomie ne s'accorde qu'à une condition : savoir **exactement** ce qui doit être vrai avant qu'une machine merge quoi que ce soit.
 {{% /notice %}}
 
-## 🧩 Du laptop à l'équipe : ce qui change
+## 🧩 Du laptop à l'équipe : qu'est-ce que ça m'apporte au juste ?
 
 Sur mon laptop, la question de la confiance ne se pose presque pas : je lance l'agent, je le regarde travailler, je relis, je pousse. **Je suis le garde-fou.** Dès que l'agent travaille pour une équipe, sur un cluster partagé et sans personne devant l'écran, ce garde-fou doit passer dans l'architecture. Un agent autonome, c'est du **code non relu qui s'exécute avec des droits**.
 
-Concrètement, quatre questions changent de nature :
+Ce que la factory apporte en échange n'a pas la même réponse selon qu'on est devant le clavier ou qu'on est responsable de ce qui part en production.
 
-| Question | Sur mon laptop | Dans un environnement partagé |
+### 👩‍💻 Côté développeur
+
+* ⏱️ **Déléguer et passer à autre chose.** Une issue bien rédigée suffit, personne ne reste devant l'écran, et la PR qui arrive a déjà été relue par un agent. Le 29 octobre, une alerte RunLore s'est déclenchée à 6 h 28, la PR corrigeant la règle était ouverte à 6 h 33 et mergée, avec mon approbation, à 6 h 47.
+
+* 🚪 **Lancer une tâche depuis là où on est.** Un label sur l'issue, un message Slack, la CLI, ou directement depuis notre propre coding agent. Pas de contexte à changer.
+
+* 🧰 **Rien à installer, rien à maintenir.** Le harnais, les outils, les accès aux modèles et à GitHub sont fournis par la plateforme. Aucune clé sur notre laptop, aucune configuration à tenir à jour, et le même outillage que nos collègues.
+
+* 🎛️ **Garder la main sans tout relire.** La room, le journal partagé de la tâche, montre ce que fait l'agent en direct, on peut l'orienter en cours de route ou l'arrêter d'un label. À l'arrivée, une seule action nous revient : approuver le commit, et c'est mergé.
+
+* 📝 **Un compte rendu qui s'écrit tout seul.** Budget, étapes, lien vers la room, qui a mergé : tout est posté sur l'issue au fil de l'eau. Plus de « qu'est-ce que j'avais fait déjà ? » en revenant dessus.
+
+### 🏢 Côté organisation
+
+Des questions nouvelles se posent quand le code quitte le laptop du développeur, et la factory doit y répondre par des **garanties** :
+
+| Question | Sur mon laptop | Dans la factory |
 |---|---|---|
 | 🪪 **Qui agit ?** | Moi, avec mes propres tokens | Chaque exécution d'agent a **sa propre identité**, courte, et ses dépenses sont imputées à la personne qui l'a lancée |
 | 🌐 **Que peut-il joindre ?** | Tout Internet | Uniquement les destinations **nommées** ; le reste ne résout même pas |
 | 🚦 **Qui décide du merge ?** | Moi | Des **règles versionnées dans le dépôt**, et un humain dès qu'elles ne suffisent pas |
-| 📓 **Où est la preuve ?** | Mon terminal, puis plus rien | Un **journal partagé et inaltérable** par tâche, où chaque action est attribuée |
+| 📓 **Où est la preuve ?** | Mon terminal, puis plus rien | Un **journal partagé et inaltérable** par tâche, où chaque action est attribuée. Un audit, un post-mortem ou l'arrivée d'un nouveau collègue partent de là, même six mois plus tard |
 
-À ces quatre questions s'ajoute celle de l'**homogénéité** : quand toute l'équipe passe par le même circuit (les mêmes rôles d'agents, les mêmes contrôles, le même gate), la qualité ne dépend plus de la configuration de chaque poste.
+À ces garanties s'ajoute ce qu'on attend d'une plateforme partagée :
+
+* 🧱 **Une qualité et une sécurité qui ne dépendent plus du poste.** Junior ou senior, laptop bien ou mal configuré : tout le monde passe par les mêmes rôles d'agents, le même reviewer et le même gate. Les règles s'améliorent au même endroit pour tout le monde.
+
+* 💸 **Un coût connu avant de lancer, et borné.** Le budget (modèle, tokens, durée) est affiché au démarrage. Une file plafonne les exécutions simultanées, et un disjoncteur coupe une voie dès qu'elle déraille. La correction d'alerte du 29 octobre a coûté 490 k tokens, et je l'ai su avant de merger.
+
+* 📈 **Une autonomie qui s'étend à notre rythme, par des règles écrites.** On démarre au niveau 4, où un humain approuve tout. Quand une famille de changements a fait ses preuves, une règle versionnée lui accorde le merge automatique, et on la lui retire au premier incident. La politique se relit et se discute comme du code.
+
+* 🤝 **Un point d'entrée commun pour tout ce qui veut modifier le dépôt.** Humains, mais aussi d'autres agents : une alerte traitée par RunLore peut devenir une issue, donc une tâche, donc une PR, sans qu'un humain ait tapé une ligne, et avec les mêmes contrôles.
+
+* 🔓 **Aucune dépendance à un fournisseur.** Chaque brique est open source et remplaçable, le modèle est une ligne de configuration, et les humains gardent la connaissance du système puisqu'ils relisent ce qui part en production.
+
+En toute franchise, j'ai beaucoup testé (37 PR d'agents mergées depuis fin septembre), mais sur des changements plutôt simples, quelques fichiers à chaque fois. C'est là qu'une factory trouve toute son utilité : les changements récurrents et bornés. Pour une grosse feature qui enchaîne beaucoup de tâches, le laptop est probablement encore plus rapide. Je suis curieux de voir jusqu'où ça évoluera.
 
 ## 🗺️ Vue d'ensemble de la solution
 
-L'ensemble repose sur trois dépôts ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) et [`maku`](https://github.com/Smana/maku)), et la séparation n'est pas cosmétique : elle dit qui possède quelle frontière de confiance.
+L’Agent Factory repose sur trois repo ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) et [`maku`](https://github.com/Smana/maku)), qui ont un périmètre bien défini
 
-{{< img src="solution-layers.png" alt="Trois couches imbriquées, avec le logo de chaque brique. Le cluster hôte (cloud-native-ref) : une plateforme Kubernetes GitOps sur EKS ou GKE, avec Cilium, Crossplane, Flux, ZITADEL, OpenBao et VictoriaMetrics, et le dépôt sur lequel les agents travaillent. À l'intérieur, la plateforme IA (ai-native-ref) : tout ce qui est propre aux agents, avec gVisor, agent-sandbox, agentgateway, octo-sts et Kueue. Au cœur, le contrôleur (maku) : il transforme une issue en tâche, lance les agents, tient le journal de chaque tâche et applique la politique de merge" width="800" >}}
+{{< img src="solution-layers.png" width="800" >}}
 </br>
 
-La plateforme IA arrive dans le cluster hôte sous la forme d'un **artefact OCI signé**, épinglé par digest et **suspendu par défaut** : rien ne s'active sans une décision explicite. Le cluster hôte s'engage, dans un *contrat* écrit, sur ce qu'il fournit (namespaces, identité, secrets, nœuds gVisor, observabilité), et la plateforme IA se déploie par-dessus.
+La plateforme IA est déployée sur le cluster Kubernetes sous la forme d'un **artefact OCI signé**, et désactivée par défaut : rien ne s'active sans une décision explicite. Le cluster s'engage, dans un *contrat* écrit, sur ce qu'il fournit (namespaces, identité, secrets, nœuds gVisor, observabilité).
 
-{{% notice tip "Agent Factory, Maku, la plateforme : qui est qui ? 🎭" %}}
-L'**Agent Factory** est le produit : un assemblage d'outils open source qui transforme une issue en PR relue. **Maku** (幕, « le rideau » en japonais) en est le contrôleur, avec une promesse qui résume bien l'esprit : *« Run coding agents on your Kubernetes cluster without trusting them. »* Maku ne cherche pas à confiner l'agent lui-même ; c'est le travail de la plateforme.
+{{% notice tip "Agent Factory et Maku : qui est qui ? 🎭" %}}
+L'**Agent Factory** est un ensemble de composants open source qui, assemblés, transforment une issue en PR relue. 
+
+**[Maku](https://github.com/Smana/maku)** (幕, « le rideau » en japonais) en fait partie : c'est le contrôleur, celui qui orchestre les autres, avec une promesse : *« Run coding agents on your Kubernetes cluster without trusting them. »* 
+
 {{% /notice %}}
 
 Hormis Maku, chaque brique est un projet open source existant, utilisé pour ce qu'il sait faire :
@@ -105,58 +148,32 @@ Hormis Maku, chaque brique est un projet open source existant, utilisé pour ce 
 
 Voici le parcours d'une tâche, dans ses grandes lignes :
 
-{{< img src="agent-factory-overview.png" alt="Vue d'ensemble : un mainteneur labellise une issue, Maku ouvre une room et démarre un run dans une sandbox gVisor ; chaque appel passe par l'agent gateway vers les modèles, les outils MCP et octo-sts ; le run pousse une branche et ouvre une PR que le mainteneur relit" width="1200" >}}
+{{< img src="agent-factory-overview.png" link="true" width="1200" >}}
 </br>
 
 1. **Un mainteneur** pose le label `factory/ready` sur une issue. Le même label posé par quelqu'un d'autre ne déclenche rien. Une tâche peut aussi partir de Slack, de la CLI `maku` ou directement de votre coding agent.
+
 2. **Maku** crée une tâche et une **room**, le journal partagé de cette tâche. Il choisit un budget (modèle, tokens, durée maximale), puis lance les agents.
+
 3. **Chaque agent** tourne dans sa propre sandbox, sous sa propre identité. Tout ce qu'il appelle (modèle, outil, GitHub) passe par l'**agent gateway**.
+
 4. **Les agents se relaient** : l'un cadre la tâche, un autre écrit le changement et ouvre la PR, un juge vérifie que c'est terminé, un reviewer relit avec un regard neuf.
+
 5. **Le merge gate décide** : merge sans humain pour les rares changements qui ont gagné ce droit, sinon une seule action vous revient, et **votre approbation du commit vaut merge**.
 
-Tout ce qui précède est **raconté sur l'issue GitHub** par Maku, étape par étape. Voilà par exemple ce qu'il a écrit, tel quel, pendant la correction d'une règle d'alerte :
-
-```text
-Agent factory task `drq5gh2i` started run `ralxknfk` (implementer) on branch `agent/drq5gh2i`.
-- Budget: 1.5 M tokens, 45 minutes (tier standard)
-- Watch: https://rooms.priv.gcp.ogenki.io/r/drq5gh2i (tailnet only)
-- Stop: apply the label `factory/stop`
-
-Run `ralxknfk` of task `drq5gh2i` opened #2638.
-
-Agent factory task `drq5gh2i` waits for a maintainer's review: the policy needs a maintainer's approval.
-
-Agent factory task `drq5gh2i` is done: the pull request was merged. Merged by @Smana.
-Tokens used: 490 k.
-```
-
-Budget affiché, lien vers la room, bouton d'arrêt, identité de celui qui a mergé : l'issue **est** le compte rendu.
-
-## 🧭 La suite de la série
-
-Cet article ouvre une série où j'approfondirai, une à une, les briques de la factory. Le prochain sera consacré à **Maku** : comment une issue devient une tâche, et comment agents et humains travaillent ensemble dans une room. Parmi les sujets qui suivront :
-
-* 🔒 le **harnais** : où tourne un agent, sous quelle identité, ce qu'il peut joindre, et quels rôles se partagent une tâche ;
-* 🚦 le **merge gate** : ce qui doit être vrai avant qu'une PR d'agent soit mergée, et comment une classe de changements gagne le droit de se merger seule ;
-* 📊 l'**observabilité et les garde-fous** : ce que coûte une flotte d'agents, comment la mesurer, et comment l'arrêter ;
-* 🤝 le travail **d'agent à agent**, quand c'est un autre agent, RunLore, qui confie une tâche à la factory.
 
 ## 💭 Dernières remarques
 
-Le modèle s'est révélé la partie la plus simple : une ligne de configuration. Ce qui m'a pris du temps, c'est **l'identité, l'isolation, le trafic sortant et la preuve** de ce qui s'est passé. C'est aussi ce qui se transpose le mieux : ces principes valent quel que soit le harnais ou le modèle que vous utilisez.
+Pour un projet de quelques semaines, les premiers résultats sont bluffants ! Il faut dire que je partais d'un socle cloud native déjà bien éprouvé 😉. Jusqu'ici, je m'étais surtout évertué à obtenir une configuration locale efficace avec Claude Code ou OpenCode, et à suivre l'évolution ultra dynamique des modèles. Les besoins en entreprise m'ont amené à regarder de plus près les problématiques d'organisation : **donner de l'autonomie et de la puissance, tout en conservant le contrôle**.
 
-Soyons clairs sur l'état du projet : c'est un chantier de quelques semaines, éprouvé sur GKE puis sur EKS, et mes clusters de référence sont démontés entre deux sessions pour des raisons de coût. Aujourd'hui, l'ensemble tourne bien… sur ma plateforme. La prochaine étape, déjà sur la [feuille de route](https://airef.ogenki.io/docs/status/) mais pas encore construite, s'appelle **« anyone can run it »** : faire tourner toute la boucle sur un laptop en une demi-heure, puis l'installer sur votre propre cluster avec votre fournisseur d'identité, vos secrets et votre outil GitOps.
+Cette software factory m'a d'abord servi à explorer plein de sujets, mais je me suis pris au jeu et le résultat devient de plus en plus sérieux. La prochaine étape, déjà sur la [feuille de route](https://airef.ogenki.io/docs/status/), le prouve : elle s'appelle **« anyone can run it »**, et c'est un sacré challenge que je raconterai dans les aventures à venir.
 
-En attendant, deux portes d'entrée existent déjà. La première est la **démo publique d'une room**, qui rejoue une tâche réelle sans rien installer :
+Le prochain article parlera de **Maku**, la couche qui orchestre tout ce beau monde. En voici un aperçu :
 
 <figure style="text-align:center;">
-  <a href="https://blog.ogenki.io/maku/"><img src="maku-room.webp" alt="Screencast de 38 secondes de la démo publique : la liste des rooms, puis le replay d'une tâche de la factory. Le rail des étapes se dessine (implementer, reviewer, merge), un humain oriente l'agent, le push attend son approbation, puis une tâche terminée se rejoue : scoper, tester, implementer et reviewer s'allument tour à tour jusqu'à Done" width="800" loading="lazy" style="border-radius:6px;"></a>
+  <a href="https://blog.ogenki.io/maku/"><img src="maku-room.webp" width="800" loading="lazy" style="border-radius:6px;"></a>
   <figcaption><small><a href="https://blog.ogenki.io/maku/">Ouvrir la démo interactive ↗</a></small></figcaption>
 </figure>
-
-La seconde est le [**quickstart de Maku**](https://github.com/Smana/maku/blob/main/docs/quickstart.md), qui lance un agent dans une sandbox gVisor sur un cluster kind. C'est une version réduite : pas de factory, pas de gateway, et vos propres clés dans la sandbox. Parfait pour comprendre, pas pour la production.
-
-Les [issues](https://github.com/Smana/ai-native-ref/issues) sont le meilleur endroit pour me dire où ça casse chez vous. Rendez-vous dans le prochain article pour entrer dans Maku. 🏭
 
 ## 🔖 Références
 
