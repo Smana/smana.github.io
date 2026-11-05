@@ -10,7 +10,7 @@ usePageBundles = true
 toc = true
 series = ["Agentic AI"]
 tags = ["ai", "kubernetes", "security", "platform-engineering"]
-thumbnail = "thumbnail.png"
+thumbnail = "thumbnail.jpg"
 +++
 
 {{% notice info "Série Agentic AI : place à l'Agent Factory 🏭" %}}
