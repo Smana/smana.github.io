@@ -1,6 +1,6 @@
 +++
 author = "Smaine Kahlouch"
-title = "`Agent Factory`: agents and humans on the same team"
+title = "`Agent Factory`: agents and humans, one crew"
 date = "2026-11-04"
 slug = "agent-factory-1-overview"
 summary = "More autonomy and better collaboration, starting from a plain GitHub issue: one label opens an isolated workspace where agents and humans take turns until a pull request comes out reviewed, secured and traceable. Episode one: the problem, and the solution from above."

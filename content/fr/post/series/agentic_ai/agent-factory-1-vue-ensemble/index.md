@@ -1,6 +1,6 @@
 +++
 author = "Smaine Kahlouch"
-title = "`Agent Factory` : agents et humains dans la même équipe"
+title = "`Agent Factory` : agents et humains, même équipage"
 date = "2026-11-04"
 summary = "Gagner en autonomie et mieux collaborer à partir d'une simple issue GitHub : un label suffit à ouvrir un espace de travail cloisonné où agents et humains se relaient jusqu'à une PR relue, sécurisée et traçable. Premier épisode : le problème, et la solution vue d'ensemble."
 featured = true
