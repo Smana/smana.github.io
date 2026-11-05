@@ -25,7 +25,7 @@ Seulement, ce qui fonctionne sur mon laptop ne se transpose pas tel quel à une 
 
 En parallèle, les agents gagnent en fiabilité, au point qu'on peut envisager de leur confier certains changements de bout en bout, de l'issue jusqu'au merge. Encore faut-il savoir sur quels critères leur faire confiance, et pouvoir le mesurer. C'est tout l'enjeu des **software factories**.
 
-Cette série décrit l'**Agent Factory**, ma tentative de réponse à ces questions : une chaîne qui va de l'issue à la PR mergée, construite avec des outils open source cloud native. Elle s'appuie sur [`cloud-native-ref`](https://cnref.ogenki.io/), ma plateforme de référence, qui fournissait déjà une bonne partie du socle (Crossplane, Cilium, ZITADEL, OpenBao, l'observabilité). J'y ai ajouté une couche dédiée aux agents et la glue nécessaire pour faire tourner la machinerie 😉.
+Cette série décrit l'**Agent Factory**, ma tentative de réponse à ces questions : une chaîne qui va de l'issue à la PR mergée, construite avec des outils open source cloud native. Elle s'appuie sur [`cloud-native-ref`](https://cnref.ogenki.io/), ma plateforme de référence, qui fournissait déjà une bonne partie du socle (Crossplane, Cilium, ZITADEL, OpenBao, l'observabilité). J'y ai ajouté une couche dédiée aux agents et la glue nécessaire pour faire tourner la machinerie 😉. L'ensemble est documenté sur **[airef.ogenki.io](https://airef.ogenki.io/)**, le point d'entrée de tout ce que cette série va décrire.
 
 Ce premier article pose le problème et présente la solution dans ses grandes lignes. Les suivants entreront dans chaque brique, à commencer par Maku. Toutes sont open source, et rien n'oblige à tout reprendre : piochez les idées qui vous parlent, adaptez-les à votre contexte. 🚀
 
@@ -67,9 +67,7 @@ Ce qui distingue le plus les factories entre elles, c'est la place qu'elles lais
 
 La dark factory n'est pas la direction que je prends. Quand plus personne ne lit le code, **qui comprend encore le système ?** La connaissance se dilue, et le jour où quelque chose casse, plus personne ne sait où regarder. Comme avec [RunLore](/fr/post/series/observability/runlore/), je préfère que les agents fassent le travail et que **l'humain garde la main sur la décision déterminante** : ce qui part en production. Diriger le bateau plutôt que le regarder dériver. ⛵
 
-{{% notice note "Où se situe cette factory ? 🧭" %}}
-**Au niveau 4 pour presque tout, au niveau 5 pour une seule voie.** J'écris l'issue, les agents cadrent, implémentent, testent et se relisent entre eux, et **mon approbation du commit vaut merge**. Une seule famille de changements se merge sans moi : les corrections de liens dans la documentation, au plus une par jour, avec un disjoncteur qui la renvoie en revue humaine au premier incident. Cette autonomie ne s'accorde qu'à une condition : savoir **exactement** ce qui doit être vrai avant qu'une machine merge quoi que ce soit.
-{{% /notice %}}
+Cette factory se situe donc au **niveau 4** : j'écris l'issue, les agents cadrent, implémentent, testent et se relisent entre eux, et **mon approbation du commit vaut merge**. Le **niveau 5** n'est accordé qu'aux changements qui remplissent des **conditions que nous définissons nous-mêmes**, des *gates* versionnés dans le dépôt, avec un disjoncteur qui rend la main aux humains au premier incident.
 
 ## 🧩 Du laptop à l'équipe : qu'est-ce que ça m'apporte au juste ?
 
@@ -116,7 +114,7 @@ En toute franchise, j'ai beaucoup testé (37 PR d'agents mergées depuis fin sep
 
 ## 🗺️ Vue d'ensemble de la solution
 
-L’Agent Factory repose sur trois repo ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) et [`maku`](https://github.com/Smana/maku)), qui ont un périmètre bien défini
+L’Agent Factory repose sur trois repo ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) et [`maku`](https://github.com/Smana/maku)), qui ont un périmètre bien défini. La plateforme IA, celle qui porte tout ce qui est propre aux agents, a sa propre documentation : **[airef.ogenki.io](https://airef.ogenki.io/)**.
 
 {{< img src="solution-layers.png" width="800" >}}
 </br>
