@@ -164,7 +164,7 @@ Here is the journey of a task, in broad strokes:
 
 For a project that is only a few weeks old, the first results are stunning! It helps that I started from a cloud native foundation that was already battle-tested 😉. Until now, I had mostly been busy getting an efficient local setup with Claude Code or OpenCode, and keeping up with the breakneck pace of new models. Company needs pushed me to look more closely at the organizational side: **giving autonomy and power while keeping control**.
 
-This software factory started as a way to explore a lot of topics, but I got hooked, and the result is getting more serious by the week. The next step, already on the [roadmap](https://airef.ogenki.io/docs/status/), proves it: it's called **"anyone can run it"**, and it's quite a challenge, one I'll tell you about in the adventures to come.
+This software factory started as a way to explore a lot of topics, but I got hooked, and it has grown into something I now take seriously. The next step, already on the [roadmap](https://airef.ogenki.io/docs/status/), shows where it's heading: it's called **"anyone can run it"**, and it's quite a challenge. More on that in the posts to come.
 
 The next post will be about **Maku**, the layer that orchestrates this whole crowd. Here's a sneak peek:
 
