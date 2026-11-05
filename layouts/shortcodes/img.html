@@ -2,10 +2,12 @@
 {{- $alt := .Get "alt" | default "" -}}
 {{- $width := .Get "width" -}}
 {{- $cap := .Get "caption" -}}
+{{- $link := .Get "link" -}}
 
 {{- $image := .Page.Resources.GetMatch $src -}}
 
 <figure style="text-align: center;">
+  {{- if and $link $image }}<a href="{{ $image.RelPermalink }}" target="_blank" rel="noopener" title="Ouvrir en taille réelle">{{ end }}
   <picture>
     {{- if and $image $image.Width -}}
       {{- $w1x := math.Min 1200 $image.Width | int -}}
@@ -52,6 +54,7 @@
       />
     {{- end -}}
   </picture>
+  {{- if and $link $image }}</a>{{ end }}
   {{- with $cap }}
   <figcaption>{{ . | markdownify }}</figcaption>
   {{- end }}
