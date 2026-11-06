@@ -70,7 +70,7 @@ The dark factory isn't where I'm heading. Once nobody reads the code, one questi
 
 So this factory sits at **level 4**: I write the issue, the agents scope, implement, test and review each other's work, and **approving the commit is what merges it**. **Level 5** is reserved for changes that meet **conditions we set ourselves**, written as *gates* versioned in the repository, with a circuit breaker that hands control back to humans at the first incident.
 
-## 🧩 From laptop to team: what's in it for me?
+## 🧩 Beyond the laptop: what do you actually get out of it?
 
 On my laptop, trust is barely an issue: I start the agent, watch it work, review, push. **I am the guardrail.** But once the agent works for a team, on a shared cluster, with nobody watching the screen, that guardrail has to be built into the architecture. An autonomous agent is **unreviewed code running with privileges**.
 
