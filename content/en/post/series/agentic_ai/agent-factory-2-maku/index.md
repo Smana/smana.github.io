@@ -15,11 +15,10 @@ thumbnail = "thumbnail.jpg"
 {{% notice info "Agent Factory series 🏭" %}}
 1. [Overview: agents and humans, one crew](/post/series/agentic_ai/agent-factory-1-overview/)
 2. **Maku, the conductor** (you are here)
-<br>(coming up)
-1. Workflows and merge policies
-2. The harness: a sandbox for every agent
-3. Observing and keeping a fleet of agents in check
-4. Agent to agent: RunLore hands its fixes to the factory
+3. Workflows and merge policies (coming up)
+4. The harness: a sandbox for every agent (coming up)
+5. Observing and keeping a fleet of agents in check (coming up)
+6. Agent to agent: RunLore hands its fixes to the factory (coming up)
 {{% /notice %}}
 
 Running an agent in a pod has become fairly common: just look at the talks at recent conferences (KubeCon NA in particular). Running a **software factory for a team** is another story: you have to coordinate several agents, keep budgets in check, isolate every run, decide what ships to production… and above all make sure the whole thing stays **pleasant to use**. If handing off a task means leaving your usual tools, nobody will bother.

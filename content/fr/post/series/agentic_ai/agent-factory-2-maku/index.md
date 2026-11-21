@@ -15,11 +15,10 @@ thumbnail = "thumbnail.jpg"
 {{% notice info "Série Agent Factory 🏭" %}}
 1. [Vue d'ensemble : agents et humains, même équipage](/fr/post/series/agentic_ai/agent-factory-1-vue-ensemble/)
 2. **Maku, le chef d'orchestre** (vous êtes ici)
-<br>(à venir)
-1. Workflows et merge policies
-2. Le harnais : une sandbox pour chaque agent
-3. Observer et maîtriser une flotte d'agents
-4. D'agent à agent : RunLore confie ses correctifs à la factory
+3. Workflows et merge policies (à venir)
+4. Le harnais : une sandbox pour chaque agent (à venir)
+5. Observer et maîtriser une flotte d'agents (à venir)
+6. D'agent à agent : RunLore confie ses correctifs à la factory (à venir)
 {{% /notice %}}
 
 Faire tourner un agent dans un pod est devenu assez courant, en témoignent les sujets abordés lors des dernières conférences (notamment la KubeCon NA). Faire tourner une **software factory pour une équipe**, c'est une autre histoire : il faut coordonner plusieurs agents, tenir les budgets, isoler chaque exécution, décider de ce qui part en production… et surtout faire en sorte que tout cela reste **agréable à utiliser**. Si déléguer une tâche demande de quitter ses outils habituels, personne ne le fera.
