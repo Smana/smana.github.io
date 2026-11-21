@@ -190,6 +190,15 @@ An agent that writes the code and then grades its own work quickly talks itself 
 * **`quick`**: the implementer alone, for trivial changes.
 * **`careful`**: the `standard` workflow, bracketed by a **scoper** that scopes the task first (and asks a question if the issue is vague) and a **judge** that checks the acceptance criteria before the review.
 
+<center>
+<video width="540" autoplay loop muted playsinline>
+  <source src="maku-workflows.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+</center>
+<center><i>The workflow picks the roles; the merge gate judges the diff.</i></center>
+<br>
+
 {{% notice tip "What about a complex task?" %}}
 The factory isn't limited to small fixes. For a new feature, everything hinges on a **well-written issue**: clear specs and verifiable acceptance criteria. With `careful`, the scoper uses them to scope the work, the judge to check the result, and the team follows it all in the same room.
 {{% /notice %}}

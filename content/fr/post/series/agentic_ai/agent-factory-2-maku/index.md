@@ -190,6 +190,15 @@ Un agent seul qui écrit le code puis évalue son propre travail finit vite par 
 * **`quick`** : l'implementer seul, pour les changements triviaux.
 * **`careful`** : le workflow `standard`, encadré par un **scoper** qui cadre d'abord la tâche (et pose une question si l'issue est floue) et un **judge** qui vérifie les critères d'acceptation avant la review.
 
+<center>
+<video width="540" autoplay loop muted playsinline>
+  <source src="maku-workflows.mp4" type="video/mp4">
+  Votre navigateur ne supporte pas la lecture vidéo.
+</video>
+</center>
+<center><i>Le workflow choisit les rôles ; le merge gate juge le diff.</i></center>
+<br>
+
 {{% notice tip "Et pour une tâche complexe ?" %}}
 La factory ne se limite pas aux petits correctifs. Pour une nouvelle fonctionnalité, tout repose sur une **issue bien rédigée** : des specs claires et des critères d'acceptation vérifiables. Avec `careful`, le scoper s'en sert pour cadrer le travail, le judge pour vérifier le résultat, et l'équipe suit le tout dans la même room.
 {{% /notice %}}
