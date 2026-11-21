@@ -169,8 +169,8 @@ Cette software factory m'a d'abord servi à explorer plein de sujets, mais je me
 Le prochain article parlera de **Maku**, la couche qui orchestre tout ce beau monde. En voici un aperçu :
 
 <figure style="text-align:center;">
-  <a href="https://blog.ogenki.io/maku/"><img src="maku-room.webp" width="800" loading="lazy" style="border-radius:6px;"></a>
-  <figcaption><small><a href="https://blog.ogenki.io/maku/">Ouvrir la démo interactive ↗</a></small></figcaption>
+  <a href="https://blog.ogenki.io/maku/"><img src="maku-factory-ui.webp" width="800" height="450" alt="Une vraie tâche dans l'Agent Factory : la commande dans OpenCode, la room où l'implementer puis le reviewer travaillent, l'approbation demandée, le merge, puis le coût du run dans Grafana (0,14 $)" loading="lazy" style="border-radius:6px;"></a>
+  <figcaption><small><a href="https://blog.ogenki.io/maku/">Voir le run complet et la démo interactive ↗</a></small></figcaption>
 </figure>
 
 ## 🔖 Références
