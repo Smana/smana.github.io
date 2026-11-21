@@ -15,11 +15,10 @@ thumbnail = "thumbnail.jpg"
 {{% notice info "Série Agent Factory 🏭" %}}
 1. [Vue d'ensemble : agents et humains, même équipage](/fr/post/series/agentic_ai/agent-factory-1-vue-ensemble/)
 2. **Maku, le chef d'orchestre** (vous êtes ici)
-<br>(à venir)
-1. Workflows et merge policies
-2. Le harnais : une sandbox pour chaque agent
-3. Observer et maîtriser une flotte d'agents
-4. D'agent à agent : RunLore confie ses correctifs à la factory
+3. Workflows et merge policies (à venir)
+4. Le harnais : une sandbox pour chaque agent (à venir)
+5. Observer et maîtriser une flotte d'agents (à venir)
+6. D'agent à agent : RunLore confie ses correctifs à la factory (à venir)
 {{% /notice %}}
 
 Faire tourner un agent dans un pod est devenu assez courant, en témoignent les sujets abordés lors des dernières conférences (notamment la KubeCon NA). Faire tourner une **software factory pour une équipe**, c'est une autre histoire : il faut coordonner plusieurs agents, tenir les budgets, isoler chaque exécution, décider de ce qui part en production… et surtout faire en sorte que tout cela reste **agréable à utiliser**. Si déléguer une tâche demande de quitter ses outils habituels, personne ne le fera.
@@ -189,6 +188,15 @@ Un agent seul qui écrit le code puis évalue son propre travail finit vite par 
 * **`standard`**, le workflow par défaut, celui de la démo : un **implementer** écrit le changement et ouvre la PR, puis un **reviewer** la relit avec un regard neuf.
 * **`quick`** : l'implementer seul, pour les changements triviaux.
 * **`careful`** : le workflow `standard`, encadré par un **scoper** qui cadre d'abord la tâche (et pose une question si l'issue est floue) et un **judge** qui vérifie les critères d'acceptation avant la review.
+
+<center>
+<video width="540" autoplay loop muted playsinline>
+  <source src="maku-workflows.mp4" type="video/mp4">
+  Votre navigateur ne supporte pas la lecture vidéo.
+</video>
+</center>
+<center><i>Le workflow choisit les rôles ; le merge gate juge le diff.</i></center>
+<br>
 
 {{% notice tip "Et pour une tâche complexe ?" %}}
 La factory ne se limite pas aux petits correctifs. Pour une nouvelle fonctionnalité, tout repose sur une **issue bien rédigée** : des specs claires et des critères d'acceptation vérifiables. Avec `careful`, le scoper s'en sert pour cadrer le travail, le judge pour vérifier le résultat, et l'équipe suit le tout dans la même room.
