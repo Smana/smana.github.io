@@ -4,7 +4,6 @@ title = "`Agent Factory` : Maku, le chef d'orchestre"
 date = "2026-11-21"
 summary = "Un prompt, et la factory s'occupe de tout jusqu'à la PR. Une démo sert de fil conducteur pour découvrir `Maku` : ses composants, la room, les workflows et les merge policies."
 featured = false
-draft = true
 codeMaxLines = 30
 usePageBundles = true
 toc = true
