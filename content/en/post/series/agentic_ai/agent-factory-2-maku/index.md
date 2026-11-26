@@ -145,12 +145,12 @@ Why not settle for the pod's logs? Because they disappear as soon as the pod is 
 
 In the Web UI, the **NEXT** box tells you in one sentence what you need to do next:
 
-{{< img src="maku-room.png" alt="A Maku room waiting for a maintainer: the status “Waiting — review and approve PR #42”, the token budget, the reviewer's latest verdict, the NEXT box saying that approving the current commit merges it, the exact action under “Needs you”, then the implementer's event feed" width="1100" caption="A room waiting for my approval: the next step, the action to take, and the run's event feed (try it in the [interactive demo](https://blog.ogenki.io/maku/))." >}}
+{{< img src="maku-room.png" alt="A Maku room waiting for a maintainer: the status “Waiting — review and approve PR #530”, the token and dollar budget, the reviewer's approve verdict, the NEXT box explaining that the merge gate is in shadow so a maintainer approves the current commit, the “Approve the pull request” card under “Needs you”, and the rail with the implementer and the reviewer, each with its time and cost" width="1100" caption="A room waiting for my approval: the next step, the action to take, and what each stage cost (try it in the [interactive demo](https://blog.ogenki.io/maku/))." >}}
 <br>
 
 And when several tasks run in parallel, the ones that need you rise to the top of the list:
 
-{{< img src="maku-rooms.png" alt="The list of Maku rooms: tasks waiting on a human carry a “Needs you” badge and come first, each with its repository, status, PR and latest activity" width="1100" caption="The room list: “Needs you” first." >}}
+{{< img src="maku-rooms.png" alt="The list of Maku rooms filtered to what needs me: each task waiting on a human carries a badge saying why (review, failed), with its repository, status, PR and latest activity; New task, top right, plans a request into an issue" width="1100" caption="The room list: “Needs you” first." >}}
 <br>
 
 ## 🚪 Other ways in
