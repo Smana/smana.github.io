@@ -139,12 +139,12 @@ Pourquoi ne pas se contenter des logs du pod ? Parce qu'ils disparaissent avec l
 
 Dans la Web UI, l'encadré **NEXT** dit en une phrase ce qui est attendu de vous :
 
-{{< img src="maku-room.png" alt="Une room Maku qui attend un mainteneur : l'état « Waiting — review and approve PR #42 », le budget en tokens, le dernier verdict du reviewer, l'encadré NEXT qui dit que l'approbation du commit courant vaut merge, l'action exacte sous « Needs you », puis le fil des événements de l'implementer" width="1100" caption="Une room qui attend mon approbation : la prochaine étape, l'action à faire, et le fil des événements du run (à manipuler dans la [démo interactive](https://blog.ogenki.io/maku/))." >}}
+{{< img src="maku-room.png" alt="Une room Maku qui attend un mainteneur : l'état « Waiting — review and approve PR #530 », le budget en tokens et en dollars, le verdict approve du reviewer, l'encadré NEXT qui explique que le merge gate est en shadow et qu'un mainteneur approuve le commit courant, la carte « Approve the pull request » sous « Needs you », et le rail avec l'implementer et le reviewer, chacun avec sa durée et son coût" width="1100" caption="Une room qui attend mon approbation : la prochaine étape, l'action à faire, et ce qu'a coûté chaque étape (à manipuler dans la [démo interactive](https://blog.ogenki.io/maku/))." >}}
 <br>
 
 Et quand plusieurs tâches tournent en parallèle, celles qui ont besoin de vous remontent en tête de liste :
 
-{{< img src="maku-rooms.png" alt="La liste des rooms de Maku : les tâches qui attendent un humain portent un badge « Needs you » et remontent en premier, chacune avec son dépôt, son état, sa PR et sa dernière activité" width="1100" caption="La liste des rooms : « Needs you » d'abord." >}}
+{{< img src="maku-rooms.png" alt="La liste des rooms de Maku filtrée sur ce qui m'attend : chaque tâche qui attend un humain porte un badge qui dit pourquoi (review, failed), avec son dépôt, son état, sa PR et sa dernière activité ; New task, en haut à droite, transforme une demande en issue" width="1100" caption="La liste des rooms : « Needs you » d'abord." >}}
 <br>
 
 ## 🚪 Les autres portes d'entrée
