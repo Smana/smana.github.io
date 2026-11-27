@@ -33,7 +33,7 @@ Autrement dit : « j'aurais pu la merger seule, mais on ne me fait pas encore co
 * **Combien de process ce changement mérite-t-il ?** Un agent seul, une relecture, un plan validé avant d'écrire la moindre ligne ?
 * **Peut-il être mergé sans humain ?** Et si oui, sur quelle base ?
 
-Dans [Maku](https://github.com/Smana/maku), la première relève des **workflows**, la seconde des **merge policies**. Je pensais que la seconde était surtout une affaire de règles bien écrites. Puis, cette semaine, je me suis posé une question toute bête à laquelle je n'avais pas de bonne réponse : **que veut dire « succès » pour une merge policy ?** On y arrive, promis. 😉
+Dans [Maku](https://maku.ogenki.io/), la première relève des **workflows**, la seconde des **merge policies**. Je pensais que la seconde était surtout une affaire de règles bien écrites. Puis, cette semaine, je me suis posé une question toute bête à laquelle je n'avais pas de bonne réponse : **que veut dire « succès » pour une merge policy ?** On y arrive, promis. 😉
 
 ## 🎯 Objectifs de cet article
 
@@ -371,7 +371,7 @@ Dans le prochain article, on descendra d'un étage : le **harnais**, cette sandb
 
 ## 🔖 Références
 
-* [`maku`](https://github.com/Smana/maku) : [merge policies](https://github.com/Smana/maku/blob/main/docs/merge-policies.md) · [la factory : workflows, merge gate, moniteur](https://github.com/Smana/maku/blob/main/docs/factory.md)
+* [`maku`](https://github.com/Smana/maku) : [site et documentation](https://maku.ogenki.io/) · [merge policies](https://maku.ogenki.io/docs/use/merge-policies/) · [la factory : workflows, merge gate, moniteur](https://maku.ogenki.io/docs/concepts/factory/) · [guide : merge policies](https://maku.ogenki.io/docs/guide/merge-policies/) · [écrire une bonne tâche](https://maku.ogenki.io/docs/guide/writing-a-good-task/)
 * [Design : les signaux de justesse des merge policies](https://github.com/Smana/maku/blob/main/docs/superpowers/specs/2026-11-26-merge-policy-correctness-signals-design.md)
-* [`ai-native-ref`](https://github.com/Smana/ai-native-ref) : [les merge policies de ma plateforme](https://airef.ogenki.io/docs/use/guide/merge-policies/) · [le merge gate](https://airef.ogenki.io/docs/how-it-works/merge-gate/) · [écrire une bonne tâche](https://airef.ogenki.io/docs/use/guide/writing-a-good-task/)
+* [`ai-native-ref`](https://github.com/Smana/ai-native-ref) : [Maku sur Cloud Native Ref](https://airef.ogenki.io/docs/maku-deployment/) · [état du déploiement](https://airef.ogenki.io/docs/status/)
 * [Compte rendu des vérifications sur cluster (25 et 26 novembre 2026)](https://github.com/Smana/ai-native-ref/blob/main/docs/runbooks/agent-factory/results-gcp-0-2026-11-25.md)
