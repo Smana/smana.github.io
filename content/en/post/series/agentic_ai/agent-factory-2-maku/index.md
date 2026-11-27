@@ -23,7 +23,7 @@ thumbnail = "thumbnail.jpg"
 
 Running an agent in a pod has become fairly common—just look at the talks at recent conferences (especially KubeCon NA). Running a **software factory for a team** is another story: you have to coordinate several agents, keep budgets in check, isolate every run, decide what ships to production… and above all make sure the whole thing stays **user-friendly**. If handing off a task means leaving your usual tools, nobody will bother.
 
-That's the job of **[Maku](https://github.com/Smana/maku)**, the heart of the Agent Factory. The [first post](/post/series/agentic_ai/agent-factory-1-overview/) only touched on it—time to open it up.
+That's the job of **[Maku](https://maku.ogenki.io/)**, the heart of the Agent Factory. The [first post](/post/series/agentic_ai/agent-factory-1-overview/) only touched on it—time to open it up.
 
 This time, I'm skipping the architecture diagram up front. Let's start with a dead-simple example instead: **I have a change to make, and I hand it to the factory from my coding agent**. We'll watch what happens, then look at the components involved. 🚀
 
@@ -42,7 +42,7 @@ This time, I'm skipping the architecture diagram up front. Let's start with a de
   Your browser does not support video playback.
 </video>
 </center>
-<center><i>The long version (2 minutes) is on the <a href="https://blog.ogenki.io/maku/">demo page</a>.</i></center>
+<center><i>The long version (2 minutes) and the interactive room live on <a href="https://maku.ogenki.io/">maku.ogenki.io</a>.</i></center>
 <br>
 
 Some context: I'm working on [airef.ogenki.io](https://airef.ogenki.io/) and along the way, I spot a mistake in the configuration reference—the Slack app's budget shows the wrong values.
@@ -145,7 +145,7 @@ Why not settle for the pod's logs? Because they disappear as soon as the pod is 
 
 In the Web UI, the **NEXT** box tells you in one sentence what you need to do next:
 
-{{< img src="maku-room.png" alt="A Maku room waiting for a maintainer: the status “Waiting — review and approve PR #530”, the token and dollar budget, the reviewer's approve verdict, the NEXT box explaining that the merge gate is in shadow so a maintainer approves the current commit, the “Approve the pull request” card under “Needs you”, and the rail with the implementer and the reviewer, each with its time and cost" width="1100" caption="A room waiting for my approval: the next step, the action to take, and what each stage cost (try it in the [interactive demo](https://blog.ogenki.io/maku/))." >}}
+{{< img src="maku-room.png" alt="A Maku room waiting for a maintainer: the status “Waiting — review and approve PR #530”, the token and dollar budget, the reviewer's approve verdict, the NEXT box explaining that the merge gate is in shadow so a maintainer approves the current commit, the “Approve the pull request” card under “Needs you”, and the rail with the implementer and the reviewer, each with its time and cost" width="1100" caption="A room waiting for my approval: the next step, the action to take, and what each stage cost (try it in the [interactive demo](https://maku.ogenki.io/demo/))." >}}
 <br>
 
 And when several tasks run in parallel, the ones that need you rise to the top of the list:
@@ -258,8 +258,8 @@ In the next post, we'll take a close look at **workflows** and **merge policies*
 
 ## 🔖 References
 
-* [`maku`](https://github.com/Smana/maku): the repository · [architecture](https://github.com/Smana/maku/blob/main/docs/architecture.md) · [installation](https://github.com/Smana/maku/blob/main/docs/install.md) · [quickstart on a laptop](https://github.com/Smana/maku/blob/main/docs/quickstart.md)
-* [Demo: the long version of the screencast and a room to play with](https://blog.ogenki.io/maku/)
-* [`ai-native-ref`](https://github.com/Smana/ai-native-ref): the AI platform · [documentation](https://airef.ogenki.io/) · [user guide](https://airef.ogenki.io/docs/use/guide/) · [status and roadmap](https://airef.ogenki.io/docs/status/)
+* [`maku`](https://github.com/Smana/maku): the repository · [website and docs](https://maku.ogenki.io/) · [architecture](https://maku.ogenki.io/docs/concepts/architecture/) · [installation](https://maku.ogenki.io/docs/install/) · [laptop quickstart](https://maku.ogenki.io/docs/get-started/quickstart/) · [user guide](https://maku.ogenki.io/docs/guide/) · [status and roadmap](https://maku.ogenki.io/docs/status/)
+* [Demo: the long screencast (on maku.ogenki.io)](https://maku.ogenki.io/) and [the interactive room to explore](https://maku.ogenki.io/demo/)
+* [`ai-native-ref`](https://github.com/Smana/ai-native-ref): the reference deployment · [documentation](https://airef.ogenki.io/) · [Maku on Cloud Native Ref](https://airef.ogenki.io/docs/maku-deployment/) · [deployment status](https://airef.ogenki.io/docs/status/)
 * [ADR-0057: why `ai-native-ref` has its own repository](https://airef.ogenki.io/docs/decisions/0057-ai-platform-own-repository/)
 * [agentgateway](https://agentgateway.dev/) · [OpenHands](https://github.com/OpenHands/OpenHands) · [gVisor](https://gvisor.dev/) · [gitleaks](https://github.com/gitleaks/gitleaks) · [Model Context Protocol](https://modelcontextprotocol.io/)

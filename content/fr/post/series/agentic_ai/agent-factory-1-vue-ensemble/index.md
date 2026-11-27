@@ -25,7 +25,7 @@ Seulement, ce qui fonctionne sur mon laptop ne se transpose pas tel quel à une 
 
 En parallèle, les agents gagnent en fiabilité, au point qu'on peut envisager de leur confier certains changements de bout en bout, de l'issue jusqu'au merge. Encore faut-il savoir sur quels critères leur faire confiance, et pouvoir le mesurer. C'est tout l'enjeu des **software factories**.
 
-Cette série décrit l'**Agent Factory**, ma tentative de réponse à ces questions : une chaîne qui va de l'issue à la PR mergée, construite avec des outils open source cloud native. Elle s'appuie sur [`cloud-native-ref`](https://cnref.ogenki.io/), ma plateforme de référence, qui fournissait déjà une bonne partie du socle (Crossplane, Cilium, ZITADEL, OpenBao, l'observabilité). J'y ai ajouté une couche dédiée aux agents et la glue nécessaire pour faire tourner la machinerie 😉. L'ensemble est documenté sur **[airef.ogenki.io](https://airef.ogenki.io/)**, le point d'entrée de tout ce que cette série va décrire.
+Cette série décrit l'**Agent Factory**, ma tentative de réponse à ces questions : une chaîne qui va de l'issue à la PR mergée, construite avec des outils open source cloud native. Elle s'appuie sur [`cloud-native-ref`](https://cnref.ogenki.io/), ma plateforme de référence, qui fournissait déjà une bonne partie du socle (Crossplane, Cilium, ZITADEL, OpenBao, l'observabilité). J'y ai ajouté une couche dédiée aux agents et la glue nécessaire pour faire tourner la machinerie 😉. Maku, le cœur de la factory, a sa propre documentation et sa démo sur **[maku.ogenki.io](https://maku.ogenki.io/)**, et le déploiement de référence complet (avec le model serving) est documenté sur **[airef.ogenki.io](https://airef.ogenki.io/)**.
 
 Ce premier article pose le problème et présente la solution dans ses grandes lignes. Les suivants entreront dans chaque brique, à commencer par Maku. Toutes sont open source, et rien n'oblige à tout reprendre : piochez les idées qui vous parlent, adaptez-les à votre contexte. 🚀
 
@@ -114,7 +114,7 @@ En toute franchise, j'ai beaucoup testé (37 PR d'agents mergées depuis fin sep
 
 ## 🗺️ Vue d'ensemble de la solution
 
-L’Agent Factory repose sur trois repo ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) et [`maku`](https://github.com/Smana/maku)), qui ont un périmètre bien défini. La plateforme IA, celle qui porte tout ce qui est propre aux agents, a sa propre documentation : **[airef.ogenki.io](https://airef.ogenki.io/)**.
+L’Agent Factory repose sur trois dépôts ([`cloud-native-ref`](https://github.com/Smana/cloud-native-ref), [`ai-native-ref`](https://github.com/Smana/ai-native-ref) et [`maku`](https://github.com/Smana/maku)), chacun avec un périmètre bien défini : **[maku.ogenki.io](https://maku.ogenki.io/)** documente Maku lui-même (guide utilisateur, installation, démo), et **[airef.ogenki.io](https://airef.ogenki.io/)** documente le déploiement de référence et le model serving.
 
 {{< img src="solution-layers.png" width="800" >}}
 </br>
@@ -124,7 +124,7 @@ La plateforme IA est déployée sur le cluster Kubernetes sous la forme d'un **a
 {{% notice tip "Agent Factory et Maku : qui est qui ? 🎭" %}}
 L'**Agent Factory** est un ensemble de composants open source qui, assemblés, transforment une issue en PR relue. 
 
-**[Maku](https://github.com/Smana/maku)** (幕, « le rideau » en japonais) en fait partie : c'est le contrôleur, celui qui orchestre les autres, avec une promesse : *« Run coding agents on your Kubernetes cluster without trusting them. »* 
+**[Maku](https://maku.ogenki.io/)** (幕, « le rideau » en japonais) en fait partie : c'est le contrôleur, celui qui orchestre les autres, avec une promesse : *« Run coding agents on your Kubernetes cluster without trusting them. »* 
 
 {{% /notice %}}
 
@@ -164,21 +164,21 @@ Voici le parcours d'une tâche, dans ses grandes lignes :
 
 Pour un projet de quelques semaines, les premiers résultats sont bluffants ! Il faut dire que je partais d'un socle cloud native déjà bien éprouvé 😉. Jusqu'ici, je m'étais surtout évertué à obtenir une configuration locale efficace avec Claude Code ou OpenCode, et à suivre l'évolution ultra dynamique des modèles. Les besoins en entreprise m'ont amené à regarder de plus près les problématiques d'organisation : **donner de l'autonomie et de la puissance, tout en conservant le contrôle**.
 
-Cette software factory m'a d'abord servi à explorer plein de sujets, mais je me suis pris au jeu et le résultat devient de plus en plus sérieux. La prochaine étape, déjà sur la [feuille de route](https://airef.ogenki.io/docs/status/), le prouve : elle s'appelle **« anyone can run it »**, et c'est un sacré challenge que je raconterai dans les aventures à venir.
+Cette software factory m'a d'abord servi à explorer plein de sujets, mais je me suis pris au jeu et le résultat devient de plus en plus sérieux. La prochaine étape, déjà sur la [feuille de route](https://maku.ogenki.io/docs/status/), le prouve : elle s'appelle **« anyone can run it »**, et c'est un sacré challenge que je raconterai dans les aventures à venir.
 
-Le prochain article parlera de **Maku**, la couche qui orchestre tout ce beau monde. En voici un aperçu :
+Le prochain article parle de [**Maku**](/fr/post/series/agentic_ai/agent-factory-2-maku/), la couche qui orchestre tout ce beau monde. En voici un aperçu :
 
 <figure style="text-align:center;">
-  <a href="https://blog.ogenki.io/maku/"><img src="maku-factory-ui.webp" width="800" height="450" alt="Une vraie tâche dans l'Agent Factory : la commande dans OpenCode, la room où l'implementer puis le reviewer travaillent, l'approbation demandée, le merge, puis le coût du run dans Grafana (0,14 $)" loading="lazy" style="border-radius:6px;"></a>
-  <figcaption><small><a href="https://blog.ogenki.io/maku/">Voir le run complet et la démo interactive ↗</a></small></figcaption>
+  <a href="https://maku.ogenki.io/"><img src="maku-factory-ui.webp" width="800" height="450" alt="Une vraie tâche dans l'Agent Factory : la commande dans OpenCode, la room où l'implementer puis le reviewer travaillent, l'approbation demandée, le merge, puis le coût du run dans Grafana (0,14 $)" loading="lazy" style="border-radius:6px;"></a>
+  <figcaption><small><a href="https://maku.ogenki.io/">Voir le run complet et la démo interactive sur maku.ogenki.io ↗</a></small></figcaption>
 </figure>
 
 ## 🔖 Références
 
 ### Dépôts, docs et démo
 
-* [`ai-native-ref`](https://github.com/Smana/ai-native-ref) : la plateforme IA · [documentation](https://airef.ogenki.io) · [état et feuille de route](https://airef.ogenki.io/docs/status/)
-* [`maku`](https://github.com/Smana/maku) : le contrôleur · [démo publique d'une room](https://blog.ogenki.io/maku/)
+* [`maku`](https://github.com/Smana/maku) : le contrôleur · [site et documentation](https://maku.ogenki.io/) · [démo interactive d'une room](https://maku.ogenki.io/demo/) · [état et feuille de route](https://maku.ogenki.io/docs/status/)
+* [`ai-native-ref`](https://github.com/Smana/ai-native-ref) : le déploiement de référence · [documentation](https://airef.ogenki.io/) · [état du déploiement](https://airef.ogenki.io/docs/status/)
 * [`cloud-native-ref`](https://github.com/Smana/cloud-native-ref) : le cluster hôte · [documentation](https://cnref.ogenki.io)
 
 ### Software factories
