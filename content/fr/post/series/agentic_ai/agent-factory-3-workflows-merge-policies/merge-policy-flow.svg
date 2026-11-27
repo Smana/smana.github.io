@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 530" width="1240" height="530" font-family="Inter, 'Noto Sans', 'DejaVu Sans', Arial, sans-serif" font-size="15">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4a5578"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #4a5578; stroke-width: 1.6; }
+      .gate { fill: #eef2fb; stroke: #1f5fae; stroke-width: 1.8; }
+      .human { fill: #fdf3e2; stroke: #9a5b00; stroke-width: 1.8; }
+      .auto { fill: #e8f5ee; stroke: #1c7a4a; stroke-width: 1.8; }
+      .proof { fill: #f3effb; stroke: #6a48c2; stroke-width: 1.8; }
+      .t { fill: #171c3a; font-weight: 600; text-anchor: middle; }
+      .s { fill: #3d4566; font-size: 13px; text-anchor: middle; }
+      .l { fill: #3d4566; font-size: 13px; font-style: italic; }
+      .a { stroke: #4a5578; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1240" height="530" fill="#f7f8fc"/>
+
+  <!-- row 1 -->
+  <rect class="box" x="20" y="40" width="170" height="84" rx="10"/>
+  <text class="t" x="105" y="76">PR d'agent</text>
+  <text class="s" x="105" y="98">un commit précis</text>
+
+  <rect class="gate" x="240" y="40" width="190" height="84" rx="10"/>
+  <text class="t" x="335" y="70">Socle fixe</text>
+  <text class="s" x="335" y="91">CI verte, pas de secret,</text>
+  <text class="s" x="335" y="109">aucun fichier protégé</text>
+
+  <rect class="gate" x="480" y="40" width="190" height="84" rx="10"/>
+  <text class="t" x="575" y="70">Une policy tient ?</text>
+  <text class="s" x="575" y="91">fichiers, taille, forme</text>
+  <text class="s" x="575" y="109">du diff, reviewer</text>
+
+  <rect class="gate" x="720" y="40" width="170" height="84" rx="10"/>
+  <text class="t" x="805" y="76">Mode de la policy</text>
+  <text class="s" x="805" y="98">shadow ou live</text>
+
+  <rect class="auto" x="960" y="40" width="260" height="84" rx="10"/>
+  <text class="t" x="1090" y="70">Merge sans humain</text>
+  <text class="s" x="1090" y="91">par l'App merger, sous le</text>
+  <text class="s" x="1090" y="109">plafond quotidien</text>
+
+  <path class="a" d="M190,82 H238"/>
+  <path class="a" d="M430,82 H478"/>
+  <path class="a" d="M670,82 H718"/>
+  <path class="a" d="M890,82 H958"/>
+  <text class="l" x="906" y="72">live</text>
+
+  <!-- row 2 -->
+  <rect class="human" x="240" y="220" width="430" height="84" rx="10"/>
+  <text class="t" x="455" y="250">Un mainteneur relit</text>
+  <text class="s" x="455" y="271">la raison est écrite sur la PR et dans la room ;</text>
+  <text class="s" x="455" y="289">son approbation du commit vaut merge</text>
+
+  <rect class="box" x="720" y="220" width="170" height="84" rx="10"/>
+  <text class="t" x="805" y="250">« Would merge »</text>
+  <text class="s" x="805" y="271">décision consignée,</text>
+  <text class="s" x="805" y="289">rien n'est mergé</text>
+
+  <rect class="auto" x="960" y="220" width="260" height="84" rx="10"/>
+  <text class="t" x="1090" y="250">Surveillance après merge</text>
+  <text class="s" x="1090" y="271">main rouge : revert ; puis Flux,</text>
+  <text class="s" x="1090" y="289">correctifs ultérieurs, verdict RunLore</text>
+
+  <path class="a" d="M335,124 V218"/>
+  <text class="l" x="343" y="176">non</text>
+  <path class="a" d="M575,124 V218"/>
+  <text class="l" x="583" y="176">non</text>
+  <path class="a" d="M805,124 V218"/>
+  <text class="l" x="813" y="176">shadow</text>
+  <path class="a" d="M720,262 H672"/>
+  <path class="a" d="M1090,124 V218"/>
+
+  <!-- row 3 -->
+  <rect class="proof" x="480" y="400" width="740" height="90" rx="10"/>
+  <text class="t" x="850" y="432">Preuves, par policy et par dépôt</text>
+  <text class="s" x="850" y="454">décisions shadow mergées telles quelles par un mainteneur · merges restés sans histoire</text>
+  <text class="s" x="850" y="472">reverts, correctifs ultérieurs, régressions</text>
+
+  <rect class="box" x="20" y="400" width="410" height="40" rx="10"/>
+  <text class="t" x="225" y="425">Promotion : shadow → live, par une PR relue</text>
+  <rect class="box" x="20" y="450" width="410" height="40" rx="10"/>
+  <text class="t" x="225" y="475">Disjoncteur : incident, retour à l'humain</text>
+
+  <path class="a" d="M575,304 V398"/>
+  <path class="a" d="M1090,304 V398"/>
+  <path class="a" d="M480,420 H432"/>
+  <path class="a" d="M480,470 H432"/>
+</svg>
