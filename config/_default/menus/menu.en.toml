@@ -32,7 +32,8 @@ weight = 1
 [[social]]
 name = "linkedin"
 url = "https://www.linkedin.com/in/sma%C3%AFne-kahlouch-44374110/"
-weight = 3
+weight = 2
 [[social]]
 name = "bluesky"
 url = "https://bsky.app/profile/smana.dev"
+weight = 3

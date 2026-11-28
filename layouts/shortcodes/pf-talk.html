@@ -1,11 +1,22 @@
+{{- $url := .Get "url" -}}
+{{- $meta := .Get "meta" -}}
 <li class="pf-talk">
-  <span class="pf-talk_year">{{ .Get "year" }}</span>
-  <div class="pf-talk_what">
-    {{- with .Get "url" }}
-    <a class="pf-talk_title" href="{{ . }}" target="_blank" rel="noopener">{{ $.Get "title" }}</a>
-    {{- else }}
-    <span class="pf-talk_title">{{ .Get "title" }}</span>
-    {{- end }}
-    <span class="pf-talk_event">{{ .Get "event" }}</span>
+  {{- if $url }}
+  <a class="pf-talk_row" href="{{ $url }}" target="_blank" rel="noopener noreferrer">
+    <span class="pf-talk_year">{{ .Get "year" }}</span>
+    <span class="pf-talk_what">
+      <span class="pf-talk_title">{{ .Get "title" }}</span>
+      <span class="pf-talk_event">{{ .Get "event" }}{{ with $meta }} · {{ . }}{{ end }}</span>
+    </span>
+    <svg class="pf-arrow pf-talk_arrow" width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11L11 5M6 5h5v5"/></svg>
+  </a>
+  {{- else }}
+  <div class="pf-talk_row">
+    <span class="pf-talk_year">{{ .Get "year" }}</span>
+    <span class="pf-talk_what">
+      <span class="pf-talk_title">{{ .Get "title" }}</span>
+      <span class="pf-talk_event">{{ .Get "event" }}{{ with $meta }} · {{ . }}{{ end }}</span>
+    </span>
   </div>
+  {{- end }}
 </li>

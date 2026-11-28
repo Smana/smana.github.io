@@ -228,6 +228,9 @@ function fileClosure(){
     let imagePosition = 0;
 
     images.forEach((image) => {
+      if (image.closest('.pf-hero')) {
+        return;
+      }
       let alt = image.alt;
       const figure = image.parentNode.parentNode;
 
@@ -309,6 +312,9 @@ function fileClosure(){
   }
 
  function mark_image_as_scalable(baseParent, image) {
+  if (image.closest('.pf-hero')) {
+    return;
+  }
   let actualWidth = image.naturalWidth;
   let parentWidth = baseParent.offsetWidth;
   let actionableRatio = actualWidth / parentWidth;
@@ -452,20 +458,21 @@ function fileClosure(){
   (function ifiOS(){
     // modify backto top button
     const backToTopButton = elem('.to_top');
+    if (!backToTopButton) return;
     const thisOS = getMobileOperatingSystem();
     const ios = 'ios';
-    if(backToTopButton && thisOS === 'iOS') {
+    if(thisOS === 'iOS') {
       pushClass(backToTopButton, ios);
     }
-    // precisely position back to top button on large screens
-    const buttonParentWidth = backToTopButton.parentNode.offsetWidth;
-    const docWidth = doc.offsetWidth;
-    let leftOffset = (docWidth - buttonParentWidth) / 2;
-    const buttonWidth = backToTopButton.offsetWidth;
-    leftOffset = leftOffset + buttonParentWidth - buttonWidth;
-    if(!isMobileDevice()){
-      backToTopButton.style.left = `${leftOffset}px`;
-    }
+    const updateToTopVisibility = function() {
+      if (window.scrollY > 320) {
+        pushClass(backToTopButton, 'is-visible');
+      } else {
+        deleteClass(backToTopButton, 'is-visible');
+      }
+    };
+    updateToTopVisibility();
+    window.addEventListener('scroll', updateToTopVisibility, { passive: true });
   })();
 
   (function sortTags() {
@@ -490,10 +497,10 @@ function fileClosure(){
 
   (function shareViaLinkedin() {
     doc.addEventListener('click', function(event){
-      const linkedin = '.linkedin';
+      const linkedin = '.post_share .linkedin';
       const target = event.target;
       if(target.matches(linkedin) || target.closest(linkedin)) {
-        window.open('http://www.linkedin.com/shareArticle?mini=true&url='+encodeURIComponent(window.location.href), '', 'left=0,top=0,width=650,height=420,personalbar=0,toolbar=0,scrollbars=0,resizable=0');
+        window.open('https://www.linkedin.com/shareArticle?mini=true&url='+encodeURIComponent(window.location.href), '', 'left=0,top=0,width=650,height=420,personalbar=0,toolbar=0,scrollbars=0,resizable=0');
       }
     });
   })();
@@ -501,4 +508,8 @@ function fileClosure(){
   // add new code above this line
 }
 
-window.addEventListener(pageHasLoaded, fileClosure());
+if (document.readyState === 'loading') {
+  window.addEventListener(pageHasLoaded, fileClosure);
+} else {
+  fileClosure();
+}

@@ -17,12 +17,16 @@
         {{ partial "nav" (dict "context" . "menu" .Site.Menus.main) }}
       {{- end }}
       {{ if hugo.IsMultilingual }}
+      {{- $translations := .AllTranslations }}
+      {{- if le (len $translations) 1 }}
+        {{- $translations = .Site.Home.AllTranslations }}
+      {{- end }}
       <div class="nav_parent">
-        <a href="#" class="nav_item">{{ $params.languageMenuName }}</a>
+        <a href="#" class="nav_item" aria-label="Language">{{ $params.languageMenuName }}</a>
         <div class="nav_sub">
           <span class="nav_child"></span>
-          {{ range .Site.Home.AllTranslations }}
-          <a href="{{ .Permalink }}" class="nav_child nav_item">{{ .Language.Params.label }}</a>
+          {{ range $translations }}
+          <a href="{{ .Permalink }}" class="nav_child nav_item"{{ if eq .Lang $.Lang }} aria-current="page"{{ end }}>{{ .Language.Params.label }}</a>
           {{ end }}
         </div>
       </div>

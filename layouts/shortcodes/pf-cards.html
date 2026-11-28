@@ -1,1 +1,2 @@
-<div class="pf-cards">{{ .Inner | safeHTML }}</div>
+{{- $variant := .Get "variant" | default "oss" -}}
+<div class="pf-cards pf-cards--{{ $variant }}">{{ .Inner | safeHTML }}</div>

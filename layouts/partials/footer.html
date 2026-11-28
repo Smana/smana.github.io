@@ -7,10 +7,10 @@
 {{- $dark := absURL "icons/footer-dark.webp" }}
 <footer class="footer">
   <div class="footer_inner wrap pale">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="{{ $dark }}">
-      <img src="{{ $light }}" class="icon icon_2 transparent" alt="{{ $c }}">
-    </picture>
+    <span class="footer_brand">
+      <img src="{{ $light }}" class="icon icon_2 transparent footer_logo_light" alt="{{ $c }}" width="35" height="35" loading="lazy">
+      <img src="{{ $dark }}" class="icon icon_2 transparent footer_logo_dark" alt="{{ $c }}" width="35" height="35" loading="lazy">
+    </span>
     <p>{{ T "copyright" | markdownify }}{{ with $s.since }}&nbsp;{{ . }}-{{ end }}&nbsp;<span class="year"></span>&nbsp;{{ upper $c }}. {{ T "all_rights" | markdownify }}</p>
     {{- partialCached "top" .}}
   </div>

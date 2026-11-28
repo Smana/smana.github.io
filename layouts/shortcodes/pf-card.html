@@ -1,5 +1,14 @@
-<a class="pf-card" href="{{ .Get "link" }}"{{ if hasPrefix (.Get "link") "http" }} target="_blank" rel="noopener"{{ end }}>
-  <h3 class="pf-card_title">{{ .Get "title" }}</h3>
+{{- $link := .Get "link" -}}
+{{- $external := hasPrefix $link "http" -}}
+{{- $featured := eq (.Get "featured") "true" -}}
+<a class="pf-card{{ if $featured }} pf-card--featured{{ end }}" href="{{ $link }}"{{ if $external }} target="_blank" rel="noopener noreferrer"{{ end }}>
+  <div class="pf-card_head">
+    <h3 class="pf-card_title">{{ .Get "title" }}</h3>
+    {{- if $external -}}
+    <svg class="pf-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11L11 5M6 5h5v5"/></svg>
+    {{- end -}}
+  </div>
   {{- with .Get "subtitle" }}<span class="pf-card_subtitle">{{ . }}</span>{{ end }}
   <div class="pf-card_body">{{ .Inner | markdownify }}</div>
+  {{- with .Get "meta" }}<p class="pf-card_meta">{{ . }}</p>{{ end }}
 </a>

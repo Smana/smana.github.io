@@ -1,0 +1,10 @@
+{{- define "main" }}
+<div class="wrap content pf-page">
+  <article class="post_content pf-article">
+    <div class="post_body pf-body">
+      {{- .Content }}
+    </div>
+    {{- partial "i18nlist" . }}
+  </article>
+</div>
+{{- end }}

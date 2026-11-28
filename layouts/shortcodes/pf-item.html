@@ -1,5 +1,8 @@
-<li class="pf-item">
+{{- $current := eq (.Get "current") "true" -}}
+<li class="pf-item{{ if $current }} pf-item--current{{ end }}">
   <span class="pf-item_period">{{ .Get "period" }}</span>
-  <span class="pf-item_role">{{ .Get "role" }}</span>
-  <span class="pf-item_company">{{ .Get "company" }}</span>
+  <span class="pf-item_detail">
+    <span class="pf-item_role">{{ .Get "role" }}</span>
+    <span class="pf-item_company">{{ .Get "company" }}</span>
+  </span>
 </li>
