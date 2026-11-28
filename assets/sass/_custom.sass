@@ -1,6 +1,179 @@
 // Custom styles for blog.ogenki.io
 
-// Bluesky icon color
+// ---------------------------------------------------------------------------
+// Global tokens, browser surfaces, dark-mode contrast & accessibility fixes
+// ---------------------------------------------------------------------------
+html
+  --pf-accent: #0066a1
+  --pf-accent-hover: #004e7c
+  --pf-accent-bg: rgba(0, 102, 161, 0.09)
+  --pf-link-underline: rgba(0, 102, 161, 0.38)
+  --pf-surface: #ffffff
+  --pf-surface-subtle: #f6f8fa
+  --pf-featured-bg: linear-gradient(135deg, rgba(0, 102, 161, 0.055) 0%, rgba(0, 102, 161, 0.015) 100%)
+  --pf-border: rgba(2, 24, 38, 0.12)
+  --pf-border-hover: rgba(0, 102, 161, 0.45)
+  --pf-muted: #52606d
+  --pf-shadow: 0 1px 2px rgba(0, 20, 36, 0.05), 0 4px 12px rgba(0, 20, 36, 0.04)
+  --pf-shadow-hover: 0 2px 6px rgba(0, 20, 36, 0.06), 0 12px 28px rgba(0, 20, 36, 0.1)
+  --pf-img-ring: oklch(0 0 0 / 0.1)
+  --pf-pill-fg: #005587
+  --pf-pill-bg: rgba(0, 102, 161, 0.11)
+
+  &[data-mode="dim"]
+    color-scheme: dark
+    --pf-accent: #5cc3f8
+    --pf-accent-hover: #8fd8fc
+    --pf-accent-bg: rgba(92, 195, 248, 0.14)
+    --pf-link-underline: rgba(92, 195, 248, 0.45)
+    --pf-surface: #072f45
+    --pf-surface-subtle: rgba(255, 255, 255, 0.045)
+    --pf-featured-bg: linear-gradient(135deg, rgba(92, 195, 248, 0.11) 0%, rgba(7, 47, 69, 0.9) 100%)
+    --pf-border: rgba(255, 255, 255, 0.14)
+    --pf-border-hover: rgba(92, 195, 248, 0.55)
+    --pf-muted: #a9c1d1
+    --pf-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.22)
+    --pf-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.38), 0 14px 32px rgba(0, 0, 0, 0.32)
+    --pf-img-ring: oklch(1 0 0 / 0.14)
+    --pf-pill-fg: #8fd8fc
+    --pf-pill-bg: rgba(92, 195, 248, 0.16)
+
+  @media (prefers-color-scheme: dark)
+    &:not([data-mode="lit"])
+      color-scheme: dark
+      --pf-accent: #5cc3f8
+      --pf-accent-hover: #8fd8fc
+      --pf-accent-bg: rgba(92, 195, 248, 0.14)
+      --pf-link-underline: rgba(92, 195, 248, 0.45)
+      --pf-surface: #072f45
+      --pf-surface-subtle: rgba(255, 255, 255, 0.045)
+      --pf-featured-bg: linear-gradient(135deg, rgba(92, 195, 248, 0.11) 0%, rgba(7, 47, 69, 0.9) 100%)
+      --pf-border: rgba(255, 255, 255, 0.14)
+      --pf-border-hover: rgba(92, 195, 248, 0.55)
+      --pf-muted: #a9c1d1
+      --pf-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.22)
+      --pf-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.38), 0 14px 32px rgba(0, 0, 0, 0.32)
+      --pf-img-ring: oklch(1 0 0 / 0.14)
+      --pf-pill-fg: #8fd8fc
+      --pf-pill-bg: rgba(92, 195, 248, 0.16)
+
+::selection
+  background: var(--pf-accent-bg)
+  color: var(--header-text)
+
+// Restore visible keyboard focus rings (theme's _base.sass strips them globally)
+a:focus-visible,
+button:focus-visible,
+input:focus-visible
+  outline: 2px solid var(--pf-accent) !important
+  outline-offset: 3px
+  border-radius: 4px
+
+// Keep inline article links legible in dark mode too
+html[data-mode="dim"] .post_content a:not(.button)
+  color: var(--pf-accent)
+
+@media (prefers-color-scheme: dark)
+  html:not([data-mode="lit"]) .post_content a:not(.button)
+    color: var(--pf-accent)
+
+// Accessible translation pill contrast in both light and dark modes
+.button_translucent
+  background-color: var(--pf-pill-bg)
+  color: var(--pf-pill-fg)
+  font-weight: 500
+  min-height: 2.5rem
+  padding: 0.45rem 1.1rem
+  transition: background-color 0.18s var(--ease), color 0.18s var(--ease), transform 0.15s var(--ease)
+  &:hover, &:focus-visible
+    background-color: var(--pf-accent)
+    color: #002538
+    border-color: transparent
+  &:active
+    transform: scale(0.96)
+
+html:not([data-mode="dim"]) .button_translucent
+  &:hover, &:focus-visible
+    color: #ffffff
+
+@media (prefers-color-scheme: dark)
+  html:not([data-mode="lit"]) .button_translucent
+    &:hover, &:focus-visible
+      color: #002538
+
+// Navbar brand wrapper (keeps mobile button out of <a>) & logo contrast
+.nav_brand_wrap
+  display: flex
+  align-items: center
+  position: relative
+  @media screen and (max-width: 769px)
+    width: 100%
+    justify-content: space-between
+
+.nav_brand img.logo
+  width: auto
+  height: 2.25rem
+  display: block
+
+button.nav_close
+  background: transparent
+  border: none
+  padding: 0
+  color: inherit
+  @media screen and (max-width: 769px)
+    position: static
+    right: auto
+    width: 2.75rem
+    height: 2.75rem
+
+// Larger touch targets for header social icons
+.follow
+  a
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    min-width: 2.5rem
+    min-height: 2.5rem
+    border-radius: 6px
+    transition: background-color 0.18s var(--ease)
+    &:hover
+      background-color: rgba(255, 255, 255, 0.08)
+    svg
+      margin-left: 0
+
+// Footer light/dark logo swap driven by data-mode and prefers-color-scheme
+.footer_brand
+  display: inline-flex
+  align-items: center
+
+.footer_logo_dark
+  display: none
+
+html[data-mode="dim"]
+  .footer_logo_light
+    display: none
+  .footer_logo_dark
+    display: block
+
+@media (prefers-color-scheme: dark)
+  html:not([data-mode="lit"])
+    .footer_logo_light
+      display: none
+    .footer_logo_dark
+      display: block
+
+// Hide back-to-top button at scrollY=0 so it never overlaps top content
+.to_top
+  opacity: 0
+  pointer-events: none
+  transform: translateY(8px)
+  transition: opacity 0.2s var(--ease), transform 0.2s var(--ease)
+  &.is-visible
+    opacity: 1
+    pointer-events: auto
+    transform: translateY(0)
+
+// Bluesky icon color (when used outside portfolio social links)
 .bluesky
   svg
     fill: #0085ff
@@ -11,144 +184,475 @@ video
   height: auto
 
 // ---------------------------------------------------------------------------
-// Portfolio (about page) — all classes prefixed pf-, colors via theme vars
+// Portfolio (about page) — scoped under .pf-*
 // ---------------------------------------------------------------------------
+.pf-page
+  padding-top: 5.5rem
+  padding-bottom: 2.5rem
+
+.pf-article
+  max-width: 56rem
+  margin-inline: auto
+
+.pf-body
+  > h2
+    margin: 3.5rem 0 0.5rem
+    padding: 0
+    font-size: 1.45rem
+    font-weight: 700
+    letter-spacing: -0.02em
+    line-height: 1.25
+    color: var(--header-text)
+    text-wrap: balance
+
+  > p
+    max-width: 62ch
+    margin: 0
+    padding: 0.35rem 0 0
+    font-size: 1.02rem
+    line-height: 1.65
+    color: var(--pf-muted)
+    text-wrap: pretty
+
+  > p a,
+  .pf-hero_bio a
+    color: var(--pf-accent)
+    font-weight: 500
+    text-decoration: underline
+    text-decoration-thickness: 1.5px
+    text-underline-offset: 3px
+    text-decoration-color: var(--pf-link-underline)
+    transition: color 0.16s var(--ease), text-decoration-color 0.16s var(--ease)
+    &:hover
+      color: var(--pf-accent-hover)
+      text-decoration-color: currentColor
+
+// Hero masthead
 .pf-hero
-  display: flex
-  align-items: flex-start
-  flex-wrap: wrap
-  gap: 2rem
-  margin: 2rem 0
+  display: grid
+  grid-template-columns: 156px minmax(0, 1fr)
+  gap: 2.5rem
+  align-items: start
+  padding-bottom: 2.5rem
+  border-bottom: 1px solid var(--pf-border)
+
+  @media screen and (max-width: 720px)
+    grid-template-columns: 1fr
+    gap: 1.5rem
 
   &_photo
-    flex: none
-    width: 180px
-    height: 180px
-    margin: 0
+    width: 156px
+    height: 156px
+    margin: 0.2rem 0 0
     padding: 0
     border-radius: 50%
     object-fit: cover
-    box-shadow: 0 4px 14px var(--shadow)
+    outline: 1px solid var(--pf-img-ring)
+    outline-offset: -1px
+    box-shadow: var(--pf-shadow)
+    @media screen and (max-width: 720px)
+      width: 112px
+      height: 112px
 
   &_intro
-    flex: 1
-    min-width: 260px
+    min-width: 0
 
   &_name
-    margin: 0 0 0.35rem
+    margin: 0
     padding: 0
-    font-size: 1.9rem
+    font-size: clamp(2rem, 3.6vw, 2.5rem)
     font-weight: 700
-    line-height: 1.15
+    letter-spacing: -0.03em
+    line-height: 1.12
     color: var(--header-text)
+    text-wrap: balance
 
   &_tagline
-    margin: 0 0 1rem
-    color: var(--theme)
-    font-weight: 600
+    margin: 0.55rem 0 1.25rem
+    padding: 0
+    font-size: 1.02rem
+    font-weight: 500
+    line-height: 1.45
+    color: var(--pf-accent)
+    text-wrap: balance
+
+  &_bio
+    max-width: 62ch
+    font-size: 1.02rem
+    line-height: 1.68
+    color: var(--text)
+    text-wrap: pretty
+    p
+      padding: 0
+      margin: 0 0 0.9rem
+      &:last-child
+        margin-bottom: 0
+    strong
+      color: var(--header-text)
+      font-weight: 700
 
   &_social
     display: flex
-    gap: 0.75rem
-    margin-top: 0.75rem
-    a
-      svg
-        width: 1.5rem
-        height: 1.5rem
-        fill: var(--text)
-        transition: fill 0.2s var(--ease)
-    a:hover
-      svg
-        fill: var(--theme)
+    flex-wrap: wrap
+    gap: 0.65rem
+    margin-top: 1.5rem
 
-.pf-cards
-  display: grid
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr))
-  gap: 1rem
-  margin: 1.5rem 0
-
-.pf-card
-  display: block
-  padding: 1.25rem
-  background: var(--post-bg)
-  border: 1px solid var(--table-border)
-  border-top: 3px solid var(--theme)
-  border-radius: 8px
-  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease)
+.pf-social_link
+  display: inline-flex
+  align-items: center
+  gap: 0.5rem
+  min-height: 2.75rem
+  padding: 0.45rem 0.95rem
+  border-radius: 999px
+  border: 1px solid var(--pf-border)
+  background: var(--pf-surface)
+  color: var(--header-text) !important
+  font-size: 0.9rem
+  font-weight: 500
+  text-decoration: none
+  touch-action: manipulation
+  transition: border-color 0.18s var(--ease), background-color 0.18s var(--ease), color 0.18s var(--ease), transform 0.15s var(--ease)
 
   &:hover
-    transform: translateY(-3px)
-    box-shadow: 0 6px 18px var(--shadow)
+    border-color: var(--pf-border-hover)
+    background: var(--pf-surface-subtle)
+    color: var(--pf-accent) !important
+
+  &:active
+    transform: scale(0.96)
+
+.pf-social_icon
+  display: inline-flex
+  align-items: center
+  svg
+    width: 1.05rem
+    height: 1.05rem
+    fill: currentColor
+
+// Shared external-link arrow
+.pf-arrow
+  flex: none
+  color: var(--pf-muted)
+  transition: transform 0.18s var(--ease), color 0.18s var(--ease)
+
+// Open Source showcase (featured Maku + companion projects)
+.pf-cards--oss
+  display: grid
+  grid-template-columns: repeat(2, minmax(0, 1fr))
+  gap: 1.1rem
+  margin: 1.35rem 0 0
+
+  @media screen and (max-width: 680px)
+    grid-template-columns: 1fr
+
+  .pf-card
+    display: flex
+    flex-direction: column
+    padding: 1.4rem 1.5rem
+    background: var(--pf-surface)
+    border: 1px solid var(--pf-border)
+    border-radius: 12px
+    box-shadow: var(--pf-shadow)
+    color: inherit
+    touch-action: manipulation
+    transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s var(--ease)
+
+    &:hover
+      transform: translateY(-2px)
+      border-color: var(--pf-border-hover)
+      box-shadow: var(--pf-shadow-hover)
+      .pf-card_title
+        color: var(--pf-accent)
+      .pf-arrow
+        color: var(--pf-accent)
+        transform: translate(2px, -2px)
+
+    &:active
+      transform: scale(0.985)
+
+    &--featured
+      grid-column: 1 / -1
+      padding: 1.65rem 1.75rem
+      background: var(--pf-featured-bg)
+      border-color: var(--pf-border-hover)
+      .pf-card_title
+        font-size: 1.3rem
+      .pf-card_body
+        max-width: 62ch
+
+// Community editorial strip (visually distinct from OSS cards)
+.pf-cards--community
+  display: grid
+  grid-template-columns: repeat(3, minmax(0, 1fr))
+  margin: 1.35rem 0 0
+  border-top: 1px solid var(--pf-border)
+  border-bottom: 1px solid var(--pf-border)
+
+  @media screen and (max-width: 720px)
+    grid-template-columns: 1fr
+
+  .pf-card
+    display: flex
+    flex-direction: column
+    padding: 1.35rem 1.25rem
+    background: transparent
+    border-right: 1px solid var(--pf-border)
+    color: inherit
+    touch-action: manipulation
+    transition: background-color 0.18s var(--ease)
+
+    &:first-child
+      padding-left: 0.75rem
+
+    &:last-child
+      border-right: none
+      padding-right: 0.75rem
+
+    @media screen and (max-width: 720px)
+      border-right: none
+      border-bottom: 1px solid var(--pf-border)
+      padding: 1.15rem 0.5rem
+      &:first-child
+        padding-left: 0.5rem
+      &:last-child
+        border-bottom: none
+        padding-right: 0.5rem
+
+    &:hover
+      background: var(--pf-surface-subtle)
+      .pf-card_title
+        color: var(--pf-accent)
+      .pf-arrow
+        color: var(--pf-accent)
+        transform: translate(2px, -2px)
+
+.pf-card
+  &_head
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 0.75rem
+    .pf-arrow
+      margin-top: 0.22rem
 
   &_title
-    margin: 0 0 0.25rem
-    font-size: 1.05rem
+    margin: 0
+    padding: 0
+    font-size: 1.125rem
+    font-weight: 700
+    line-height: 1.3
+    letter-spacing: -0.01em
+    color: var(--header-text)
+    transition: color 0.16s var(--ease)
 
   &_subtitle
-    color: var(--theme)
-    font-size: 0.85rem
-    font-weight: 600
+    display: block
+    margin-top: 0.25rem
+    font-size: 0.875rem
+    font-weight: 500
+    color: var(--pf-accent)
 
   &_body
+    margin-top: 0.65rem
+    font-size: 0.94rem
+    line-height: 1.58
     color: var(--text)
-    font-size: 0.9rem
+    text-wrap: pretty
     p
-      margin: 0.5rem 0 0
+      margin: 0
+      padding: 0
 
-.pf-talks
+  &_meta
+    margin: auto 0 0
+    padding: 0.9rem 0 0
+    font-size: 0.82rem
+    font-weight: 500
+    color: var(--pf-muted)
+    letter-spacing: 0.01em
+
+// Talks (full-row >=48px hit targets, tabular years, high specificity)
+.post_content.pf-article .pf-talks
   list-style: none
+  margin: 1.25rem 0 0
   padding: 0
-  margin: 1.5rem 0
 
-.pf-talk
-  display: flex
+.post_content.pf-article .pf-talk
+  padding: 0
+  margin: 0
+  border-bottom: 1px solid var(--pf-border)
+  &:last-child
+    border-bottom: none
+
+.pf-talk_row
+  display: grid
+  grid-template-columns: 3.75rem minmax(0, 1fr) auto
   align-items: baseline
-  gap: 1rem
-  padding: 0.6rem 0
-  border-bottom: 1px dashed var(--table-border)
+  gap: 0.2rem 1.25rem
+  min-height: 3rem
+  padding: 0.85rem 0.75rem
+  margin: 0 -0.75rem
+  border-radius: 8px
+  color: inherit !important
+  text-decoration: none
+  touch-action: manipulation
+  transition: background-color 0.16s var(--ease)
 
-  &_year
-    flex: 0 0 3.2rem
-    color: var(--theme)
-    font-weight: 700
+  &:hover
+    background: var(--pf-surface-subtle)
+    .pf-talk_title
+      color: var(--pf-accent)
+    .pf-talk_arrow
+      color: var(--pf-accent)
+      transform: translate(2px, -2px)
 
-  &_title
-    font-weight: 600
+  @media screen and (max-width: 520px)
+    grid-template-columns: 3.1rem minmax(0, 1fr) auto
+    gap: 0.2rem 0.75rem
+    padding: 0.85rem 0.35rem
+    margin: 0 -0.35rem
 
-  &_event
-    display: block
-    color: var(--text)
-    font-size: 0.85rem
+.pf-talk_year
+  font-variant-numeric: tabular-nums
+  font-size: 0.92rem
+  font-weight: 700
+  color: var(--pf-accent)
 
-.pf-timeline
+.pf-talk_what
+  display: flex
+  flex-direction: column
+  min-width: 0
+
+.pf-talk_title
+  font-size: 1rem
+  font-weight: 500
+  line-height: 1.4
+  color: var(--header-text)
+  transition: color 0.16s var(--ease)
+
+.pf-talk_event
+  margin-top: 0.15rem
+  font-size: 0.86rem
+  line-height: 1.4
+  color: var(--pf-muted)
+
+.pf-talk_arrow
+  align-self: center
+
+// Career timeline (high specificity beats .post_content ol/ul, zero double bullets)
+.post_content.pf-article .pf-timeline
   list-style: none
+  margin: 1.5rem 0 0
   padding: 0
-  margin: 1.5rem 0 1.5rem 0.5rem
-  border-left: 2px solid var(--theme)
 
-.pf-item
+.post_content.pf-article .pf-item
   position: relative
-  padding: 0 0 1.1rem 1.5rem
+  display: grid
+  grid-template-columns: 10.5rem minmax(0, 1fr)
+  align-items: baseline
+  gap: 0.15rem 1.25rem
+  margin: 0
+  padding: 0 0 1.25rem 1.75rem
 
+  @media screen and (max-width: 600px)
+    grid-template-columns: 1fr
+    gap: 0.15rem
+    padding: 0 0 1.2rem 1.5rem
+
+  // Timeline node
   &::before
     content: ''
     position: absolute
-    left: -0.38rem
-    top: 0.35rem
-    width: 0.65rem
-    height: 0.65rem
+    left: 1px
+    top: 0.48rem
+    width: 10px
+    height: 10px
     border-radius: 50%
-    background: var(--theme)
+    background: var(--choice-bg)
+    border: 2px solid var(--pf-accent)
+    z-index: 1
 
-  &_period
-    display: inline-block
-    min-width: 7rem
-    font-weight: 700
+  // Rail segment between nodes (stops cleanly at the final item)
+  &:not(:last-child)::after
+    content: ''
+    position: absolute
+    left: 5px
+    top: 0.95rem
+    bottom: -0.45rem
+    width: 2px
+    background: var(--pf-border)
 
-  &_role
-    font-weight: 600
+  &:last-child
+    padding-bottom: 0
 
-  &_company
-    color: var(--text)
-    &::before
-      content: ' · '
+  &--current::before
+    background: var(--pf-accent)
+    box-shadow: 0 0 0 4px var(--pf-accent-bg)
+
+.pf-item_period
+  font-variant-numeric: tabular-nums
+  font-size: 0.9rem
+  font-weight: 500
+  color: var(--pf-muted)
+  white-space: nowrap
+
+.pf-item--current .pf-item_period
+  color: var(--pf-accent)
+  font-weight: 700
+
+.pf-item_detail
+  min-width: 0
+  line-height: 1.45
+
+.pf-item_role
+  font-size: 1rem
+  font-weight: 700
+  color: var(--header-text)
+
+.pf-item_company
+  font-size: 0.98rem
+  font-weight: 400
+  color: var(--pf-muted)
+  &::before
+    content: ' · '
+
+// Translations footer spacing on About
+.pf-article .post_i18n
+  margin-top: 3rem
+  padding-top: 1.5rem
+  border-top: 1px solid var(--pf-border)
+  display: flex
+  align-items: center
+  gap: 0.75rem
+  flex-wrap: wrap
+
+.post_i18n_label
+  font-size: 0.92rem
+  font-weight: 500
+  color: var(--pf-muted)
+  margin: 0
+  padding: 0
+
+// Respect prefers-reduced-motion: disable movement & smooth scroll while preserving color feedback
+@media (prefers-reduced-motion: reduce)
+  html, body
+    scroll-behavior: auto
+  .pf-cards--oss .pf-card,
+  .pf-cards--community .pf-card,
+  .pf-social_link,
+  .pf-talk_row,
+  .pf-arrow,
+  .button_translucent,
+  .to_top,
+  .nav_body,
+  .color_animate,
+  .color_animate::after
+    transition-property: color, background-color, border-color, opacity
+    transition-duration: 0.08s
+  .pf-cards--oss .pf-card:hover,
+  .pf-cards--oss .pf-card:active,
+  .pf-social_link:active,
+  .button_translucent:active,
+  .pf-card:hover .pf-arrow,
+  .pf-talk_row:hover .pf-talk_arrow,
+  .to_top
+    transform: none

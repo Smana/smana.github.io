@@ -1,5 +1,5 @@
 [[main]]
-name = "Home"
+name = "Accueil"
 url = ""
 weight = -110
 
@@ -18,7 +18,7 @@ parent = "Links"
 url = "https://bsky.app/profile/smana.dev"
 
 [[main]]
-name = "Apropos"
+name = "À propos"
 url = "about/"
 weight = -107
 
@@ -30,10 +30,10 @@ type = "social"
 url = "https://github.com/Smana"
 weight = 1
 [[social]]
-name = "bluesky"
-url = "https://bsky.app/profile/smana.dev"
-weight = 2
-[[social]]
 name = "linkedin"
 url = "https://www.linkedin.com/in/sma%C3%AFne-kahlouch-44374110/"
+weight = 2
+[[social]]
+name = "bluesky"
+url = "https://bsky.app/profile/smana.dev"
 weight = 3

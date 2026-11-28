@@ -1,17 +1,15 @@
 {{- $t := site.Title -}}
-{{- $light := absURL "logos/logo-light.webp" -}}
 {{- $dark := absURL "logos/logo-dark.webp" -}}
-<a href='{{ absLangURL "" }}' class="nav_brand nav_item{{ with .class }} {{ . }}{{ end }}" title="{{ $t }}">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="{{ $dark }}">
-    <img src="{{ $light }}" class="logo" alt="{{ $t }}">
-  </picture>
+<div class="nav_brand_wrap{{ with .class }} {{ . }}{{ end }}">
+  <a href='{{ absLangURL "" }}' class="nav_brand nav_item" title="{{ $t }}">
+    <img src="{{ $dark }}" class="logo" alt="{{ $t }}" width="240" height="60">
+  </a>
   {{- if ne (strings.HasSuffix .class "center") true }}
-  <div class="nav_close">
-    <div>
+  <button type="button" class="nav_close" aria-label="Toggle menu">
+    <span>
       {{- partialCached "sprite" (dict "icon" "open-menu") -}}
-      {{- partial "sprite" (dict "icon" "closeme") -}}
-    </div>
-  </div>
+      {{- partialCached "sprite" (dict "icon" "closeme") -}}
+    </span>
+  </button>
   {{- end }}
-</a>
+</div>

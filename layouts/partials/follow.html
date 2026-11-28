@@ -4,6 +4,7 @@
 {{- with $social }}
   {{- $items = . }}
 {{- end }}
+{{- $labels := dict "github" "GitHub" "linkedin" "LinkedIn" "bluesky" "Bluesky" }}
 <div class='follow'>
   {{- range $items }}
   {{- $url := .URL }}
@@ -12,11 +13,12 @@
     {{ $url = .url }}
     {{ $label = lower .item }}
   {{- end }}
+  {{- $display := index $labels $label | default .Name }}
   {{- if and (eq (hasPrefix $url $base) false) (eq (hasPrefix $url "http") false) }}
     {{ $url = absLangURL $url }}
   {{- end }}
-  <a href="{{ $url }}">
-    {{ partial "sprite" (dict "icon" $label) }}
+  <a href="{{ $url }}" aria-label="{{ $display }}" title="{{ $display }}" target="_blank" rel="noopener noreferrer">
+    <span aria-hidden="true">{{ partial "sprite" (dict "icon" $label) }}</span>
   </a>
   {{- end }}
   {{- partialCached "mode" . }}
